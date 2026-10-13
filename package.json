@@ -1,0 +1,17 @@
+{
+  "name": "vvm-details",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.1",
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  }
+}
