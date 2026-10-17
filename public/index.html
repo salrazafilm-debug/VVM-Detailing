@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+// Dashboard invitations may return to the Site URL. Keep their session fragment on this origin.
+{ const authReturn = new URLSearchParams(location.hash.slice(1));
+  if (authReturn.has('access_token') && ['invite','recovery'].includes(authReturn.get('type'))) {
+    location.replace('/reset-password' + location.hash);
+  }
+}
+</script>
 <title>VVM Details | Mobile Car Wash & Detailing in DC, MD & VA</title>
 <meta name="description" content="Perfection &amp; experience only a book away! Mobile detailing &amp; carwash services at your door. Located in Chesapeake Beach, MD &amp; traveling all over the DMV.">
 <meta name="theme-color" content="#e9b3b3">
