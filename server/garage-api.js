@@ -195,7 +195,8 @@ exports.remindersCronGet = async req => {
     const admin = createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:pending,error:queueError} = await admin.rpc('garage_pending_reminders',{p_limit:100});
     if(queueError) {
-      console.error('Garage reminder queue failed', {code:queueError.code,message:queueError.message});
+      // Provider messages can include malformed credential/header values. Never log their text.
+      console.error('Garage reminder queue failed', {code:/^[A-Z0-9_]{1,20}$/.test(queueError.code||'')?queueError.code:'REQUEST_FAILED'});
       throw Object.assign(new Error('Could not find due Garage reminders.'),{status:503});
     }
     const results=[];
