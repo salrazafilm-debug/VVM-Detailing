@@ -477,7 +477,16 @@ function loadMedia(root = document) {
   try { g = (await (await fetch('/api/reviews')).json()).google; } catch {}
   const stars = n => '★'.repeat(Math.max(1, Math.min(5, Math.round(n)))) + '☆'.repeat(5 - Math.max(1, Math.min(5, Math.round(n))));
   let photoN = 0;
-  const card = (r, src) => `<article class="rev">${r.photo ? `<img class="rev-photo" src="${esc(r.photo)}" alt="${esc(r.name)}\u2019s car" loading="${photoN++ < 3 ? 'eager' : 'lazy'}" decoding="async">` : ''}<div class="rev-body"><p class="rev-stars" aria-label="${r.rating || 5} out of 5 stars">${stars(r.rating || 5)}</p><p class="rev-text">${esc(r.text)}</p><p class="rev-by"><b>${esc(r.name)}</b>${r.car ? ` \u00b7 ${esc(r.car)}` : ''}${r.when ? ` \u00b7 ${esc(r.when)}` : ''}<span class="rev-src${src === 'Google' ? ' ver' : ''}">${src === 'Google' ? '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10"/><path d="M5.5 10.4l3 3 6-6.6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified Google review' : src}</span></p></div></article>`;
+  // Long reviews show their first part and a "Read more" that opens the rest (native details, no script needed)
+  const SHORT = 170;
+  const reviewText = t => {
+    const s = String(t || '');
+    if (s.length <= SHORT) return `<div class="rev-text">${esc(s)}</div>`;
+    let cut = s.lastIndexOf(' ', SHORT);
+    if (cut < 100) cut = SHORT;
+    return `<div class="rev-text">${esc(s.slice(0, cut))}… <details class="rev-more"><summary>Read more</summary>${esc(s.slice(cut).trim())}</details></div>`;
+  };
+  const card = (r, src) => `<article class="rev">${r.photo ? `<img class="rev-photo" src="${esc(r.photo)}" alt="${esc(r.name)}\u2019s car" loading="${photoN++ < 3 ? 'eager' : 'lazy'}" decoding="async">` : ''}<div class="rev-body"><p class="rev-stars" aria-label="${r.rating || 5} out of 5 stars">${stars(r.rating || 5)}</p>${reviewText(r.text)}<p class="rev-by"><b>${esc(r.name)}</b>${r.car ? ` \u00b7 ${esc(r.car)}` : ''}${r.when ? ` \u00b7 ${esc(r.when)}` : ''}<span class="rev-src${src === 'Google' ? ' ver' : ''}">${src === 'Google' ? '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10"/><path d="M5.5 10.4l3 3 6-6.6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Verified Google review' : src}</span></p></div></article>`;
   const all = [...(g && g.reviews ? g.reviews.map(r => card(r, 'Google')) : []), ...(own.reviews || []).filter(r => r && r.text).map(r => card(r, r.source || 'VVM client'))];
   grid.innerHTML = all.length ? all.join('') : `<article class="rev rev-empty"><div class="rev-body"><p class="rev-stars" aria-hidden="true">★★★★★</p><p class="rev-text">Finished your detail? We would love to hear how we did!</p></div></article>`;
   const gs = (g && g.rating) ? g : own.googleSummary;   // live Google numbers when connected, otherwise the saved snapshot in reviews.json

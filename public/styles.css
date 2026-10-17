@@ -1419,3 +1419,8 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   .rev-viewport{padding-bottom:0}
   .rev-arrow{display:none}   /* phones: swipe the reviews instead */
 }
+
+/* Review "Read more" */
+.rev-more{display:inline}
+.rev-more summary{display:inline;cursor:pointer;font-weight:800;text-decoration:underline;list-style:none}
+.rev-more summary::-webkit-details-marker{display:none}
