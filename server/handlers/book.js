@@ -2,6 +2,7 @@ const { sq, loadCatalog, getLocationId, blocksByDay, json, fail, httpError, isPu
 const { slotsForJobs, localToUtc, fromHHMM, resolvePlan, partyBlocks } = require('../rules');
 const { blocksWithHolds, addHold } = require('../holds');
 const { sendBookingEmail } = require('../mail');
+const { findCoupon } = require('../coupons');
 const crypto = require('crypto');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -20,14 +21,24 @@ exports.handler = async (event) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw httpError(400, 'Please enter a valid email.');
 
     // The cart: one array of service ids per vehicle (older pages send a single variationId and vehicle).
-    const plan = Array.isArray(b.plan) ? b.plan : (b.variationId ? [[b.variationId]] : []);
+    let plan = Array.isArray(b.plan) ? b.plan : (b.variationId ? [[b.variationId]] : []);
     const vehicles = (Array.isArray(b.vehicles) ? b.vehicles : [b.vehicle]).map(v => clean(v, 120));
     if (!plan.length || vehicles.length !== plan.length || vehicles.some(v => v.length < 2)) {
       throw httpError(400, plan.length > 1 ? 'Please enter the year, make and model of both vehicles.' : 'Please enter your vehicle year, make and model.');
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !/^\d{2}:\d{2}$/.test(b.time || '')) throw httpError(400, 'Invalid date or time.');
 
+    // A coupon books its one fixed service for its fixed price. The browser's plan is ignored for coupons.
+    const coupon = b.coupon ? findCoupon(b.coupon) : null;
+    if (b.coupon && !coupon) throw httpError(400, 'That code is not valid.');
+    if (coupon && vehicles.length !== 1) throw httpError(400, 'Coupons are for one vehicle.');
+
     const catalog = await loadCatalog();
+    if (coupon) {
+      const v = Object.values(catalog).find(x => x.item === coupon.item && x.label === coupon.label && isPublic(x));
+      if (!v) throw httpError(503, 'Online booking is not set up for this code yet.');
+      plan = [[v.id]];
+    }
     const { cars, jobs } = resolvePlan(plan, catalog, isPublic);
 
     // Re-check availability on the server so a stale page can never double-book.
@@ -40,7 +51,7 @@ exports.handler = async (event) => {
     const two = cars.length > 1;
     const serviceText = cars.map((c, i) => `${two ? `Vehicle ${i + 1}: ` : ''}${c.services.map(v => `${v.item} - ${v.label}`).join(' + ')}`).join(' | ');
     const vehicleText = two ? vehicles.map((v, i) => `Vehicle ${i + 1}: ${v}`).join(' | ') : vehicles[0];
-    const totalCents = jobs.reduce((n, j) => n + j.priceCents, 0);
+    const totalCents = coupon ? coupon.priceCents : jobs.reduce((n, j) => n + j.priceCents, 0);
     const result = { ok: true, when: `${b.date} ${b.time}`, service: serviceText };
 
     // Free Square plans cannot create bookings through the API, so by default the request is emailed
@@ -56,6 +67,7 @@ exports.handler = async (event) => {
             `Date: ${b.date}`, `Start: ${b.time}`,
             `Vehicle: ${vehicleText}`, `Services: ${serviceText}`,
             `Party: ${two ? '2 vehicles, back to back' : '1 vehicle'}`, `Total: ${money(totalCents)}`,
+            ...(coupon ? [`Coupon: ${coupon.code} (special price, not the Square price)`] : []),
             `Concerns / where to arrive: ${notes || 'None'}`,
           ],
         });

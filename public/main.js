@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { coupon: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -114,7 +114,7 @@ function vehicleRow() {
   if (S.locked[i]) return `<div class="vrow locked"><span class="v-k">${n}</span><b class="v-t">${esc(vname(i))}</b><span class="v-ok">✓ Locked in</span><button type="button" class="link" data-act="vedit">Edit</button></div>`;
   return `<form id="vform" class="vrow" novalidate><label for="f-vinfo">${n}: year, make &amp; model</label>
     <div class="v-in"><input id="f-vinfo" name="vinfo" value="${esc(S.vehicles[i])}" placeholder="e.g. 2022 Lexus IS 350" autocomplete="off" enterkeyhint="done"><button class="mini" type="submit">Confirm</button></div>
-    ${S.vError ? `<p class="err" role="alert">${esc(S.vError)}</p>` : '<p class="muted small">Fill this in first, then pick your services.</p>'}</form>`;
+    ${S.vError ? `<p class="err" role="alert">${esc(S.vError)}</p>` : `<p class="muted small">${S.coupon ? 'Fill this in, then choose your day.' : 'Fill this in first, then pick your services.'}</p>`}</form>`;
 }
 
 // Under the vehicle box: "Booking for more than 1 vehicle?" Yes / No. Yes pops up 1, 2, 3 or more; No blurs the picker.
@@ -130,7 +130,27 @@ function multiBlock() {
     </div>`;
 }
 
+// A coupon books one fixed service, so the picker is replaced by the vehicle box and a "Choose a day" button.
+function couponStep() {
+  const c = S.coupon;
+  return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b></p><button type="button" class="link" data-act="nocoupon">Remove</button></div>`
+    + vehicleRow()
+    + (S.locked[0] ? `<button class="btn primary" type="button" data-act="go">Choose a day</button>` : '');
+}
+
+// Apply a valid coupon: its service and price go into the cart, then the vehicle box comes first.
+function useCoupon(data) {
+  const g = (S.services || []).find(x => x.name === data.item);
+  const v = g && g.variations.find(x => x.id === data.id);
+  if (!v) return false;
+  S.coupon = data; S.multi = false; S.count = 1; S.active = 0;
+  S.cars = [[{ item: g.name, kind: g.kind, v: { ...v, priceCents: data.priceCents } }]];
+  S.locked = [false, false]; S.vError = ''; S.focusV = true; S.step = 'service'; S.error = '';
+  return true;
+}
+
 function serviceStep() {
+  if (S.coupon) return couponStep();
   let html = vehicleRow() + multiBlock();
   if (S.count === 3) {
     return html + `<div class="notice help"><b>3 or more vehicles?</b> We would love to help. Text or email us and we will set up your day.
@@ -216,6 +236,7 @@ function render() {
       <h3 class="yay-big">YAY!</h3>
       <p class="yay-sub">You're all booked and ready!</p>
       <p class="yay-line">Your booking is now reserved.</p>
+      ${S.coupon ? `<p class="yay-line">Congrats on your ${money(S.coupon.priceCents)} booking!</p>` : ''}
       <div class="yay-card">
         <p class="yay-t">${esc(title())}</p>
         <p class="yay-l">${lines().map(esc).join('<br>')}</p>
@@ -266,6 +287,7 @@ bk.addEventListener('click', async e => {
     S.notice = ''; render();
   }
   else if (a === 'drop') { const i = +t.dataset.car; S.cars[i] = carItems(i).filter(x => x.v.id !== t.dataset.id); S.notice = ''; render(); }
+  else if (a === 'nocoupon') { S.coupon = null; S.cars = [[]]; S.locked = [false, false]; S.vError = ''; S.focusV = false; S.error = ''; render(); }
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'prev' || a === 'next') { S.m += a === 'next' ? 1 : -1; if (S.m > 11) { S.m = 0; S.y++; } if (S.m < 0) { S.m = 11; S.y--; } S.date = null; await loadMonth(); }
   else if (a === 'day') { S.date = t.dataset.d; render(); }
@@ -294,7 +316,7 @@ bk.addEventListener('submit', async e => {
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '' }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;
@@ -465,4 +487,28 @@ function loadMedia(root = document) {
     });
   }
   layout(); new ResizeObserver(() => { clearTimeout(layout.t); layout.t = setTimeout(layout, 60); }).observe(g); addEventListener('load', layout);
+})();
+
+/* ----- coupon code (footer) ----- */
+(function coupon() {
+  const form = $('#couponForm'), msg = $('#couponMsg');
+  if (!form) return;
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const code = String(new FormData(form).get('code') || '').trim();
+    if (!code) { msg.textContent = 'Type your code first.'; return; }
+    msg.textContent = 'Checking…';
+    try {
+      const d = await api('/coupon?code=' + encodeURIComponent(code));
+      msg.innerHTML = `<b>${esc(d.code)}</b> works: Full Factory Reset, ${esc(d.label)} for <b>${money(d.priceCents)}</b> (normally ${money(d.normalCents)}). <button type="button" class="mini" id="couponGo">Book it</button>`;
+      $('#couponGo').addEventListener('click', () => {
+        if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
+        if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
+        render();
+        $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      });
+    } catch (err) {
+      msg.textContent = err.message || 'That code is not valid.';
+    }
+  });
 })();

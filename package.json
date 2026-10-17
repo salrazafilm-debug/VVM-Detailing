@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js"
+    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js && node tests/coupons.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",
