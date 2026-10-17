@@ -194,7 +194,10 @@ exports.remindersCronGet = async req => {
     const { url, secret: serviceKey } = config();
     const admin = createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:pending,error:queueError} = await admin.rpc('garage_pending_reminders',{p_limit:100});
-    if(queueError) throw Object.assign(new Error('Could not find due Garage reminders.'),{status:503});
+    if(queueError) {
+      console.error('Garage reminder queue failed', {code:queueError.code,message:queueError.message});
+      throw Object.assign(new Error('Could not find due Garage reminders.'),{status:503});
+    }
     const results=[];
     const deadline=Date.now()+40000;
     for(const item of pending||[]){
