@@ -198,7 +198,7 @@ function render() {
       const k = keyOf(S.y, S.m, d), open = (S.days[k] || []).length > 0;
       cells += `<button type="button" class="day ${open ? 'open' : ''} ${S.date === k ? 'sel' : ''}" ${open ? `data-act="day" data-d="${k}"` : 'disabled'} aria-label="${open ? 'Available ' : 'Unavailable '}${esc(longDate(k))}">${d}</button>`;
     }
-    html += `${back('service')}
+    html += `${S.coupon ? `<p class="coupon-hello">Hello ${esc(S.coupon.customer || 'there')}! Pick your day.</p>` : ''}${back('service')}
       <p class="picked"><b>${esc(title())}</b> · ${money(totalCents())} · about ${dur(totalMin())}${S.count === 2 ? `<br><span class="picked-sub">${lines().map(esc).join('<br>')}</span>` : ''}</p>
       <div class="cal">
         <div class="cal-head"><button type="button" class="nav-m" data-act="prev" ${atNow ? 'disabled' : ''} aria-label="Previous month">‹</button><b>${label}</b><button type="button" class="nav-m" data-act="next" aria-label="Next month">›</button></div>
@@ -216,7 +216,7 @@ function render() {
         <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
       </div>
       <form id="bform" class="form" novalidate>
-        <label>Name<input id="f-name" name="name" required autocomplete="name"></label>
+        <label>Name<input id="f-name" name="name" required autocomplete="name" value="${esc(S.coupon && S.coupon.customer || '')}"></label>
         <label>Phone<input id="f-phone" name="phone" type="tel" required autocomplete="tel"></label>
         <label>Email<input id="f-email" name="email" type="email" required autocomplete="email"></label>
         <label>Address &amp; concerns<span class="hint">Where should we arrive + any concerns or questions can let us know here - We will get back to you as soon as possible! Thank you!!!</span><textarea id="f-notes" name="notes" rows="4" placeholder="Street address, city, ZIP">${esc(S.coupon && S.coupon.address || '')}</textarea></label>
@@ -497,17 +497,15 @@ function loadMedia(root = document) {
     const code = String(new FormData(form).get('code') || '').trim();
     if (!code) { msg.textContent = 'Type your code first.'; return; }
     msg.textContent = 'Checking…';
-    try {
-      const d = await api('/coupon?code=' + encodeURIComponent(code));
-      msg.innerHTML = `<b>${esc(d.code)}</b> works: Full Factory Reset, ${esc(d.label)} for <b>${money(d.priceCents)}</b> (normally ${money(d.normalCents)}). <button type="button" class="mini" id="couponGo">Book it</button>`;
-      $('#couponGo').addEventListener('click', () => {
-        if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
-        if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
-        render();
-        $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      });
-    } catch (err) {
-      msg.textContent = err.message || 'That code is not valid.';
-    }
+    let d;
+    try { d = await api('/coupon?code=' + encodeURIComponent(code)); }
+    catch (err) { msg.textContent = err.message || 'That code is not valid.'; return; }
+    if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
+    if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
+    // Straight to the calendar: the vehicle is already set for this customer
+    msg.textContent = `Hello ${d.customer || 'there'}! Pick your day below.`;
+    S.date = null; S.time = null; S.error = ''; S.step = 'date';
+    await loadMonth();
+    $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   });
 })();
