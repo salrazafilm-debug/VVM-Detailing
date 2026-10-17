@@ -133,7 +133,8 @@ function multiBlock() {
 // A coupon books one fixed service, so the picker is replaced by the vehicle box and a "Choose a day" button.
 function couponStep() {
   const c = S.coupon;
-  return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b>${c.vehicle ? `<br><span class="picked-sub">${esc(c.vehicle)}</span>` : ''}</p><button type="button" class="link" data-act="nocoupon">Remove</button></div>
+  const sizes = c.garage_offer && c.size_options ? `<label class="g-offer-size">Choose your vehicle size<select id="offerSize">${c.size_options.map(v=>`<option value="${esc(v.id)}" ${v.id===c.id?'selected':''}>${esc(v.label)} · ${money(v.priceCents)} (save ${money(v.savingCents)})</option>`).join('')}</select></label>` : '';
+  return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b>${c.vehicle ? `<br><span class="picked-sub">${esc(c.vehicle)}</span>` : ''}</p><button type="button" class="link" data-act="nocoupon">Remove</button></div>${sizes}
     <button class="btn primary" type="button" data-act="go">Choose a day</button>`;
 }
 
@@ -293,6 +294,14 @@ bk.addEventListener('click', async e => {
   else if (a === 'time') { S.time = t.dataset.t; S.error = ''; S.step = 'details'; render(); }
   else if (a === 'back') { S.step = t.dataset.to; S.error = ''; render(); }
 });
+bk.addEventListener('change', e => {
+  if (e.target.id !== 'offerSize' || !S.coupon?.size_options) return;
+  const option = S.coupon.size_options.find(v => v.id === e.target.value);
+  if (!option) return;
+  S.coupon = { ...S.coupon, ...option };
+  useCoupon(S.coupon);
+  render();
+});
 
 // remember what is typed in the vehicle box, so switching vehicles or steps never loses it
 bk.addEventListener('input', e => { if (e.target.name === 'vinfo') S.vehicles[S.active] = e.target.value; });
@@ -315,7 +324,7 @@ bk.addEventListener('submit', async e => {
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '' }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;
@@ -499,10 +508,12 @@ function loadMedia(root = document) {
     msg.textContent = 'Checking…';
     try {
       const d = await api('/coupon?code=' + encodeURIComponent(code));
-      msg.innerHTML = `<b>${esc(d.code)}</b> works: Full Factory Reset, ${esc(d.label)} for <b>${money(d.priceCents)}</b> (normally ${money(d.normalCents)}). <button type="button" class="mini" id="couponGo">Book it</button>`;
+      const sizePicker = d.garage_offer && d.size_options ? `<label class="offer-size-choice">Choose vehicle size <select id="couponSize">${d.size_options.map(v=>`<option value="${esc(v.id)}" ${v.id===d.id?'selected':''}>${esc(v.label)} · ${money(v.priceCents)} (save ${money(v.savingCents)})</option>`).join('')}</select></label>` : '';
+      msg.innerHTML = `<b>${esc(d.code)}</b> works: Full Factory Reset, ${esc(d.label)} for <b>${money(d.priceCents)}</b> (normally ${money(d.normalCents)}).${sizePicker} <button type="button" class="mini" id="couponGo">Book it</button>`;
       $('#couponGo').addEventListener('click', () => {
         if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
-        if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
+        const selectedSize = d.garage_offer && d.size_options ? d.size_options.find(v=>v.id===$('#couponSize').value) : d;
+        if (!useCoupon({ ...d, ...selectedSize })) { msg.textContent = 'That service is not available to book right now.'; return; }
         render();
         $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       });
@@ -510,4 +521,13 @@ function loadMedia(root = document) {
       msg.textContent = err.message || 'That code is not valid.';
     }
   });
+  const fromGarage = new URLSearchParams(location.search).get('coupon');
+  if (fromGarage) {
+    const input = $('#couponCode');
+    if (input) {
+      input.value = fromGarage;
+      const check = () => { if (S.services) form.requestSubmit(); else setTimeout(check, 200); };
+      setTimeout(check, 200);
+    }
+  }
 })();
