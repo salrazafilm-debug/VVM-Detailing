@@ -1,12 +1,11 @@
 const { loadCatalog, json, fail, httpError, isPublic } = require('../square');
-const { findCoupon } = require('../coupons');
-const { store: couponStore } = require('../coupon-db');
+const { findCoupon, store: couponStore } = require('../coupon-db');
 
 // GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
   try {
     const code = (event.queryStringParameters || {}).code;
-    let coupon = findCoupon(code);
+    let coupon = await findCoupon(code);
     if (!coupon) {
       const offer = await couponStore().garageOffer(code);
       if (!offer) throw httpError(404, 'That offer is no longer available.');

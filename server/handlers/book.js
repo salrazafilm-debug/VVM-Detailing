@@ -2,8 +2,7 @@ const { sq, loadCatalog, getLocationId, blocksByDay, json, fail, httpError, isPu
 const { slotsForJobs, localToUtc, fromHHMM, resolvePlan, partyBlocks } = require('../rules');
 const { blocksWithHolds, addHold } = require('../holds');
 const { sendBookingEmail } = require('../mail');
-const { findCoupon } = require('../coupons');
-const { store: couponStore } = require('../coupon-db');
+const { findCoupon, store: couponStore } = require('../coupon-db');
 const crypto = require('crypto');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -25,7 +24,7 @@ exports.handler = async (event) => {
     // The cart: one array of service ids per vehicle (older pages send a single variationId and vehicle).
     let plan = Array.isArray(b.plan) ? b.plan : (b.variationId ? [[b.variationId]] : []);
     // A coupon books its one fixed service for its fixed price. The browser's plan is ignored for coupons.
-    let coupon = b.coupon ? findCoupon(b.coupon) : null;
+    let coupon = b.coupon ? await findCoupon(b.coupon) : null;
     const garageOffer = b.coupon && !coupon ? await couponStore().garageOffer(b.coupon) : null;
     if (b.coupon && !coupon && !garageOffer) throw httpError(400, 'That offer is no longer available.');
     // The coupon's own car, when it has one, replaces what the browser sent.

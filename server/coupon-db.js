@@ -1,55 +1,52 @@
-// Counts how many times each coupon has been used, in the Supabase `coupon_uses` table (see supabase/schema.sql).
-// Uses the SECRET key, server side only.
+// Coupons live in the Supabase `coupons` table (add a row, no code change, no redeploy). Their use counts live in
+// `coupon_uses`. Both are read and written with the SECRET key, server side only, so codes and details never reach the browser.
 const { createClient } = require('@supabase/supabase-js');
 
-function store() {
+function client() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('Supabase is not configured (SUPABASE_URL, SUPABASE_SECRET_KEY).');
-  const businessDate = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-  const db = () => createClient(url, key, { auth: { persistSession: false } }).from('coupon_uses');
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+// One database row -> the shape the booking code uses
+function toCoupon(row) {
+  return {
+    code: row.code,
+    item: row.item,
+    label: row.label,
+    priceCents: row.price_cents,
+    savingCents: row.saving_cents,
+    uses: row.uses_limit,
+    customer: row.customer_name || '',
+    vehicle: row.vehicle || '',
+    phone: row.phone || '',
+    email: row.email || '',
+    address: row.address || '',
+  };
+}
+
+// Finds an active coupon by its code (not case sensitive, spaces ignored). Returns null if there is none.
+async function findCoupon(code) {
+  const key = String(code || '').replace(/\s+/g, '').toUpperCase();
+  if (!key) return null;
+  const { data, error } = await client().from('coupons').select('*').eq('code', key).eq('active', true).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? toCoupon(data) : null;
+}
+
+function store() {
   return {
     async count(code) {
-      const { count, error } = await db().select('code', { count: 'exact', head: true }).eq('code', code);
+      const { count, error } = await client().from('coupon_uses').select('code', { count: 'exact', head: true }).eq('code', code);
       if (error) throw new Error(error.message);
       return count || 0;
     },
     async add(code) {
-      const { error } = await db().insert({ code });
-      if (error) throw new Error(error.message);
-    },
-    async garageOffer(code) {
-      const client = createClient(url, key, { auth: { persistSession: false } });
-      const { data: offer, error } = await client.from('garage_offers').select('*').eq('coupon_code', String(code || '').toUpperCase()).eq('status', 'available').lte('starts_on', businessDate()).gte('expires_at', businessDate()).maybeSingle();
-      if (error) throw new Error(error.message);
-      if (!offer) return null;
-      const [{ data: cycle }, { data: vehicle }] = await Promise.all([
-        client.from('garage_maintenance_cycles').select('id').eq('id', offer.cycle_id).eq('status','active').maybeSingle(),
-        client.from('garage_vehicles').select('id,year,make,model,customer_id').eq('id',offer.vehicle_id).maybeSingle(),
-      ]);
-      if (!cycle || !vehicle) return null;
-      const { data: profile } = await client.from('garage_profiles').select('email').eq('user_id',vehicle.customer_id).single();
-      return profile ? { ...offer, vehicle, email: profile.email } : null;
-    },
-    async claimGarageOffer(code, email) {
-      const offer = await this.garageOffer(code);
-      if (!offer || offer.email.toLowerCase() !== String(email || '').toLowerCase()) return null;
-      const db = createClient(url, key, { auth: { persistSession: false } });
-      const { data, error } = await db.from('garage_offers').update({ status: 'reserved' }).eq('id',offer.id).eq('status','available').lte('starts_on',businessDate()).gte('expires_at',businessDate()).select('id').maybeSingle();
-      if (error) throw new Error(error.message);
-      return data?.id || null;
-    },
-    async releaseGarageOffer(id) {
-      const db = createClient(url, key, { auth: { persistSession: false } });
-      const { error } = await db.from('garage_offers').update({ status: 'available' }).eq('id',id).eq('status','reserved');
-      if (error) throw new Error(error.message);
-    },
-    async redeemGarageOffer(id) {
-      const db = createClient(url, key, { auth: { persistSession: false } });
-      const { error } = await db.from('garage_offers').update({ status: 'redeemed' }).eq('id',id).eq('status','reserved');
+      const { error } = await client().from('coupon_uses').insert({ code });
       if (error) throw new Error(error.message);
     },
   };
 }
 
-module.exports = { store };
+module.exports = { store, findCoupon, toCoupon };

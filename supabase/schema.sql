@@ -258,3 +258,21 @@ create policy garage_photo_storage_owner_read on storage.objects for select to a
   )
 );
 commit;
+
+-- Customer coupons. Add a row per customer in Table Editor; no code change or redeploy needed.
+create table if not exists public.coupons (
+  code          text primary key,         -- the code customers type, e.g. KIMBEACH160
+  item          text not null,            -- e.g. Full Factory Reset
+  label         text not null,            -- size, e.g. SUV (must match Square)
+  price_cents   integer not null,         -- what the customer pays, in cents (16000 = $160)
+  saving_cents  integer not null,         -- what the welcome message says they save
+  uses_limit    integer not null default 3,
+  customer_name text,
+  vehicle       text,
+  phone         text,
+  email         text,
+  address       text,
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+alter table public.coupons enable row level security;
