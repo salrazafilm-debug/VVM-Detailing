@@ -22,5 +22,7 @@ const request=()=>new Request('https://example.invalid',{method:'POST',headers:{
   mode='rejected';response=await garage.reminderPost(request());assert.equal(response.status,502);assert.equal(updates.at(-1).status,'failed');
   mode='success';response=await garage.reminderPost(request());assert.equal(response.status,200);assert.equal(updates.at(-1).status,'sent');
   claim=null;const before=calls;response=await garage.reminderPost(request());assert.equal((await response.json()).reason,'already_claimed');assert.equal(calls,before);
+  process.env.SUPABASE_SECRET_KEY='malformed\nmalformed';
+  response=await garage.reminderPost(request());assert.equal(response.status,503);assert.equal((await response.json()).error,'Garage authentication configuration needs attention.');
   global.fetch=originalFetch;console.log('Garage calendar and reminder delivery tests passed');
 })().catch(e=>{global.fetch=originalFetch;console.error(e);process.exitCode=1});

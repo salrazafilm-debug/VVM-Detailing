@@ -5,6 +5,7 @@ function config() {
   const anon = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!url || !anon || !secret) throw Object.assign(new Error('Garage authentication is not configured.'), { status: 503 });
+  if (/[\r\n]/.test(anon) || /[\r\n]/.test(secret)) throw Object.assign(new Error('Garage authentication configuration needs attention.'), {status:503});
   return { url, anon, secret };
 }
 
