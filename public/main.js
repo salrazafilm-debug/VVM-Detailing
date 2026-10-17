@@ -219,7 +219,7 @@ function render() {
         <label>Name<input id="f-name" name="name" required autocomplete="name"></label>
         <label>Phone<input id="f-phone" name="phone" type="tel" required autocomplete="tel"></label>
         <label>Email<input id="f-email" name="email" type="email" required autocomplete="email"></label>
-        <label>Address &amp; concerns<span class="hint">Where should we arrive + any concerns or questions can let us know here - We will get back to you as soon as possible! Thank you!!!</span><textarea id="f-notes" name="notes" rows="4" placeholder="Street address, city, ZIP"></textarea></label>
+        <label>Address &amp; concerns<span class="hint">Where should we arrive + any concerns or questions can let us know here - We will get back to you as soon as possible! Thank you!!!</span><textarea id="f-notes" name="notes" rows="4" placeholder="Street address, city, ZIP">${esc(S.coupon && S.coupon.address || '')}</textarea></label>
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
         <button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Booking…' : 'Book my day'}</button>
