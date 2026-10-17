@@ -148,9 +148,16 @@ function useCoupon(data) {
   return true;
 }
 
+// The coupon box at the top of Book Now (for anyone who has a code).
+function couponForm() {
+  return `<form id="bkCoupon" class="bk-coupon" novalidate><label for="bkCode">Have a coupon code?</label>
+    <div class="coupon-row"><input id="bkCode" name="code" autocomplete="off" autocapitalize="characters" placeholder="Enter code"><button class="mini" type="submit">Apply</button></div>
+    <p class="coupon-msg" id="bkCouponMsg" aria-live="polite"></p></form>`;
+}
+
 function serviceStep() {
   if (S.coupon) return couponStep();
-  let html = vehicleRow() + multiBlock();
+  let html = couponForm() + vehicleRow() + multiBlock();
   if (S.count === 3) {
     return html + `<div class="notice help"><b>3 or more vehicles?</b> We would love to help. Text or email us and we will set up your day.
       <div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20for%203%2B%20vehicles">Email us</a></div></div>`;
@@ -299,6 +306,7 @@ bk.addEventListener('input', e => { if (e.target.name === 'vinfo') S.vehicles[S.
 
 bk.addEventListener('submit', async e => {
   e.preventDefault();
+  if (e.target.id === 'bkCoupon') return applyCoupon(String(new FormData(e.target).get('code') || '').trim(), $('#bkCouponMsg'));
   if (e.target.id === 'vform') {                                    // Confirm vehicle info: lock it in
     const v = String(new FormData(e.target).get('vinfo') || '').replace(/\s+/g, ' ').trim();
     S.vehicles[S.active] = v;
@@ -488,24 +496,23 @@ function loadMedia(root = document) {
   layout(); new ResizeObserver(() => { clearTimeout(layout.t); layout.t = setTimeout(layout, 60); }).observe(g); addEventListener('load', layout);
 })();
 
-/* ----- coupon code (footer) ----- */
-(function coupon() {
+/* ----- coupon codes (Book Now box and footer box) ----- */
+// Checks a code with the server. A valid code takes the customer straight to the calendar.
+async function applyCoupon(code, msg) {
+  if (!code) { msg.textContent = 'Type your code first.'; return; }
+  msg.textContent = 'Checking…';
+  let d;
+  try { d = await api('/coupon?code=' + encodeURIComponent(code)); }
+  catch (err) { msg.textContent = err.message || 'That code is not valid.'; return; }
+  if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
+  if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
+  msg.textContent = `Hello ${d.customer || 'there'}! Pick your day below.`;
+  S.date = null; S.time = null; S.error = ''; S.step = 'date';
+  await loadMonth();
+  $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+}
+(function footerCoupon() {
   const form = $('#couponForm'), msg = $('#couponMsg');
   if (!form) return;
-  form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const code = String(new FormData(form).get('code') || '').trim();
-    if (!code) { msg.textContent = 'Type your code first.'; return; }
-    msg.textContent = 'Checking…';
-    let d;
-    try { d = await api('/coupon?code=' + encodeURIComponent(code)); }
-    catch (err) { msg.textContent = err.message || 'That code is not valid.'; return; }
-    if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
-    if (!useCoupon(d)) { msg.textContent = 'That service is not available to book right now.'; return; }
-    // Straight to the calendar: the vehicle is already set for this customer
-    msg.textContent = `Hello ${d.customer || 'there'}! Pick your day below.`;
-    S.date = null; S.time = null; S.error = ''; S.step = 'date';
-    await loadMonth();
-    $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  });
+  form.addEventListener('submit', e => { e.preventDefault(); applyCoupon(String(new FormData(form).get('code') || '').trim(), msg); });
 })();
