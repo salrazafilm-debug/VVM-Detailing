@@ -7,3 +7,5 @@ assert.equal(findCoupon('NOPE'), null);
 assert.equal(findCoupon(''), null);
 assert.equal(findCoupon('__proto__'), null);
 console.log('coupon tests passed');
+assert.equal(findCoupon('KIMBEACH155').uses, 3);
+assert.equal(findCoupon('KIMBEACH155').savingCents, 16000);

@@ -234,7 +234,7 @@ function render() {
       <div class="yay-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div>
       <h3 class="yay-big">YAY!</h3>
       ${S.coupon ? `<p class="yay-sub">Congrats, your booking is complete!</p>
-      <p class="yay-line" style="text-transform:none;letter-spacing:.02em">Hi ${esc(S.coupon.customer || 'there')}! Thank you for redeeming your coupon - you are saving ${money(S.coupon.normalCents - S.coupon.priceCents)}! See you on ${esc(longDate(S.date))} at ${fmtTime(S.time)}.</p>` : `<p class="yay-sub">You're all booked and ready!</p>
+      <p class="yay-line" style="text-transform:none;letter-spacing:.02em">Hi ${esc(S.coupon.customer || 'there')}! Thank you for redeeming your coupon - you are saving ${money(S.coupon.savingCents)}! See you on ${esc(longDate(S.date))} at ${fmtTime(S.time)}.</p>` : `<p class="yay-sub">You're all booked and ready!</p>
       <p class="yay-line">Your booking is now reserved.</p>`}
       <div class="yay-card">
         <p class="yay-t">${esc(title())}</p>

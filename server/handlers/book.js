@@ -3,6 +3,7 @@ const { slotsForJobs, localToUtc, fromHHMM, resolvePlan, partyBlocks } = require
 const { blocksWithHolds, addHold } = require('../holds');
 const { sendBookingEmail } = require('../mail');
 const { findCoupon } = require('../coupons');
+const { store: couponStore } = require('../coupon-db');
 const crypto = require('crypto');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -33,6 +34,7 @@ exports.handler = async (event) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !/^\d{2}:\d{2}$/.test(b.time || '')) throw httpError(400, 'Invalid date or time.');
 
 
+    if (coupon && await couponStore().count(coupon.code) >= coupon.uses) throw httpError(400, 'This code has been used up.');
     const catalog = await loadCatalog();
     if (coupon) {
       const v = Object.values(catalog).find(x => x.item === coupon.item && x.label === coupon.label && isPublic(x));
@@ -78,6 +80,8 @@ exports.handler = async (event) => {
       // 2) Only after the owner has been notified, hold the time(s) so nobody else can pick them.
       //    Each vehicle is held as its own booking, back to back, so it matches how it is entered in Square.
       for (const blk of partyBlocks(fromHHMM(b.time), jobs)) await addHold({ date: b.date, ...blk });
+      // 3) The booking is sent and held, so the coupon use counts now.
+      if (coupon) await couponStore().add(coupon.code).catch(e => console.error('coupon use not counted:', e.message));
       return json(200, { ...result, mode: 'request' });
     }
     if (process.env.DRY_RUN !== 'false') return json(200, { ...result, mode: 'square', dryRun: true });

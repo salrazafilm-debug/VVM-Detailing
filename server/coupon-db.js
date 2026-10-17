@@ -1,0 +1,23 @@
+// Counts how many times each coupon has been used, in the Supabase `coupon_uses` table (see supabase/schema.sql).
+// Uses the SECRET key, server side only.
+const { createClient } = require('@supabase/supabase-js');
+
+function store() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) throw new Error('Supabase is not configured (SUPABASE_URL, SUPABASE_SECRET_KEY).');
+  const db = () => createClient(url, key, { auth: { persistSession: false } }).from('coupon_uses');
+  return {
+    async count(code) {
+      const { count, error } = await db().select('code', { count: 'exact', head: true }).eq('code', code);
+      if (error) throw new Error(error.message);
+      return count || 0;
+    },
+    async add(code) {
+      const { error } = await db().insert({ code });
+      if (error) throw new Error(error.message);
+    },
+  };
+}
+
+module.exports = { store };
