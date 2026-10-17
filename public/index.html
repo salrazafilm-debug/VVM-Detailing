@@ -293,7 +293,6 @@
       <div class="rev-viewport" id="revViewport" tabindex="0" aria-label="Customer reviews"><div class="rev-track" id="revGrid"></div></div>
       <button type="button" class="rev-arrow" data-dir="1" aria-label="Next reviews">&rsaquo;</button>
     </div>
-    <div class="rev-cta reveal" id="revCta"></div>
   </section>
 
   <!-- WHY -->
@@ -378,11 +377,14 @@
     </nav>
     <p class="foot-copy">&copy; <span id="yr"></span> VVM Details. All rights reserved. &middot; <a href="terms.html">Terms</a> &middot; <a href="privacy.html">Privacy Policy</a></p>
   </div>
-  <form class="coupon" id="couponForm" novalidate>
+  <div class="foot-stack">
+    <form class="coupon" id="couponForm" novalidate>
     <label for="couponCode">Have a coupon code?</label>
     <div class="coupon-row"><input id="couponCode" name="code" autocomplete="off" autocapitalize="characters" placeholder="Enter code"><button class="mini" type="submit">Apply</button></div>
     <p class="coupon-msg" id="couponMsg" aria-live="polite"></p>
   </form>
+    <div class="rev-cta foot-reviews" id="revCta"></div>
+  </div>
 </footer>
 
 <a href="#book" class="float-cta">Book Now</a>

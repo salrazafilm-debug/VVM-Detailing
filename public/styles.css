@@ -1406,3 +1406,19 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .welcome-card{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;text-align:left;margin:0 0 20px;padding:16px 18px;border-radius:18px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}
 .welcome-card dt{font:800 .72rem/1.8 var(--body);letter-spacing:.16em;text-transform:uppercase;opacity:.8}
 .welcome-card dd{margin:0;font:700 .95rem/1.5 var(--body);overflow-wrap:anywhere}
+
+/* Footer bottom: coupon box and review buttons share one column, same width and gap */
+.foot-stack{display:flex;flex-direction:column;gap:16px;max-width:420px;margin:30px auto 0;padding:0}
+.foot-stack .coupon{margin:0;max-width:none;padding:0}
+.foot-reviews{display:flex;flex-direction:column;gap:12px;margin:0}
+.foot-reviews .cta{display:block;width:100%;box-sizing:border-box;text-align:center;padding:16px 20px}
+.foot-reviews .cta:hover{transform:translateY(-2px)}
+
+/* Reviews on phones: arrows sit right under the cards, no empty space below them */
+@media(max-width:640px){
+  .rev-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 8px;align-items:center}
+  .rev-viewport{grid-column:1/-1;grid-row:1;padding-bottom:0}
+  .rev-arrow{position:static;top:auto;bottom:auto;left:auto!important;right:auto!important;width:44px;height:44px;margin:0}
+  .rev-arrow[data-dir="-1"]{grid-column:1;grid-row:2;justify-self:end}
+  .rev-arrow[data-dir="1"]{grid-column:2;grid-row:2;justify-self:start}
+}
