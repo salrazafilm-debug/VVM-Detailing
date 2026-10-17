@@ -5,8 +5,17 @@ const { store: couponStore } = require('../coupon-db');
 // GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
   try {
-    const coupon = findCoupon((event.queryStringParameters || {}).code);
-    if (!coupon) throw httpError(404, 'That code is not valid.');
+    const code = (event.queryStringParameters || {}).code;
+    let coupon = findCoupon(code);
+    if (!coupon) {
+      const offer = await couponStore().garageOffer(code);
+      if (!offer) throw httpError(404, 'That offer is no longer available.');
+      const catalog = await loadCatalog();
+      const sizes = Object.values(catalog).filter(v => v.item === 'Full Factory Reset' && isPublic(v) && Math.floor(v.priceCents / 2) > 14500).map(v => ({ id:v.id,label:v.label,normalCents:v.priceCents,priceCents:Math.ceil(v.priceCents/2),savingCents:Math.floor(v.priceCents/2) }));
+      if (!sizes.length) throw httpError(503, 'The Full Factory Reset offer is not configured in Square yet.');
+      const selected = sizes.find(v => v.label.toLowerCase() === 'suv') || sizes[0];
+      return json(200, { code:offer.coupon_code, item:'Full Factory Reset', label:selected.label, id:selected.id, priceCents:selected.priceCents, normalCents:selected.normalCents, savingCents:selected.savingCents, size_options:sizes, garage_offer:true, vehicle:'Vehicle on file' });
+    }
     if (await couponStore().count(coupon.code) >= coupon.uses) throw httpError(404, 'This code has been used up.');
     const catalog = await loadCatalog();
     const v = Object.values(catalog).find(x => x.item === coupon.item && x.label === coupon.label && isPublic(x));

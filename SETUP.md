@@ -1,3 +1,7 @@
+# Historical launch notes — do not use for the current deployment
+
+This file contains old Netlify instructions. The current project uses **Vercel and Supabase**. For the Customer Garage setup, use [GARAGE_SETUP.md](GARAGE_SETUP.md). Do not follow the Netlify deployment, environment variable, or domain instructions below.
+
 # Launch checklist for vvmdetails.com
 
 Everything is built and tested. These steps need YOUR accounts, so they are the only things left.

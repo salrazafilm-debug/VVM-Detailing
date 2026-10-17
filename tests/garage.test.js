@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict');
+const {addMonths,sealantProgress}=require('../server/garage-dates');
+assert.equal(addMonths('2026-01-31',1),'2026-02-28');
+assert.equal(addMonths(addMonths('2026-01-31',1),1),'2026-03-28');
+assert.equal(addMonths('2026-01-31',3),'2026-04-30');
+const cycle={id:'cycle',status:'active',applied_on:'2026-01-31',offer_date:'2026-02-28',offer_expires_at:'2026-03-28',sealant_expires_at:'2026-04-30',garage_vehicles:{year:2024,make:'BMW',model:'330i',customer_id:'customer'}};
+assert.match(sealantProgress(cycle,new Date('2026-02-28T05:00:00Z')).label,/1\/3 months used/);
+assert.equal(sealantProgress(cycle,new Date('2026-04-30T04:00:00Z')).value,100);
+assert.equal(sealantProgress(cycle,new Date('2026-04-30T03:59:00Z')).value<100,true);
+let updates=[],claim='delivery-id',calls=0,mode='timeout';
+const db={from(table){let update;const q={select(){return q},eq(){return q},update(value){update=value;updates.push(value);return q},single:async()=>({data:table==='garage_maintenance_cycles'?cycle:table==='garage_profiles'?{email:'test@example.invalid',display_name:''}:{id:'offer',status:'available',coupon_code:'VVMTEST'}}),maybeSingle:async()=>({data:{coupon_code:'VVMTEST'}}),then(resolve){resolve({data:null,error:null})}};return q},rpc:async()=>({data:claim,error:null})};
+require('@supabase/supabase-js');
+require.cache[require.resolve('@supabase/supabase-js')].exports={createClient:()=>db};
+process.env.SUPABASE_URL='https://example.invalid';process.env.SUPABASE_ANON_KEY='public';process.env.SUPABASE_SECRET_KEY='private';
+process.env.GARAGE_REMINDER_SECRET='test';process.env.BREVO_API_KEY='test';process.env.BREVO_MONTH3_TEMPLATE_ID='3';
+const originalFetch=global.fetch;
+global.fetch=async(_url,options)=>{calls++;const body=JSON.parse(options.body);assert.equal(body.headers.idempotencyKey,'delivery-id');assert.equal(body.params.FIRSTNAME,'there');assert.equal(body.params.GARAGE_URL,'https://www.vvmdetails.com/garage');if(mode==='timeout')throw new Error('timeout');return new Response(JSON.stringify(mode==='rejected'?{code:'invalid_parameter'}:{messageId:'provider-id'}),{status:mode==='rejected'?400:201})};
+const garage=require('../server/garage-api');
+const request=()=>new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json','x-garage-webhook-key':'test'},body:JSON.stringify({cycle_id:'cycle',message_type:'month3_due'})});
+(async()=>{
+  let response=await garage.reminderPost(request());assert.equal(response.status,502);assert.equal(updates.at(-1).status,'queued');
+  mode='rejected';response=await garage.reminderPost(request());assert.equal(response.status,502);assert.equal(updates.at(-1).status,'failed');
+  mode='success';response=await garage.reminderPost(request());assert.equal(response.status,200);assert.equal(updates.at(-1).status,'sent');
+  claim=null;const before=calls;response=await garage.reminderPost(request());assert.equal((await response.json()).reason,'already_claimed');assert.equal(calls,before);
+  process.env.SUPABASE_SECRET_KEY='malformed\nmalformed';
+  response=await garage.reminderPost(request());assert.equal(response.status,503);assert.equal((await response.json()).error,'Garage authentication configuration needs attention.');
+  global.fetch=originalFetch;console.log('Garage calendar and reminder delivery tests passed');
+})().catch(e=>{global.fetch=originalFetch;console.error(e);process.exitCode=1});
