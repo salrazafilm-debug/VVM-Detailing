@@ -22,16 +22,16 @@ exports.handler = async (event) => {
 
     // The cart: one array of service ids per vehicle (older pages send a single variationId and vehicle).
     let plan = Array.isArray(b.plan) ? b.plan : (b.variationId ? [[b.variationId]] : []);
-    const vehicles = (Array.isArray(b.vehicles) ? b.vehicles : [b.vehicle]).map(v => clean(v, 120));
-    if (!plan.length || vehicles.length !== plan.length || vehicles.some(v => v.length < 2)) {
+    // A coupon books its one fixed service for its fixed price. The browser's plan is ignored for coupons.
+    const coupon = b.coupon ? findCoupon(b.coupon) : null;
+    if (b.coupon && !coupon) throw httpError(400, 'That code is not valid.');
+    // The coupon's own car, when it has one, replaces what the browser sent.
+    const vehicles = coupon && coupon.vehicle ? [coupon.vehicle] : (Array.isArray(b.vehicles) ? b.vehicles : [b.vehicle]).map(v => clean(v, 120));
+    if (!coupon && (!plan.length || vehicles.length !== plan.length || vehicles.some(v => v.length < 2))) {
       throw httpError(400, plan.length > 1 ? 'Please enter the year, make and model of both vehicles.' : 'Please enter your vehicle year, make and model.');
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !/^\d{2}:\d{2}$/.test(b.time || '')) throw httpError(400, 'Invalid date or time.');
 
-    // A coupon books its one fixed service for its fixed price. The browser's plan is ignored for coupons.
-    const coupon = b.coupon ? findCoupon(b.coupon) : null;
-    if (b.coupon && !coupon) throw httpError(400, 'That code is not valid.');
-    if (coupon && vehicles.length !== 1) throw httpError(400, 'Coupons are for one vehicle.');
 
     const catalog = await loadCatalog();
     if (coupon) {

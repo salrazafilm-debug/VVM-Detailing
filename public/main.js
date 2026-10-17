@@ -133,9 +133,8 @@ function multiBlock() {
 // A coupon books one fixed service, so the picker is replaced by the vehicle box and a "Choose a day" button.
 function couponStep() {
   const c = S.coupon;
-  return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b></p><button type="button" class="link" data-act="nocoupon">Remove</button></div>`
-    + vehicleRow()
-    + (S.locked[0] ? `<button class="btn primary" type="button" data-act="go">Choose a day</button>` : '');
+  return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b>${c.vehicle ? `<br><span class="picked-sub">${esc(c.vehicle)}</span>` : ''}</p><button type="button" class="link" data-act="nocoupon">Remove</button></div>
+    <button class="btn primary" type="button" data-act="go">Choose a day</button>`;
 }
 
 // Apply a valid coupon: its service and price go into the cart, then the vehicle box comes first.
@@ -145,7 +144,7 @@ function useCoupon(data) {
   if (!v) return false;
   S.coupon = data; S.multi = false; S.count = 1; S.active = 0;
   S.cars = [[{ item: g.name, kind: g.kind, v: { ...v, priceCents: data.priceCents } }]];
-  S.locked = [false, false]; S.vError = ''; S.focusV = true; S.step = 'service'; S.error = '';
+  S.vehicles[0] = data.vehicle || ''; S.locked = [true, false]; S.vError = ''; S.focusV = false; S.step = 'service'; S.error = '';
   return true;
 }
 
@@ -234,9 +233,9 @@ function render() {
       <div class="confetti" aria-hidden="true">${confetti}</div>
       <div class="yay-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></div>
       <h3 class="yay-big">YAY!</h3>
-      <p class="yay-sub">You're all booked and ready!</p>
-      <p class="yay-line">Your booking is now reserved.</p>
-      ${S.coupon ? `<p class="yay-line">Congrats on your ${money(S.coupon.priceCents)} booking!</p>` : ''}
+      ${S.coupon ? `<p class="yay-sub">Congrats, your booking is complete!</p>
+      <p class="yay-line" style="text-transform:none;letter-spacing:.02em">Hi ${esc(S.coupon.customer || 'there')}! Thank you for redeeming your coupon - you are saving ${money(S.coupon.normalCents - S.coupon.priceCents)}! See you on ${esc(longDate(S.date))} at ${fmtTime(S.time)}.</p>` : `<p class="yay-sub">You're all booked and ready!</p>
+      <p class="yay-line">Your booking is now reserved.</p>`}
       <div class="yay-card">
         <p class="yay-t">${esc(title())}</p>
         <p class="yay-l">${lines().map(esc).join('<br>')}</p>
