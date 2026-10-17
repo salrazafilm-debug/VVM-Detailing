@@ -2,7 +2,7 @@ const { loadCatalog, json, fail, httpError, isPublic } = require('../square');
 const { findCoupon } = require('../coupons');
 const { store: couponStore } = require('../coupon-db');
 
-// GET /api/coupon?code=KIMBEACH155 -> what the code books and what it costs
+// GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
   try {
     const coupon = findCoupon((event.queryStringParameters || {}).code);

@@ -1,7 +1,7 @@
 // Booking coupons. A code books one fixed service at a fixed price. Codes are checked on the server only,
 // so the list never reaches the browser. A coupon can carry its customer's name and car, so the vehicle is filled in for them. Codes are not case sensitive and spaces are ignored.
 const COUPONS = {
-  KIMBEACH155: { item: 'Full Factory Reset', label: 'SUV', priceCents: 15500, savingCents: 16000, uses: 3, customer: 'Kim', vehicle: '2021 Chevy Equinox', address: process.env.KIMBEACH155_ADDRESS || '' },
+  KIMBEACH160: { item: 'Full Factory Reset', label: 'SUV', priceCents: 15500, savingCents: 16000, uses: 3, customer: 'Kim', vehicle: '2021 Chevy Equinox', address: process.env.KIMBEACH160_ADDRESS || '' },
 };
 
 function findCoupon(code) {
