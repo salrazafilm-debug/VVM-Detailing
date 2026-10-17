@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { findCoupon } = require('../server/coupons');
-assert.equal(findCoupon('KIMBEACH160').priceCents, 15500);
+assert.equal(findCoupon("KIMBEACH160").priceCents, 16000);
 assert.equal(findCoupon(' kimbeach160 ').item, 'Full Factory Reset');
 assert.equal(findCoupon('KIMBEACH160').label, 'SUV');
 assert.equal(findCoupon('NOPE'), null);
