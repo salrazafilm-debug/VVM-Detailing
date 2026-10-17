@@ -20,6 +20,6 @@ exports.handler = async (event) => {
     const catalog = await loadCatalog();
     const v = Object.values(catalog).find(x => x.item === coupon.item && x.label === coupon.label && isPublic(x));
     if (!v) throw httpError(503, 'Online booking is not set up for this code yet.');
-    return json(200, { code: coupon.code, item: coupon.item, label: coupon.label, id: v.id, minutes: v.durationMin, normalCents: v.priceCents, priceCents: coupon.priceCents, savingCents: coupon.savingCents, customer: coupon.customer || '', vehicle: coupon.vehicle || '', address: coupon.address || '' });
+    return json(200, { code: coupon.code, item: coupon.item, label: coupon.label, id: v.id, minutes: v.durationMin, normalCents: v.priceCents, priceCents: coupon.priceCents, savingCents: coupon.savingCents, customer: coupon.customer || '', vehicle: coupon.vehicle || '', address: coupon.address || '', phone: coupon.phone || '', email: coupon.email || '' });
   } catch (e) { return fail(e); }
 };

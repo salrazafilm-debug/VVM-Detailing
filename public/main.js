@@ -103,7 +103,7 @@ const problem = () => (S.count === 2 && booked().some((_, i) => carItems(i).some
 const ready = () => S.count < 3 && booked().every((_, i) => S.locked[i] && carItems(i).length) && !problem();
 
 function stepper() {
-  const labels = ['Service', 'Date & time', 'Details'], at = { service: 0, date: 1, details: 2, done: 3 }[S.step];
+  const labels = ['Service', 'Date & time', 'Details'], at = { welcome: 0, service: 0, date: 1, details: 2, confirm: 2, done: 3 }[S.step];
   return `<ol class="bsteps">${labels.map((n, i) => `<li class="${i === at ? 'on' : i < at ? 'past' : ''}"><span>${i + 1}</span>${n}</li>`).join('')}</ol>`;
 }
 const back = to => `<button type="button" class="link" data-act="back" data-to="${to}">← Back</button>`;
@@ -197,6 +197,33 @@ function render() {
   let html = stepper();
   if (S.step === 'service') {
     html += serviceStep();
+  } else if (S.step === 'welcome') {
+    const c = S.coupon;
+    html += `<div class="welcome">
+      <p class="welcome-k">Welcome back</p>
+      <h3 class="welcome-t">Hi ${esc(c.customer)}!</h3>
+      <p class="welcome-l">Thank you for redeeming your coupon. You're saving <b>${money(c.savingCents)}</b>.</p>
+      <dl class="welcome-card">
+        <dt>Phone</dt><dd>${esc(c.phone || 'Not on file')}</dd>
+        <dt>Email</dt><dd>${esc(c.email || 'Not on file')}</dd>
+        <dt>Vehicle</dt><dd>${esc(c.vehicle || 'Not on file')}</dd>
+        <dt>Address</dt><dd>${esc(c.address || 'Not on file')}</dd>
+        <dt>Service</dt><dd>Full Factory Reset, ${esc(c.label)} · ${money(c.priceCents)}</dd>
+      </dl>
+      <button class="btn primary" type="button" data-act="coupon-day">Select your day</button>
+      <p class="muted small">Not ${esc(c.customer)}? <button type="button" class="link" data-act="nocoupon">Remove code</button></p>
+    </div>`;
+  } else if (S.step === 'confirm') {
+    html += `${back('date')}
+      <div class="sum">
+        <p class="sum-k">Confirm your booking</p>
+        <h3 class="sum-t">${esc(S.coupon.customer)}</h3>
+        <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(totalCents())} · about ${dur(totalMin())}</p>
+        <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
+      </div>
+      ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
+      <button class="btn primary" type="button" data-act="confirm" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Booking…' : 'Confirm booking'}</button>
+      <p class="nodep">No deposit needed - we take payment only after we complete your service, thank you!</p>`;
   } else if (S.step === 'date') {
     const label = new Date(S.y, S.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const first = new Date(S.y, S.m, 1).getDay(), total = new Date(S.y, S.m + 1, 0).getDate();
@@ -206,7 +233,7 @@ function render() {
       const k = keyOf(S.y, S.m, d), open = (S.days[k] || []).length > 0;
       cells += `<button type="button" class="day ${open ? 'open' : ''} ${S.date === k ? 'sel' : ''}" ${open ? `data-act="day" data-d="${k}"` : 'disabled'} aria-label="${open ? 'Available ' : 'Unavailable '}${esc(longDate(k))}">${d}</button>`;
     }
-    html += `${S.coupon ? `<p class="coupon-hello">Hello ${esc(S.coupon.customer || 'there')}! Pick your day.</p>` : ''}${back('service')}
+    html += `${S.coupon ? `<p class="coupon-hello">Hello ${esc(S.coupon.customer || 'there')}! Pick your day.</p>` : ''}${back(S.coupon && S.coupon.customer ? 'welcome' : 'service')}
       <p class="picked"><b>${esc(title())}</b> · ${money(totalCents())} · about ${dur(totalMin())}${S.count === 2 ? `<br><span class="picked-sub">${lines().map(esc).join('<br>')}</span>` : ''}</p>
       <div class="cal">
         <div class="cal-head"><button type="button" class="nav-m" data-act="prev" ${atNow ? 'disabled' : ''} aria-label="Previous month">‹</button><b>${label}</b><button type="button" class="nav-m" data-act="next" aria-label="Next month">›</button></div>
@@ -298,7 +325,9 @@ bk.addEventListener('click', async e => {
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'prev' || a === 'next') { S.m += a === 'next' ? 1 : -1; if (S.m > 11) { S.m = 0; S.y++; } if (S.m < 0) { S.m = 11; S.y--; } S.date = null; await loadMonth(); }
   else if (a === 'day') { S.date = t.dataset.d; render(); }
-  else if (a === 'time') { S.time = t.dataset.t; S.error = ''; S.step = 'details'; render(); }
+  else if (a === 'time') { S.time = t.dataset.t; S.error = ''; S.step = S.coupon && S.coupon.customer ? 'confirm' : 'details'; render(); }
+  else if (a === 'coupon-day') { S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
+  else if (a === 'confirm') { await confirmCoupon(); }
   else if (a === 'back') { S.step = t.dataset.to; S.error = ''; render(); }
 });
 bk.addEventListener('change', e => {
@@ -312,6 +341,22 @@ bk.addEventListener('change', e => {
 
 // remember what is typed in the vehicle box, so switching vehicles or steps never loses it
 bk.addEventListener('input', e => { if (e.target.name === 'vinfo') S.vehicles[S.active] = e.target.value; });
+
+// Coupon customers: book with the details on file. Nothing is typed in for them.
+async function confirmCoupon() {
+  S.busy = true; S.error = ''; render();
+  try {
+    const c = S.coupon;
+    const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.customer, phone: c.phone, email: c.email, notes: c.address, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: c.code }) });
+    S.step = 'done'; S.busy = false; render();
+    bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+  } catch (err) {
+    S.busy = false; S.error = err.message;
+    if (err.status === 409) { S.step = 'date'; S.time = null; S.error = ''; await loadMonth(); return; }
+    render();
+  }
+}
 
 bk.addEventListener('submit', async e => {
   e.preventDefault();
@@ -522,11 +567,16 @@ async function applyCoupon(code, msg, chosenId) {
   const pick = (d.garage_offer && d.size_options && d.size_options.find(v => v.id === chosenId)) || d;
   if (!S.services) { msg.textContent = 'Booking is still loading. Try again in a moment.'; return; }
   if (!useCoupon({ ...d, ...pick })) { msg.textContent = 'That service is not available to book right now.'; return; }
-  // Straight to the calendar: the vehicle is already set for this customer
+  $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if (d.customer) {
+    msg.textContent = `Welcome back, ${d.customer}!`;
+    S.error = ''; S.step = 'welcome'; render();
+    return;
+  }
+  // Garage offers: straight to the calendar
   msg.textContent = `Hello ${d.customer || 'there'}! Pick your day below.`;
   S.date = null; S.time = null; S.error = ''; S.step = 'date';
   await loadMonth();
-  $('#book').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 (function footerCoupon() {
   const form = $('#couponForm'), msg = $('#couponMsg');
