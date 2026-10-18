@@ -1,4 +1,4 @@
-// Google reviews for the Reviews section. Needs two Netlify env vars (the owner sets them):
+// Google reviews for the Reviews section. Needs two Vercel env vars (the owner sets them):
 //   GOOGLE_PLACES_API_KEY  (Google Cloud, Places API (New) turned on)
 //   GOOGLE_PLACE_ID        (the Google Business Profile place id)
 // Without them this returns { google: null } and the page shows only the owner's own reviews (reviews.json).

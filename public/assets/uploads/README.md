@@ -29,7 +29,7 @@ If a file is missing, a branded "coming soon" placeholder shows in its place.
 1. Open the repo on GitHub: `salrazafilm-debug/VVM-Details`
 2. Go into the `assets` folder, then the `uploads` folder
 3. Tap **Add file > Upload files**, choose your photos or videos, then **Commit changes**
-4. The website updates after the next deploy (about a minute once Netlify is connected)
+4. The website updates after the next deploy (about a minute after the site updates)
 
 You can also just send the files to Claude in chat and ask for them to be added.
 

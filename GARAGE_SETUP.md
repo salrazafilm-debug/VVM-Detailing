@@ -1,6 +1,6 @@
 # Customer Garage setup
 
-This feature uses the current Next.js/Vercel site and the existing Supabase project. It does not use Netlify. The root marketing site remains `public/index.html`; the Garage is served by Next.js at `/client-login`, `/garage`, and `/garage-admin`.
+This feature uses the current Next.js/Vercel site and the existing Supabase project. The root marketing site remains `public/index.html`; the Garage is served by Next.js at `/client-login`, `/garage`, and `/garage-admin`.
 
 ## 1. Supabase
 
