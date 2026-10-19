@@ -6,3 +6,9 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 @media(max-width:700px){.garage-shell{padding:14px 14px 28px}.garage-top{padding-bottom:14px}.garage-brand img{width:36px;height:36px}.garage-account{gap:11px;font-size:.68rem}.garage-heading{padding:31px 0 18px;align-items:flex-start;flex-direction:column}.g-hero{height:360px;border-radius:21px}.g-hero-shade{padding:65px 20px 22px}.g-panel{padding:20px;border-radius:19px}.g-protection-grid{gap:7px}.g-protection-grid>div{padding:11px 9px}.g-protection-grid small{font-size:.53rem;letter-spacing:.05em}.g-protection-grid b{font-size:.88rem}.g-two-col{grid-template-columns:1fr;gap:13px;margin-bottom:13px}.g-gallery{grid-template-columns:repeat(2,1fr);gap:9px}.admin-grid{grid-template-columns:1fr;gap:12px}.admin-wide{grid-column:auto}.g-check-grid{grid-template-columns:1fr}.g-form-row{grid-template-columns:1fr 1fr;gap:8px}.login-card{margin-top:12vh;padding:27px 22px}.g-select-wrap,.g-select-wrap select{width:100%}.garage-account>span{max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.g-footer{font-size:.72rem}}
 @media(prefers-reduced-motion:reduce){.g-progress span,.g-offer a,.g-button{transition:none}}
 .garage-shell .g-back,.garage-shell .g-footer a{text-decoration:underline}
+
+.g-join{margin:18px 0 6px;text-align:center;font-weight:600;line-height:1.5}
+.g-join a{font-weight:800;text-decoration:underline}
+/* Login card: stay inside the screen on phones */
+.login-card{box-sizing:border-box;width:min(100% - 32px,460px);margin-left:auto;margin-right:auto}
+.login-card .g-form input{width:100%;box-sizing:border-box}
