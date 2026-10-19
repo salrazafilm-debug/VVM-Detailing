@@ -1454,3 +1454,13 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 @media(max-width:760px){.gp-card{grid-template-columns:1fr}.gp-photo{min-height:0;aspect-ratio:4/3}.gp-body{text-align:center}}
 .gp-photo{height:clamp(320px,36vw,440px);min-height:0}
 @media(max-width:760px){.gp-photo{height:auto;aspect-ratio:4/3}}
+
+/* Booking add-ons */
+.addons{margin:16px 0 6px}
+.addons-k{font:800 .78rem/1 var(--body);letter-spacing:.18em;text-transform:uppercase;margin:0 0 10px}
+.addons-k span{font-weight:600;letter-spacing:.04em;text-transform:none;opacity:.7}
+.addons-row{display:flex;flex-wrap:wrap;gap:10px}
+.addon{display:flex;flex-direction:column;align-items:flex-start;gap:2px;flex:1 1 150px;padding:12px 14px;border-radius:14px;border:2px solid var(--ink);background:#fff;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
+.addon b{font:800 .86rem/1.2 var(--body)}
+.addon span{font:700 .85rem/1.2 var(--body);opacity:.8}
+.addon.on{background:var(--ink);color:#fff}

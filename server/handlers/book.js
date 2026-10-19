@@ -3,6 +3,7 @@ const { slotsForJobs, localToUtc, fromHHMM, resolvePlan, partyBlocks } = require
 const { blocksWithHolds, addHold } = require('../holds');
 const { sendBookingEmail } = require('../mail');
 const { findCoupon, store: couponStore } = require('../coupon-db');
+const { resolveAddons } = require('../addons');
 const crypto = require('crypto');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -66,7 +67,11 @@ exports.handler = async (event) => {
     const two = cars.length > 1;
     const serviceText = cars.map((c, i) => `${two ? `Vehicle ${i + 1}: ` : ''}${c.services.map(v => `${v.item} - ${v.label}`).join(' + ')}`).join(' | ');
     const vehicleText = two ? vehicles.map((v, i) => `Vehicle ${i + 1}: ${v}`).join(' | ') : vehicles[0];
-    const totalCents = coupon ? coupon.priceCents : jobs.reduce((n, j) => n + j.priceCents, 0);
+    // Add-ons (not for coupon bookings, which are a fixed price). The server prices them, never the browser.
+    const addons = coupon ? cars.map(() => []) : resolveAddons(b.addons, cars);
+    const addonCents = addons.flat().reduce((n, a) => n + a.priceCents, 0);
+    const addonText = addons.map((list, i) => list.length ? `${two ? `Vehicle ${i + 1}: ` : ''}${list.map(a => `${a.name} (${money(a.priceCents)})`).join(', ')}` : '').filter(Boolean).join(' | ');
+    const totalCents = coupon ? coupon.priceCents : jobs.reduce((n, j) => n + j.priceCents, 0) + addonCents;
     const result = { ok: true, when: `${b.date} ${b.time}`, service: serviceText };
 
     // Free Square plans cannot create bookings through the API, so by default the request is emailed
@@ -82,6 +87,7 @@ exports.handler = async (event) => {
             `Date: ${b.date}`, `Start: ${b.time}`,
             `Vehicle: ${vehicleText}`, `Services: ${serviceText}`,
             `Party: ${two ? '2 vehicles, back to back' : '1 vehicle'}`, `Total: ${money(totalCents)}`,
+            ...(addonText ? [`Add-ons: ${addonText}`] : []),
             ...(coupon ? [`Coupon: ${coupon.code} (special price, not the Square price)`] : []),
             `Concerns / where to arrive: ${notes || 'None'}`,
           ],

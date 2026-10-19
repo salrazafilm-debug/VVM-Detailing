@@ -46,8 +46,16 @@ exports.customerGet = async req => {
 exports.adminGet = async req => {
   try {
     const ctx = await requireAdmin(await customerContext(req));
-    const { data, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at,garage_vehicles(id,year,make,model,created_at)').order('created_at', { ascending: false });
+    const { data, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at,garage_vehicles(id,year,make,model,created_at,garage_services(id,service_date,title),garage_photos(id,photo_kind,caption,created_at,storage_path))').order('created_at', { ascending: false });
     if (error) throw Object.assign(new Error('Could not load customers.'), { status: 503 });
+    // Private photos: short-lived links, signed in one batch. The storage path itself never leaves the server.
+    const photos = (data || []).flatMap(c => (c.garage_vehicles || []).flatMap(v => v.garage_photos || []));
+    const urls = {};
+    if (photos.length) {
+      const { data: signed } = await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.map(p => p.storage_path), 900);
+      (signed || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
+    }
+    (data || []).forEach(c => (c.garage_vehicles || []).forEach(v => { v.garage_photos = (v.garage_photos || []).map(({ storage_path, ...p }) => ({ ...p, url: urls[storage_path] || null })); }));
     return json({ customers: data || [] });
   } catch (e) { return responseError(e); }
 };

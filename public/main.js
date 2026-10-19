@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { coupon: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { addonList: [], addons: [[], []], coupon: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -82,13 +82,16 @@ const INCLUDED_MSG = 'The Full Factory Reset already includes the Interior and E
 const carItems = i => S.cars[i] || [];
 const booked = () => S.cars.slice(0, S.count === 2 ? 2 : 1);               // the vehicles being booked
 const carMin = i => carItems(i).reduce((n, x) => n + x.v.minutes, 0);
-const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0);
+// Interior add-ons: only for a Full Factory Reset or Interior Reset
+const addonsOk = i => carItems(i).some(x => x.kind === 'full' || x.kind === 'interior');
+const carAddons = i => addonsOk(i) ? S.addonList.filter(a => (S.addons[i] || []).includes(a.id)) : [];
+const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0) + carAddons(i).reduce((n, a) => n + a.priceCents, 0);
 const totalMin = () => booked().reduce((n, _, i) => n + carMin(i), 0);
 const totalCents = () => booked().reduce((n, _, i) => n + carCents(i), 0);
 const planStr = () => booked().map(c => c.map(x => x.v.id).join('.')).join(',');
 const names = i => carItems(i).map(x => x.item).join(' + ');
 const vname = i => (S.vehicles[i] || '').trim();
-const lines = () => booked().map((_, i) => `${S.count === 2 ? `Vehicle ${i + 1} (${vname(i)})` : vname(0)}: ${carItems(i).map(x => `${x.item} (${x.v.label})`).join(' + ')}`);
+const lines = () => booked().map((_, i) => `${S.count === 2 ? `Vehicle ${i + 1} (${vname(i)})` : vname(0)}: ${carItems(i).map(x => `${x.item} (${x.v.label})`).join(' + ')}${carAddons(i).length ? ' + ' + carAddons(i).map(a => a.name).join(' + ') : ''}`);
 const title = () => S.count === 2 ? '2 vehicles, same day' : names(0);
 // why `g` cannot be added to this vehicle's cart, or '' if it can
 function conflict(items, g) {
@@ -178,10 +181,14 @@ function serviceStep() {
         ${S.open === gi ? `<div class="sizes-pick">${g.variations.map(v => { const on = items.some(x => x.v.id === v.id); return `<button type="button" class="chip ${on ? 'on' : ''}" aria-pressed="${on}" data-act="pick" data-g="${gi}" data-id="${esc(v.id)}"><b>${esc(v.label)}</b><span>${money(v.priceCents)} · ${dur(v.minutes)}</span><i class="pm" aria-hidden="true">${on ? '✓' : '+'}</i></button>`; }).join('')}</div>` : ''}
       </div>`;
   }).join('') + '</div>';
+  if (addonsOk(S.active) && !S.coupon) {
+    html += `<div class="addons"><p class="addons-k">Add-ons <span>(optional)</span></p><div class="addons-row">${S.addonList.map(a => { const on = (S.addons[S.active] || []).includes(a.id); return `<button type="button" class="addon ${on ? 'on' : ''}" aria-pressed="${on}" data-act="addon" data-id="${esc(a.id)}"><b>${esc(a.name)}</b><span>${on ? '✓ ' : '+'}${money(a.priceCents)}</span></button>`; }).join('')}</div></div>`;
+  }
   const why = S.notice || problem();
   if (why) html += `<p class="notice" role="alert">${esc(why)}</p>`;
   if (booked().some((_, i) => carItems(i).length)) {
     html += `<div class="cart"><p class="cart-k">Your booking</p>${booked().map((_, i) => `<div class="cart-car"><p class="cart-v">${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}${esc(vname(i))}</p>${carItems(i).map(x => `<div class="cart-line"><span>${esc(x.item)} · ${esc(x.v.label)}</span><span>${money(x.v.priceCents)}</span><button type="button" class="rm" data-act="drop" data-car="${i}" data-id="${esc(x.v.id)}" aria-label="Remove ${esc(x.item)}">×</button></div>`).join('') || '<p class="muted small">No service yet</p>'}</div>`).join('')}
+      ${booked().map((_, i) => carAddons(i).map(a => `<div class="cart-line"><span>${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}+ ${esc(a.name)}</span><span>${money(a.priceCents)}</span><button type="button" class="rm" data-act="addon" data-car="${i}" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">×</button></div>`).join('')).join('')}
       <div class="cart-total"><span>Total · about ${dur(totalMin())}</span><b>${money(totalCents())}</b></div>
       ${booked().some((_, i) => { const k = carItems(i).map(x => x.kind); return k.includes('interior') && k.includes('exterior'); }) ? '<p class="tip"><b>Tip:</b> the Full Factory Reset includes both and costs less.</p>' : ''}</div>`;
   }
@@ -320,6 +327,7 @@ bk.addEventListener('click', async e => {
     }
     S.notice = ''; render();
   }
+  else if (a === 'addon') { const i = t.dataset.car !== undefined ? +t.dataset.car : S.active, id = t.dataset.id; const cur = S.addons[i] || []; S.addons[i] = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]; render(); }
   else if (a === 'drop') { const i = +t.dataset.car; S.cars[i] = carItems(i).filter(x => x.v.id !== t.dataset.id); S.notice = ''; render(); }
   else if (a === 'nocoupon') { S.coupon = null; S.cars = [[]]; S.locked = [false, false]; S.vError = ''; S.focusV = false; S.error = ''; render(); }
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
@@ -377,7 +385,7 @@ bk.addEventListener('submit', async e => {
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;
@@ -389,7 +397,7 @@ bk.addEventListener('submit', async e => {
 });
 
 (async function init() {
-  try { S.services = (await api('/services')).services; if (!S.services.length) throw new Error('none'); }
+  try { const sv = await api('/services'); S.services = sv.services; S.addonList = sv.addons || []; if (!S.services.length) throw new Error('none'); }
   catch { S.step = 'error'; S.services = []; }
   render();
 })();

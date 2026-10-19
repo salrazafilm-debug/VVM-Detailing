@@ -12,7 +12,7 @@ Module._load=function(req,...a){
   if(req==='../square'||req.endsWith('/square')){const real=realLoad.call(this,req,...a);return {...real,loadCatalog:async()=>cat,blocksByDay:async()=>({}),getLocationId:async()=>'L'}}
   if(req==='../holds'||req.endsWith('/holds')){const real=realLoad.call(this,req,...a);return {...real,blocksWithHolds:async(d)=>d,addHold:async()=>{calls.holds++}}}
   return realLoad.call(this,req,...a)};
-let lastForm=null; const pick=(t,re)=>{const m=t.match(re); return m?m[1]:''}; global.fetch=async(u,o)=>{calls.forms++; if(formThrows) throw new Error('net'); const t=JSON.parse(o.body).text; lastForm={service:pick(t,/Services: (.*)/),vehicle:pick(t,/Vehicle: (.*)/),total:pick(t,/Total: (.*)/),party:pick(t,/Party: (.*)/)}; return {ok:formStatus<400,status:formStatus}};
+let lastForm=null; const pick=(t,re)=>{const m=t.match(re); return m?m[1]:''}; global.fetch=async(u,o)=>{calls.forms++; if(formThrows) throw new Error('net'); const t=JSON.parse(o.body).text; lastForm={addons:pick(t,/Add-ons: (.*)/),service:pick(t,/Services: (.*)/),vehicle:pick(t,/Vehicle: (.*)/),total:pick(t,/Total: (.*)/),party:pick(t,/Party: (.*)/)}; return {ok:formStatus<400,status:formStatus}};
 const {handler}=require('../server/handlers/book.js');
 const body={name:'Test Person',phone:'2405550100',email:'t@e.com',vehicle:'2022 Lexus',date:dayStr,time:'09:00',variationId:'V1',notes:'x'};
 const ev=(h)=>({httpMethod:'POST',headers:h,body:JSON.stringify(body)});
@@ -48,5 +48,11 @@ const ev=(h)=>({httpMethod:'POST',headers:h,body:JSON.stringify(body)});
   assert.deepEqual([calls.forms-a.f,calls.holds-a.h],[0,0]);
   // legacy single-service request still works (older pages open during a deploy)
   a=snap(); r=await handler(ev({host:'vvmdetails.com'})); assert.equal(r.statusCode,200,r.body); assert.deepEqual([calls.forms-a.f,calls.holds-a.h],[1,1]);
+  // add-ons: priced by the server, only for Full Factory Reset / Interior Reset
+  a=snap(); r=await post({plan:[['V3']],vehicles:['2022 Lexus IS 350'],addons:[['pet-hair','odor']]}); assert.equal(r.statusCode,200,r.body);
+  assert.equal(lastForm.total,'$430'); assert.match(lastForm.addons,/Pet hair removal \(\$50\), Odor removal \(\$60\)/); assert.deepEqual([calls.forms-a.f,calls.holds-a.h],[1,1]);
+  a=snap(); r=await post({plan:[['V1']],vehicles:['x car'],addons:[['stain']]}); assert.equal(r.statusCode,400); assert.match(JSON.parse(r.body).error,/Add-ons are for/);   // exterior only: no add-ons
+  r=await post({plan:[['V3']],vehicles:['x car'],addons:[['bogus']]}); assert.equal(r.statusCode,400);                                                                            // unknown add-on
+  assert.deepEqual([calls.forms-a.f,calls.holds-a.h],[0,0]);
   console.log('book.js tests passed:',JSON.stringify(calls));
 })().catch(e=>{console.error('FAIL',e.message);process.exit(1)});
