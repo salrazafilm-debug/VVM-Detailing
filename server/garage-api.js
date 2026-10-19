@@ -138,7 +138,10 @@ exports.photoPost = async req => {
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
     if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
-    if (form.get('is_hero') === 'true') await ctx.admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', vehicle_id);
+    if (form.get('is_hero') === 'true') {
+      const {error:heroError}=await ctx.admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', vehicle_id);
+      if(heroError) throw Object.assign(new Error('Photo saved to gallery, but could not set the cover. Select it again from admin.'),{status:503});
+    }
     return json({ ok: true, photo: data });
   } catch (e) { return responseError(e); }
 };

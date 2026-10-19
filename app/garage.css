@@ -7,7 +7,13 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 @media(prefers-reduced-motion:reduce){.g-progress span,.g-offer a,.g-button{transition:none}}
 .garage-shell .g-back,.garage-shell .g-footer a{text-decoration:underline}
 
+.garage-showroom{background:#281e20}.garage-showroom>img{filter:saturate(1.08)}
+.g-wall-status{position:absolute;top:24px;right:24px;display:flex;align-items:center;gap:12px;padding:13px 17px;border:1px solid rgba(255,255,255,.55);border-radius:17px;background:rgba(255,239,240,.88);color:var(--gink);box-shadow:0 12px 28px rgba(20,8,12,.2);backdrop-filter:blur(8px)}
+.g-wall-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--gblue);color:#fff;font-weight:900}.g-wall-status div{display:grid;gap:2px}.g-wall-status b{font:italic 900 .82rem var(--gdisplay);letter-spacing:.02em}.g-wall-status small{font:900 .6rem var(--gbody);letter-spacing:.14em;color:#27713d}.g-interior-hotspot{display:block;margin-top:14px;border:1px solid rgba(255,255,255,.65);border-radius:999px;padding:10px 15px;background:rgba(79,143,240,.95);color:#fff;font:900 .68rem var(--gbody);letter-spacing:.08em;cursor:pointer;transition:transform .2s,background .2s}.g-interior-hotspot:hover{transform:translateY(-2px);background:#2f72d6}.g-interior-hotspot span{font-size:1rem}.g-interior-panel{margin-bottom:20px;background:rgba(255,255,255,.9)}
+@media(max-width:700px){.g-wall-status{top:14px;right:14px;padding:9px 11px}.g-wall-status b{font-size:.68rem}.g-wall-status small{font-size:.52rem}.g-wall-icon{width:28px;height:28px}.g-hero-shade{padding-bottom:20px}}
+
 .g-join{margin:18px 0 6px;text-align:center;font-weight:600;line-height:1.5}
+.showroom-editor{margin-bottom:24px}.showroom-editor canvas{width:100%;height:auto;border-radius:18px;display:block;background:#e9b3b3}.showroom-editor input[type=range]{padding:8px 0;accent-color:#4f8ff0}.garage-showroom{height:auto;min-height:300px}.garage-showroom>img{display:block;height:auto;max-height:none;object-fit:contain;width:100%}.garage-showroom .g-hero-shade{position:relative;padding:20px 24px;background:#fff3ee;color:#1a1214}.garage-showroom .g-hero-shade .g-eyebrow{color:#725152}
 .g-join a{font-weight:800;text-decoration:underline}
 /* Login card: stay inside the screen on phones */
 .login-card{box-sizing:border-box;width:min(100% - 32px,460px);margin-left:auto;margin-right:auto}
