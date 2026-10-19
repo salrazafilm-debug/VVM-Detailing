@@ -46,8 +46,11 @@ exports.customerGet = async req => {
 exports.adminGet = async req => {
   try {
     const ctx = await requireAdmin(await customerContext(req));
-    const { data, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at,garage_vehicles(id,year,make,model,created_at,garage_services(id,service_date,title),garage_photos(id,photo_kind,caption,created_at,storage_path))').order('created_at', { ascending: false });
+    const { data: profiles, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at').order('created_at', { ascending: false });
     if (error) throw Object.assign(new Error('Could not load customers.'), { status: 503 });
+    // Customer registration must not depend on nested vehicle/photo relationships.
+    const {data: vehicles,error:vehicleError}=await ctx.admin.from('garage_vehicles').select('id,customer_id,year,make,model,created_at,garage_services(id,service_date,title),garage_photos(id,photo_kind,caption,created_at,storage_path)');
+    const data=(profiles||[]).map(profile=>({...profile,garage_vehicles:(vehicles||[]).filter(v=>v.customer_id===profile.user_id)}));
     // Private photos: short-lived links, signed in one batch. The storage path itself never leaves the server.
     const photos = (data || []).flatMap(c => (c.garage_vehicles || []).flatMap(v => v.garage_photos || []));
     const urls = {};
@@ -56,7 +59,7 @@ exports.adminGet = async req => {
       (signed || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
     }
     (data || []).forEach(c => (c.garage_vehicles || []).forEach(v => { v.garage_photos = (v.garage_photos || []).map(({ storage_path, ...p }) => ({ ...p, url: urls[storage_path] || null })); }));
-    return json({ customers: data || [] });
+    return Response.json({ customers: data, warning: vehicleError ? 'Customers loaded, but vehicle details could not be loaded. Please refresh before editing vehicles.' : null },{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -73,11 +76,28 @@ exports.adminPost = async req => {
       if (!display_name) throw Object.assign(new Error('Enter the customer name.'), { status: 400 });
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw Object.assign(new Error('Enter a valid customer email.'), { status: 400 });
       if (password.length < 8) throw Object.assign(new Error('Use a temporary password with at least 8 characters.'), { status: 400 });
-      const { data, error } = await ctx.admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } });
-      if (error) throw Object.assign(new Error(error.message.includes('already') ? 'This email already has an account.' : 'Could not create this customer login.'), { status: 400 });
-      const { error: pErr } = await ctx.admin.from('garage_profiles').upsert({ user_id: data.user.id, email, display_name }, { onConflict: 'user_id' });
+      let { data, error } = await ctx.admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } });
+      let recovered=false;
+      if (error && (['email_exists','user_already_exists'].includes(error.code)||/already/i.test(error.message))) {
+        // Repair a partial registration without replacing an existing account/password.
+        for(let page=1;page<=100;page++) {
+          const {data:listed,error:listError}=await ctx.admin.auth.admin.listUsers({page,perPage:100});
+          if(listError) break;
+          const user=listed.users.find(u=>u.email?.toLowerCase()===email);
+          if(user){data={user};recovered=true;error=null;break}
+          if(listed.users.length<100)break;
+        }
+      }
+      if (error) throw Object.assign(new Error('Could not create this customer login. Please check the email and try again.'), { status: 400 });
+      const customer={user_id:data.user.id,email,display_name};
+      if(recovered){
+        const {data:existing,error:lookupError}=await ctx.admin.from('garage_profiles').select('user_id,display_name,email').eq('user_id',data.user.id).maybeSingle();
+        if(lookupError)throw Object.assign(new Error('Could not check the existing customer profile. Please retry.'),{status:503});
+        if(existing)return json({ok:true,customer_id:existing.user_id,customer:{...existing,garage_vehicles:[]},message:'Existing client selected. Their password has not changed.'});
+      }
+      const { error: pErr } = await ctx.admin.from('garage_profiles').upsert(customer, { onConflict: 'user_id' });
       if (pErr) throw Object.assign(new Error('Login created but profile setup failed. Retry from the customer list.'), { status: 503 });
-      return json({ ok: true, customer_id: data.user.id, message: 'Client login created. Add their vehicle below, then share their email, temporary password and /client-login link privately.' });
+      return json({ ok: true, customer_id: data.user.id, customer:{...customer,garage_vehicles:[]}, message: recovered ? 'Customer profile recovered and selected. Their original password has not changed.' : 'Client login created and selected. Add their vehicle below, then share their login privately.' });
     }
     if (action === 'create_vehicle') {
       const customer_id = clean(b.customer_id, 80);
