@@ -541,19 +541,36 @@ function loadMedia(root = document) {
 (function () {
   const g = document.querySelector('.gallery'); if (!g) return;
   const figs = [...g.querySelectorAll('figure')]; let key = '';
+  // Show 40% of the photos first; "Show more" reveals the rest
+  const FIRST = Math.ceil(figs.length * 0.4); let expanded = false;
+  const more = document.getElementById('galMore');
+  if (more) more.addEventListener('click', () => {
+    expanded = !expanded; more.textContent = expanded ? 'Show less' : 'Show more'; more.setAttribute('aria-expanded', String(expanded));
+    key = ''; layout();
+    if (!expanded) g.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  });
+  function visibleFigs() { return expanded ? figs : figs.slice(0, FIRST); }
+  if (more && figs.length <= FIRST) more.parentElement.hidden = true;
   function layout() {
     const n = matchMedia('(max-width:900px)').matches ? 2 : 3, w = g.clientWidth, k = n + ':' + w;
     if (!w || k === key) return; key = k;
     const gap = n === 2 ? 10 : 14, cw = (w - gap * (n - 1)) / n;
-    const items = figs.map(f => { const im = f.querySelector('img'); f.style.height = ''; f.classList.remove('crop'); return [f, cw * im.getAttribute('height') / im.getAttribute('width')]; });
-    const place = order => { const cols = Array.from({ length: n }, () => ({ f: [], h: 0 })); order.forEach(it => { const c = cols.reduce((a, b) => (b.h < a.h ? b : a)); c.f.push(it); c.h += it[1] + (c.f.length > 1 ? gap : 0); }); return cols; };
+    const items = visibleFigs().map(f => { const im = f.querySelector('img'); f.style.height = ''; f.classList.remove('crop'); return [f, cw * im.getAttribute('height') / im.getAttribute('width')]; });
+    const place = (order, start) => { const cols = start.map(c => ({ f: [...c.f], h: c.h })); order.forEach(it => { const c = cols.reduce((a, b) => (b.h < a.h ? b : a)); c.f.push(it); c.h += it[1] + (c.f.length > 1 ? gap : 0); }); return cols; };
     const spread = cols => Math.max(...cols.map(c => c.h)) - Math.min(...cols.map(c => c.h));
-    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    let cols = place(items), best = spread(cols);
-    for (let i = 0; i < 3000 && best > 2; i++) {
-      const o = items.slice(); for (let k = o.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; }
-      const c = place(o), sp = spread(c); if (sp < best) { best = sp; cols = c; }
-    }
+    // Balance one batch of photos on top of the columns so far, keeping the batch in the order given only loosely (best fit wins)
+    const fit = (order, start) => {
+      let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      let cols = place(order, start), best = spread(cols);
+      for (let i = 0; i < 3000 && best > 2; i++) {
+        const o = order.slice(); for (let k = o.length - 1; k > 0; k--) { const j = Math.floor(rnd() * (k + 1)); [o[k], o[j]] = [o[j], o[k]]; }
+        const c = place(o, start), sp = spread(c); if (sp < best) { best = sp; cols = c; }
+      }
+      return cols;
+    };
+    const empty = Array.from({ length: n }, () => ({ f: [], h: 0 }));
+    let cols = fit(items.slice(0, FIRST), empty);                       // the first batch is chosen for a good mix and stays on top
+    if (expanded) cols = fit(items.slice(FIRST), cols);                  // the rest balance underneath
     const T = Math.min(...cols.map(c => c.h));
     g.textContent = ''; g.classList.add('gal-js');
     cols.forEach(c => {
