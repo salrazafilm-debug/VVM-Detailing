@@ -1508,3 +1508,17 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   .after-cta .bl-3{font-size:clamp(.7rem,3.1vw,.85rem);white-space:nowrap}
   .after-cta .bl-3 b{font-size:clamp(.9rem,4.2vw,1.1rem)}
 }
+
+/* Full Factory Reset on phones: biggest title, bundle right under it, Book my day second biggest, only the button glows */
+@media(max-width:600px){
+  .card.feature.gold h3{font-size:clamp(1.55rem,8.1vw,2.4rem);font-weight:900;letter-spacing:-.035em;margin-bottom:6px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.35))}
+  .gold .info > .bundle-line{margin:0 0 14px}
+  .bundle-line .ie-p{font-size:.72rem;font-weight:900;padding:4px 11px}
+  .bundle-line .bl-w{font:900 1rem var(--body)}
+  .card.gold .size-hint{font-weight:900}
+  .gold .size .face{font-weight:800}
+  .gold .info > .cta{font-size:1.12rem;font-weight:900;letter-spacing:.12em;padding:17px 42px}
+  .after-cta .bl-2,.after-cta .bl-2 b{font-weight:900}
+  .after-cta .bl-3,.after-cta .bl-3 span{font-weight:800}
+  .after-cta .bl-3 b{text-shadow:none;animation:none;color:#ffd45a;font-weight:900}
+}
