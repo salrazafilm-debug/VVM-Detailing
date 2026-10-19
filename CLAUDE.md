@@ -59,7 +59,7 @@ Never put tokens or secrets in the repo or in chat. Never write to the owner's S
 ## Open items (as of 2026-10-11)
 1. Square catalog: DONE by the owner on 2026-10-11. Full Factory Reset Mini-Van is $410. Interior Reset has Sedan $235 and one combined **SUV / Truck** option at $255, 4 hrs (no separate Truck variation). The site card mirrors this. The calendar reads Square, so keep the two in step.
 3. Terms page: `terms.html` is built (linked from footers, sitemap and the booking consent line) from the safe defaults in `drafts/terms-draft.md`, and the owner approved it as written on 2026-10-11 (sections 5, 6 and 10 included; section 10 was not legally reviewed). Service times and start times are left out because the booking flow shows them. Payment methods, water/power, late fees, warranty and coating aftercare days are deliberately NOT stated; add them only if the owner answers those `[YOUR CALL]` items.
-4. The ceramic "Photos & Video" tab shows exactly one video (`assets/uploads/ceramic-video.mp4`, muted autoplay loop, GPS stripped) and one photo (`assets/ceramic-correction.jpg`, paint correction test spot); the owner wants only those two. Swap in the owner's originals for other screenshot-crop photos when sent.
+4. The ceramic "Photos & Video" tab shows exactly one video (`assets/uploads/ceramic-video.mp4`, muted autoplay loop, GPS stripped) and one photo (`assets/paint-correction-test-spot.jpg`, paint correction test spot); the owner wants only those two. Swap in the owner's originals for other screenshot-crop photos when sent.
 5. Ideas not done: customer reviews section, Google Business link, analytics (would require updating privacy.html).
 
 ## Working here

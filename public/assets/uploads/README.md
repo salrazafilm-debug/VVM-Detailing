@@ -9,7 +9,7 @@ Use the exact file names below. The extension can be `.jpg`, `.jpeg`, `.png` or 
 |------------------------|--------------------------------|
 | `ceramic-video.mp4`    | Video in "Photos & Video" (muted, loops). Phone clips: convert to H.264 MP4 and strip location first. |
 
-The one photo there (paint correction test spot) is `assets/ceramic-correction.jpg`.
+The one photo there (paint correction test spot) is `assets/paint-correction-test-spot.jpg`.
 
 ## Headlight Restoration card (Before / After, shown on the card itself)
 
