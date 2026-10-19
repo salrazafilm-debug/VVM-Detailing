@@ -69,13 +69,14 @@ exports.adminPost = async req => {
     if (action === 'create_customer') {
       const email = clean(b.email, 200).toLowerCase();
       const display_name = clean(b.display_name, 120);
+      const password = String(b.password || '');
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw Object.assign(new Error('Enter a valid customer email.'), { status: 400 });
-      const inviteBase = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vvmdetails.com';
-      const { data, error } = await ctx.admin.auth.admin.inviteUserByEmail(email, { data: { display_name }, redirectTo: `${inviteBase.replace(/\/$/,'')}/reset-password` });
-      if (error) throw Object.assign(new Error(error.message.includes('already') ? 'This email already has an account.' : 'Could not invite this customer. Check Supabase Auth email settings.'), { status: 400 });
+      if (password.length < 8) throw Object.assign(new Error('Use a temporary password with at least 8 characters.'), { status: 400 });
+      const { data, error } = await ctx.admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } });
+      if (error) throw Object.assign(new Error(error.message.includes('already') ? 'This email already has an account.' : 'Could not create this customer login.'), { status: 400 });
       const { error: pErr } = await ctx.admin.from('garage_profiles').upsert({ user_id: data.user.id, email, display_name }, { onConflict: 'user_id' });
-      if (pErr) throw Object.assign(new Error('Account invited but profile setup failed. Retry from the customer list.'), { status: 503 });
-      return json({ ok: true, message: 'Customer invitation sent.' });
+      if (pErr) throw Object.assign(new Error('Login created but profile setup failed. Retry from the customer list.'), { status: 503 });
+      return json({ ok: true, message: 'Customer login created. Give the client their email and temporary password.' });
     }
     if (action === 'create_vehicle') {
       const customer_id = clean(b.customer_id, 80);

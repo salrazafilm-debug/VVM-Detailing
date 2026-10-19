@@ -57,7 +57,7 @@ function ClientDashboard({ customers, onAddPhoto }) {
 
 export default function GarageAdmin() {
   const [customers,setCustomers]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
-  const [email,setEmail]=useState(''),[name,setName]=useState('');
+  const [email,setEmail]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState('');
   const [customer,setCustomer]=useState(''),[year,setYear]=useState(''),[make,setMake]=useState(''),[model,setModel]=useState(''),[color,setColor]=useState('');
   const [vehicle,setVehicle]=useState(''),[serviceDate,setServiceDate]=useState(today()),[title,setTitle]=useState('Full Factory Reset'),[description,setDescription]=useState('');
   const [sealant,setSealant]=useState(false),[coating,setCoating]=useState(false),[leather,setLeather]=useState(false),[fabric,setFabric]=useState(false);
@@ -68,7 +68,7 @@ export default function GarageAdmin() {
   useEffect(()=>{load()},[]);
   useEffect(()=>{if(vehicles.length&&!vehicle)setVehicle(vehicles[0].id)},[vehicles,vehicle]);
   async function action(body){setBusy(true);setError('');setNotice('');try{const d=await garageRequest('/api/garage/admin',{method:'POST',body:JSON.stringify(body)});setNotice(d.message||'Saved.');await load();return d}catch(e){setError(e.message);return null}finally{setBusy(false)}}
-  async function addCustomer(e){e.preventDefault();const d=await action({action:'create_customer',email,display_name:name});if(d){setEmail('');setName('')}}
+  async function addCustomer(e){e.preventDefault();const chosen=window.prompt('Create a temporary password for this customer (at least 8 characters):','');if(chosen===null)return;const d=await action({action:'create_customer',email,display_name:name,password:chosen});if(d){setEmail('');setName('');setPassword('')}}
   async function addVehicle(e){e.preventDefault();const d=await action({action:'create_vehicle',customer_id:customer,year,make,model,color});if(d){setVehicle(d.vehicle.id);setYear('');setMake('');setModel('');setColor('')}}
   async function addService(e){e.preventDefault();const d=await action({action:'record_service',vehicle_id:vehicle,service_date:serviceDate,title,description,paint_sealant:sealant,ceramic_coating:coating,leather_protection:leather,fabric_protection:fabric});if(d){setDescription('');setSealant(false);setCoating(false);setLeather(false);setFabric(false)}}
   async function upload(e){e.preventDefault();if(!photo||!vehicle)return;setBusy(true);setError('');setNotice('');try{const blob=await webp(photo);const form=new FormData();form.append('vehicle_id',vehicle);form.append('kind',photoKind);form.append('caption',caption);form.append('is_hero',String(isHero));form.append('file',blob,'garage-photo.webp');const d=await garageRequest('/api/garage/photo',{method:'POST',body:form});if(isHero)await garageRequest('/api/garage/admin',{method:'POST',body:JSON.stringify({action:'set_hero',photo_id:d.photo.id})});setNotice('Photo added to the private vehicle gallery. Phone location metadata has been removed.');setPhoto(null);setCaption('');e.target.reset()}catch(err){setError(err.message)}finally{setBusy(false)}}
