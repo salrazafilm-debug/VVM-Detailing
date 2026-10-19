@@ -4,6 +4,8 @@ const nextConfig = {
   // Old Squarespace pages: send visitors (and Google) to the matching spot on the new site
   async redirects() {
     return [
+      // One address for search engines: www.vvmdetails.com goes to vvmdetails.com
+      { source: '/:path*', has: [{ type: 'host', value: 'www.vvmdetails.com' }], destination: 'https://vvmdetails.com/:path*', permanent: true },
       { source: '/home', destination: '/', permanent: true },
       { source: '/about', destination: '/', permanent: true },
       { source: '/contact', destination: '/#book', permanent: true },
