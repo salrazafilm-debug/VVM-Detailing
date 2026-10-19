@@ -4,6 +4,7 @@ import { supabaseBrowser } from './garage-auth-client';
 
 export default function GarageLogin({ admin = false }) {
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
+  const [showPassword,setShowPassword] = useState(false);
   async function submit(e) {
     e.preventDefault(); setBusy(true); setMessage('');
     try {
@@ -20,5 +21,18 @@ export default function GarageLogin({ admin = false }) {
     } catch (err) { setMessage(err.message || 'Could not sign in.'); }
     finally { setBusy(false); }
   }
-  return <main className="garage-shell login-shell vvm-entry"><header className="entry-header"><a className="garage-brand" href="/"><img src="/assets/logo.jpg" alt=""/> VVM DETAILS</a><a className="entry-home" href="/">BACK TO THE GOOD STUFF ↗</a></header><div className="entry-grid"><section className="entry-scene" aria-label="VVM vehicle care"><div className="entry-scene-copy"><span className="entry-stamp">CLIENTS ONLY. ALL LOVE.</span><h1>GOOD CARS.<br/>BRIGHTER<br/><span>DAYS.</span></h1><p>Your ride. Your story. Your Garage.</p></div><img className="entry-car" src="/assets/white-lexus-is-front.jpg" alt="A white Lexus detailed by VVM Details"/><div className="entry-badges"><span>✦ SHOWROOM ENERGY</span><span>♥ THE VVM FAMILY</span></div></section><section className="login-card entry-card"><p className="g-eyebrow">{admin ? 'BEHIND THE SHINE' : 'YOUR PRIVATE DIGITAL GARAGE'}</p><h2>{reset ? 'Fresh start.' : admin ? 'Hello, boss.' : 'Welcome home.'}</h2><p className="g-muted">{reset ? 'Let’s get you back in. We’ll email a password reset link.' : admin ? 'Your clients, their cars, and every detail.' : 'The photos, the protection, the next shine. It’s all here.'}</p><form onSubmit={submit} className="g-form"><label>Email address<input required type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/></label>{!reset&&<label>Password<input required type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/></label>}<button className="g-button" disabled={busy}>{busy?'PLEASE WAIT…':reset?'SEND RESET LINK ↗':admin?'OPEN ADMIN ↗':'ENTER MY GARAGE ↗'}</button></form>{message&&<p className="g-message" role="status">{message}</p>}<button className="g-text-button" disabled={busy} onClick={()=>{setReset(!reset);setMessage('')}}>{reset?'Back to sign in':'Forgot password?'}</button>{!reset&&!admin&&<p className="g-join">New to the family? Your VVM team creates your login after your service. <a href="mailto:vvm.detailing@gmail.com">Ask us for access ↗</a></p>}<div className="entry-perks"><span>YOUR PHOTOS</span><span>YOUR PROTECTION</span><span>YOUR NEXT SHINE</span></div></section></div></main>;
+  return <main className="garage-shell vvm-signin">
+    <header className="signin-header"><a className="garage-brand" href="/"><img src="/assets/logo.jpg" alt=""/> VVM DETAILS</a><a className="signin-back" href="/">Back to website <span aria-hidden="true">↗</span></a></header>
+    <div className="signin-body"><section className="signin-panel" aria-labelledby="signin-title">
+      <div className="signin-accent" aria-hidden="true"><i/><i/><i/></div>
+      <div className="signin-intro"><span className="signin-kicker">{admin?'VVM ADMIN':'THE VVM FAMILY'}</span><h1 id="signin-title">{reset?'Reset password.':admin?'Admin login.':'Your Garage.'}</h1><p>{reset?'Enter your email and we’ll send a reset link.':admin?'Sign in to manage your clients and their vehicles.':'Sign in for your photos, protection, and service history.'}</p></div>
+      <form className="signin-form" onSubmit={submit}>
+        <label htmlFor="signin-email">Email address</label><input id="signin-email" required type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/>
+        {!reset&&<><div className="signin-label-row"><label htmlFor="signin-password">Password</label><button type="button" disabled={busy} onClick={()=>{setReset(true);setMessage('');setPassword('')}}>Forgot password?</button></div><div className="signin-password"><input id="signin-password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}>{showPassword?'HIDE':'SHOW'}</button></div></>}
+        {message&&<p className="signin-message" role="status">{message}</p>}
+        <button className="signin-submit" disabled={busy}>{busy?'PLEASE WAIT…':reset?'SEND RESET LINK':admin?'SIGN IN TO ADMIN':'ENTER MY GARAGE'}<span aria-hidden="true">↗</span></button>
+      </form>
+      {reset?<button className="signin-return" disabled={busy} onClick={()=>{setReset(false);setMessage('')}}>← Back to sign in</button>:!admin&&<p className="signin-help">Need your login? <a href="mailto:vvm.detailing@gmail.com">Contact the VVM team</a></p>}
+    </section><footer className="signin-footer">GOOD CARS. BRIGHTER DAYS.</footer></div>
+  </main>;
 }
