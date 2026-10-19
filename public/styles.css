@@ -1522,3 +1522,11 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   .after-cta .bl-3,.after-cta .bl-3 span{font-weight:800}
   .after-cta .bl-3 b{text-shadow:none;animation:none;color:#ffd45a;font-weight:900}
 }
+/* Full Factory Reset on phones: the title is sized to the screen so it always fits on one line inside the card,
+   and the card's columns can never grow past the card (that pushed the photo and text off the right edge). */
+@media(max-width:600px){
+  .card.feature.gold{grid-template-columns:minmax(0,1fr)}
+  .card.feature.gold > *,.card.feature.gold .info{min-width:0;max-width:100%}
+  .card.feature.gold h3{font-size:min(calc((100vw - 72px) / 11.8),2.3rem)}
+  .card.feature.gold .info{text-align:center;align-items:center}
+}
