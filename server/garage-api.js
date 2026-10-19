@@ -70,13 +70,14 @@ exports.adminPost = async req => {
       const email = clean(b.email, 200).toLowerCase();
       const display_name = clean(b.display_name, 120);
       const password = String(b.password || '');
+      if (!display_name) throw Object.assign(new Error('Enter the customer name.'), { status: 400 });
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw Object.assign(new Error('Enter a valid customer email.'), { status: 400 });
       if (password.length < 8) throw Object.assign(new Error('Use a temporary password with at least 8 characters.'), { status: 400 });
       const { data, error } = await ctx.admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { display_name } });
       if (error) throw Object.assign(new Error(error.message.includes('already') ? 'This email already has an account.' : 'Could not create this customer login.'), { status: 400 });
       const { error: pErr } = await ctx.admin.from('garage_profiles').upsert({ user_id: data.user.id, email, display_name }, { onConflict: 'user_id' });
       if (pErr) throw Object.assign(new Error('Login created but profile setup failed. Retry from the customer list.'), { status: 503 });
-      return json({ ok: true, message: 'Customer login created. Give the client their email and temporary password.' });
+      return json({ ok: true, customer_id: data.user.id, message: 'Client login created. Add their vehicle below, then share their email, temporary password and /client-login link privately.' });
     }
     if (action === 'create_vehicle') {
       const customer_id = clean(b.customer_id, 80);
