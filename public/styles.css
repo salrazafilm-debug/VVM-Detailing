@@ -1432,3 +1432,10 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .foot-reviews .cta:first-child,.foot-stack .coupon-row .mini{background:#f0d63c;color:var(--ink);border-color:var(--ink)}
 .foot-reviews .cta.alt{background:#fff;color:var(--ink);border-color:var(--ink)}
 .foot-stack .coupon-row .mini{border:2px solid var(--ink);border-radius:999px;font:800 .9rem var(--display);text-transform:uppercase;letter-spacing:.1em}
+
+/* Footer: reschedule or cancel box */
+.resched{text-align:center;padding:18px 20px;border-radius:18px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28)}
+.resched-t{font:800 .8rem/1.2 var(--body);letter-spacing:.2em;text-transform:uppercase;color:#fff;margin:0 0 8px}
+.resched-l{font:600 .98rem/1.4 var(--body);color:#fff;margin:0 0 14px}
+.resched-l a{color:#f0d63c;text-decoration:underline}
+.resched-btn{display:flex;align-items:center;justify-content:center;height:50px;border-radius:999px;background:#fff;color:var(--ink);border:2px solid var(--ink);font:800 .9rem var(--display);text-transform:uppercase;letter-spacing:.12em;text-decoration:none}
