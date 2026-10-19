@@ -595,18 +595,15 @@ async function applyCoupon(code, msg, chosenId) {
   S.date = null; S.time = null; S.error = ''; S.step = 'date';
   await loadMonth();
 }
-(function footerCoupon() {
-  const form = $('#couponForm'), msg = $('#couponMsg');
-  if (!form) return;
-  form.addEventListener('submit', e => { e.preventDefault(); applyCoupon(String(new FormData(form).get('code') || '').trim(), msg); });
-  // A link from the Garage (?coupon=CODE) fills the code in and checks it
-  const fromGarage = new URLSearchParams(location.search).get('coupon');
-  if (fromGarage) {
-    const input = $('#couponCode');
-    if (input) {
-      input.value = fromGarage;
-      const check = () => { if (S.services) form.requestSubmit(); else setTimeout(check, 200); };
-      setTimeout(check, 200);
-    }
-  }
+// A link from the Garage (?coupon=CODE) fills the code into the booking box and checks it
+(function couponFromLink() {
+  const code = new URLSearchParams(location.search).get('coupon');
+  if (!code) return;
+  const check = () => {
+    const input = $('#bkCode'), msg = $('#bkCouponMsg');
+    if (!S.services || !input || !msg) return setTimeout(check, 200);
+    input.value = code;
+    applyCoupon(code, msg);
+  };
+  setTimeout(check, 200);
 })();
