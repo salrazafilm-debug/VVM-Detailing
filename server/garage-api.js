@@ -193,8 +193,9 @@ exports.adminPost = async req => {
       const { data: photo, error: pErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path').eq('id', photo_id).maybeSingle();
       if (pErr) throw Object.assign(new Error('Could not find this photo. Try again.'), { status: 503 });
       if (!photo) throw Object.assign(new Error('Photo not found.'), { status: 404 });
-      // Clear the cover first so the vehicle never points at a deleted photo.
+      // Clear either cover first so the vehicle never points at a deleted photo.
       const { error: heroError } = await ctx.admin.from('garage_vehicles').update({ hero_photo_id: null }).eq('id', photo.vehicle_id).eq('hero_photo_id', photo.id);
+      if (!heroError) await ctx.admin.from('garage_vehicles').update({ mobile_hero_photo_id: null }).eq('id', photo.vehicle_id).eq('mobile_hero_photo_id', photo.id);
       if (heroError) throw Object.assign(new Error('Could not remove this photo as the cover. Nothing was deleted.'), { status: 503 });
       const { error } = await ctx.admin.from('garage_photos').delete().eq('id', photo.id);
       if (error) throw Object.assign(new Error('Could not delete this photo.'), { status: 503 });
@@ -223,9 +224,10 @@ exports.adminPost = async req => {
     if (action === 'set_hero') {
       const { data: photo, error: pErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id').eq('id', b.photo_id).single();
       if (pErr || !photo) throw Object.assign(new Error('Photo not found.'), { status: 404 });
-      const { error } = await ctx.admin.from('garage_vehicles').update({ hero_photo_id: photo.id }).eq('id', photo.vehicle_id);
+      const mobile = b.cover === 'mobile';
+      const { error } = await ctx.admin.from('garage_vehicles').update(mobile ? { mobile_hero_photo_id: photo.id } : { hero_photo_id: photo.id }).eq('id', photo.vehicle_id);
       if (error) throw Object.assign(new Error('Could not set vehicle cover photo.'), { status: 503 });
-      return json({ ok: true, vehicle_id: photo.vehicle_id, hero_photo_id: photo.id });
+      return json({ ok: true, vehicle_id: photo.vehicle_id, hero_photo_id: photo.id, cover: mobile ? 'mobile' : 'desktop' });
     }
     if (action === 'appointment') {
       const vehicle_id = clean(b.vehicle_id, 80), service_label = clean(b.service_label, 140);
@@ -240,11 +242,12 @@ exports.adminPost = async req => {
   } catch (e) { return responseError(e); }
 };
 
-async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, reused=false}) {
+async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, coverFor='desktop', reused=false}) {
   const warnings=warning?[warning]:[];
   let coverSaved=false;
   if (isHero) {
-    const {error:heroError}=await admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', data.vehicle_id);
+    const column=coverFor==='mobile'?'mobile_hero_photo_id':'hero_photo_id';
+    const {error:heroError}=await admin.from('garage_vehicles').update({ [column]: data.id }).eq('id', data.vehicle_id);
     coverSaved=!heroError;
     if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
   }
@@ -272,7 +275,7 @@ exports.photoPost = async req => {
     if(uploadId){
       const {data:existing,error:lookupError}=await ctx.admin.from('garage_photos').select('*').eq('vehicle_id',vehicle_id).in('storage_path',[`${vehicle_id}/${uploadId}.webp`,`${vehicle_id}/cutout-${uploadId}.webp`]).maybeSingle();
       if(lookupError)throw Object.assign(new Error('Could not check whether this photo was already saved. Retry in a moment.'),{status:503});
-      if(existing)return await savedPhotoResponse(ctx.admin,existing,{isCutout:/\/cutout-/.test(existing.storage_path),isHero:form.get('is_hero')==='true',reused:true});
+      if(existing)return await savedPhotoResponse(ctx.admin,existing,{isCutout:/\/cutout-/.test(existing.storage_path),isHero:form.get('is_hero')==='true',coverFor:form.get('cover_for')==='mobile'?'mobile':'desktop',reused:true});
     }
     const {bytes:photoBytes,isCutout,warning}=await prepareShowroomPhoto(await file.arrayBuffer(),{removeBackground:form.get('showroom')==='true',keepFraming:form.get('keep_framing')==='true'});
     const storage_path = `${vehicle_id}/${isCutout?'cutout-':''}${uploadId||cryptoRandom()}.webp`;
@@ -280,7 +283,7 @@ exports.photoPost = async req => {
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
     if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
-    return await savedPhotoResponse(ctx.admin,data,{isCutout,warning,isHero:form.get('is_hero')==='true'});
+    return await savedPhotoResponse(ctx.admin,data,{isCutout,warning,isHero:form.get('is_hero')==='true',coverFor:form.get('cover_for')==='mobile'?'mobile':'desktop'});
   } catch (e) { return responseError(e); }
 };
 
