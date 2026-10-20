@@ -171,3 +171,7 @@
 .room-sheet-head h1.has-logo{flex:1;display:flex;justify-content:center;margin:0;padding-left:44px;text-transform:none}
 .room-garage-logo{display:block;max-width:75%;max-height:84px;object-fit:contain}
 @media(max-width:800px){.room-garage-logo{max-height:68px}.room-done-box strong{font-size:1.05rem}}
+
+/* Owner-set showroom size and position (set in admin preview) */
+.showroom-car{transform:translateX(calc(-50% + var(--sx,0%))) translateY(var(--sy,0%)) scale(var(--ss,1));transform-origin:center bottom}
+.showroom-room.is-scene{transform:translate(var(--sx,0%),var(--sy,0%)) scale(var(--ss,1));transform-origin:center}

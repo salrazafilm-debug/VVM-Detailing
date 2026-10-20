@@ -67,7 +67,7 @@ exports.adminGet = async req => {
     const ids=(vehicles||[]).map(v=>v.id);
     const [services,photos]=ids.length&&!vehicleError?await Promise.all([
       ctx.admin.from('garage_services').select('id,vehicle_id,service_date,title').in('vehicle_id',ids),
-      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path').in('vehicle_id',ids).order('created_at',{ascending:false}),
+      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path,show_on_garage,sort_order').in('vehicle_id',ids).order('created_at',{ascending:false}),
     ]):[{data:[]},{data:[]}];
     const warnings=[];
     if(vehicleError)warnings.push('Vehicle list could not refresh. Existing records have not been removed. Please refresh before adding vehicles.');
@@ -149,16 +149,43 @@ exports.adminPost = async req => {
     if (action === 'update_vehicle') {
       const vehicle_id = clean(b.vehicle_id, 80);
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
-      const protection_type = b.protection_type === 'sealant' || b.protection_type === 'coating' ? b.protection_type : null;
-      const years = Number(b.ceramic_years);
-      // Years only matter for a ceramic coating.
-      if (protection_type === 'coating' && (!Number.isInteger(years) || years < 1 || years > 15)) throw Object.assign(new Error('Enter ceramic years from 1 to 15.'), { status: 400 });
-      const flags = Object.fromEntries(['paint_correction','headlights_done','recommend_ceramic','show_headlights','show_paint','show_protection','show_ceramic_rec'].map(k => [k, b[k] === true]));
-      const patch = { ...flags, protection_type };
-      if (protection_type === 'coating') patch.ceramic_years = years;
+      const patch = {};
+      for (const k of ['paint_correction','headlights_done','recommend_ceramic','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
+      if ('protection_type' in b) patch.protection_type = b.protection_type === 'sealant' || b.protection_type === 'coating' ? b.protection_type : null;
+      if ('ceramic_years' in b || patch.protection_type === 'coating') {
+        const years = Number(b.ceramic_years);
+        if (patch.protection_type === 'coating' && (!Number.isInteger(years) || years < 1 || years > 15)) throw Object.assign(new Error('Enter ceramic years from 1 to 15.'), { status: 400 });
+        if (Number.isInteger(years) && years >= 1 && years <= 15) patch.ceramic_years = years;
+      }
+      for (const dev of ['desktop','phone']) {
+        const ranges = { scale: [10, 300], x: [-50, 150], y: [-50, 150] };
+        for (const [k, [min, max]] of Object.entries(ranges)) {
+          const key = `${dev}_${k}`;
+          if (!(key in b)) continue;
+          const n = Number(b[key]);
+          if (!Number.isInteger(n) || n < min || n > max) throw Object.assign(new Error('Showroom size or position is out of range.'), { status: 400 });
+          patch[key] = n;
+        }
+      }
+      if (!Object.keys(patch).length) return json({ ok: true, message: 'Nothing to save.' });
       const { error } = await ctx.admin.from('garage_vehicles').update(patch).eq('id', vehicle_id);
-      if (error) throw Object.assign(new Error('Could not save. Run the Garage health update in Supabase first.'), { status: 503 });
+      if (error) throw Object.assign(new Error('Could not save. Run the Garage visibility update in Supabase first.'), { status: 503 });
       return json({ ok: true, message: 'Garage saved.' });
+    }
+    if (action === 'set_photo_visibility') {
+      const photo_id = clean(b.photo_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
+      const { error } = await ctx.admin.from('garage_photos').update({ show_on_garage: b.show === true }).eq('id', photo_id);
+      if (error) throw Object.assign(new Error('Could not update this photo. Run the Garage visibility update in Supabase first.'), { status: 503 });
+      return json({ ok: true, message: b.show === true ? 'Shown on My Garage.' : 'Hidden from My Garage.' });
+    }
+    if (action === 'reorder_photos') {
+      const vehicle_id = clean(b.vehicle_id, 80);
+      const ids = Array.isArray(b.photo_ids) ? b.photo_ids.slice(0, 200) : [];
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vehicle_id) || !ids.every(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) throw Object.assign(new Error('Could not reorder photos.'), { status: 400 });
+      const results = await Promise.all(ids.map((id, i) => ctx.admin.from('garage_photos').update({ sort_order: i }).eq('id', id).eq('vehicle_id', vehicle_id)));
+      if (results.some(r => r.error)) throw Object.assign(new Error('Could not save the new photo order. Try again.'), { status: 503 });
+      return json({ ok: true, message: 'Photo order saved.' });
     }
     if (action === 'delete_vehicle') {
       const vehicle_id = clean(b.vehicle_id, 80);
@@ -227,6 +254,8 @@ exports.adminPost = async req => {
       const mobile = b.cover === 'mobile';
       const { error } = await ctx.admin.from('garage_vehicles').update(mobile ? { mobile_hero_photo_id: photo.id } : { hero_photo_id: photo.id }).eq('id', photo.vehicle_id);
       if (error) throw Object.assign(new Error('Could not set vehicle cover photo.'), { status: 503 });
+      // A cover stays on Home; it starts hidden from My Garage so the same image is not listed twice.
+      await ctx.admin.from('garage_photos').update({ show_on_garage: false }).eq('id', photo.id);
       return json({ ok: true, vehicle_id: photo.vehicle_id, hero_photo_id: photo.id, cover: mobile ? 'mobile' : 'desktop' });
     }
     if (action === 'appointment') {
@@ -249,6 +278,7 @@ async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, cover
     const column=coverFor==='mobile'?'mobile_hero_photo_id':'hero_photo_id';
     const {error:heroError}=await admin.from('garage_vehicles').update({ [column]: data.id }).eq('id', data.vehicle_id);
     coverSaved=!heroError;
+    if(!heroError) await admin.from('garage_photos').update({ show_on_garage: false }).eq('id', data.id);
     if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
   }
   let url=null;
