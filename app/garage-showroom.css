@@ -52,3 +52,83 @@
 .room-book-cta p{margin:6px 0 14px;font-weight:600}
 /* Desktop nav: smaller */
 @media(min-width:801px){.room-nav{width:min(860px,calc(100% - 48px));padding:7px}.room-nav button{min-height:58px;gap:10px;font-size:.95rem}.room-nav svg{width:24px;height:24px}}
+
+/* --- Garage v2: banner, membership, protection steps --- */
+.room-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+/* Top-left banner: big badge + name, dark glass with a gold edge */
+.room-banner{display:flex;align-items:center;gap:16px;padding:10px 26px 10px 10px;border-radius:24px;background:linear-gradient(120deg,rgba(14,10,22,.88),rgba(28,20,40,.78));border:1px solid rgba(240,214,60,.55);box-shadow:0 0 0 1px rgba(255,255,255,.06) inset,0 10px 34px rgba(0,0,0,.35),0 0 26px rgba(240,214,60,.18);backdrop-filter:blur(14px);text-decoration:none;color:#fff;position:relative;overflow:hidden}
+.room-banner:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#f0d63c,#ffe98a,#f0d63c,transparent)}
+.room-banner>img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #f0d63c;box-shadow:0 0 18px rgba(240,214,60,.45)}
+.room-banner span{display:grid;gap:4px}
+.room-banner small{font:800 .62rem/1 var(--gbody);letter-spacing:.24em;color:#f0d63c}
+.room-banner strong{font:italic 900 clamp(1.25rem,2.2vw,1.9rem)/1 var(--gdisplay);letter-spacing:-.02em;text-transform:uppercase;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4)}
+/* Check / X marks */
+.room-mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;flex-shrink:0}
+.room-mark svg{width:18px;height:18px;stroke-width:3}
+.room-mark.is-yes{background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00;box-shadow:0 0 12px rgba(247,200,60,.5)}
+.room-mark.is-no{background:rgba(240,214,60,.14);color:#c99a12;border:2px solid #e8c547}
+/* Membership pill (top right) */
+.room-membership{background:linear-gradient(120deg,rgba(14,10,22,.88),rgba(28,20,40,.78));color:#fff;border:1px solid rgba(240,214,60,.55);border-radius:22px;box-shadow:0 10px 34px rgba(0,0,0,.35),0 0 26px rgba(240,214,60,.18);backdrop-filter:blur(14px);transition:transform .2s}
+.room-membership small{color:#f0d63c;letter-spacing:.16em}
+.room-membership strong{font:italic 900 1.25em/1 var(--gdisplay);letter-spacing:.02em}
+.room-membership.is-off strong{color:#e8c547}
+/* Sheet titles */
+.room-sheet-head h1{font:italic 900 clamp(2.2rem,4vw,3.2rem)/1 var(--gdisplay);letter-spacing:-.04em;text-transform:uppercase}
+.room-vehicle-name{font:italic 900 1.35rem/1.2 var(--gdisplay);letter-spacing:-.02em;margin:0 0 4px;display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.room-vehicle-name small{font:700 .85rem var(--gbody);color:#6b524c}
+/* Protection steps, like the homepage "How it works" */
+.room-steps{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.room-steps li{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:18px;background:#fff;border:2px solid #ead9d2}
+.room-steps li.is-yes{border-color:#f0d63c;box-shadow:0 6px 18px rgba(240,180,41,.18)}
+.room-steps strong{flex:1;font-size:.98rem}
+.room-step-num{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#0b2a4a,#2d78c4);color:#fff;font:900 .85rem var(--gdisplay);box-shadow:0 0 14px rgba(79,160,240,.45);flex-shrink:0}
+.room-sealant{margin-top:12px;padding:16px 18px;border-radius:20px;background:linear-gradient(135deg,#0b2a4a,#1d4f86);color:#fff;display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px 14px;box-shadow:0 10px 26px rgba(11,42,74,.3)}
+.room-sealant .room-label{color:#9fd0f3}
+.room-sealant strong{display:block;font:italic 900 1.3rem/1.15 var(--gdisplay);margin-top:3px}
+.room-sealant .room-progress{grid-column:1/-1;background:rgba(255,255,255,.18)}
+.room-sealant .room-progress>span{background:linear-gradient(90deg,#f0d63c,#ffe98a)}
+/* Services */
+.room-active{display:grid;gap:10px;padding:16px 18px;border-radius:20px;background:linear-gradient(135deg,#0b2a4a,#1d4f86);color:#fff;margin-bottom:6px}
+.room-active .room-label{color:#9fd0f3}
+.room-active p{display:flex;align-items:center;gap:12px;margin:0}
+.room-active strong{flex:1}
+.room-active b{font:italic 900 1rem var(--gdisplay);color:#f0d63c;white-space:nowrap}
+.room-recs{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.room-recs li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 16px;border-radius:16px;background:#fff;border:2px solid #d6eedc;font-weight:700}
+.room-recs b{font:900 .7rem var(--gbody);letter-spacing:.12em;color:#27713d}
+.room-recs li.is-rec{border-color:#f0d63c;background:#fffbe8}
+.room-recs li.is-rec b{color:#9a6b00}
+.room-allset{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-weight:800}
+/* Bookings: membership card in the Book Now star-sky style */
+.room-member-card{position:relative;overflow:hidden;margin:0 0 18px;padding:24px 22px;border-radius:24px;color:#fff;text-align:center;background:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 70% 20%,#fff,transparent),radial-gradient(1.5px 1.5px at 85% 70%,#fffbe0,transparent),radial-gradient(1px 1px at 35% 80%,#fff,transparent),radial-gradient(ellipse at top,#22314f,#0c0a18 70%);box-shadow:0 14px 34px rgba(12,10,24,.35)}
+.room-member-card:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,#f0d63c,#ffe98a,#f0d63c,transparent)}
+.room-member-card .room-label{color:#9fd0f3}
+.room-member-card h3{font:italic 900 2.4rem/1 var(--gdisplay)!important;margin:10px 0 12px!important;color:#f0d63c;text-shadow:0 0 18px rgba(240,214,60,.6)}
+.room-member-card p{margin:4px 0;font-size:.95rem;color:#f3eef8}
+.room-member-card p strong{color:#fff}
+.room-member-note{font-size:.8rem!important;color:#bdb3cc!important}
+.room-member-mark{display:flex;justify-content:center;margin-bottom:10px}
+.room-member-mark .room-mark{width:46px;height:46px}
+.room-member-mark .room-mark svg{width:26px;height:26px}
+.room-member-card.is-off h3{color:#e8c547;text-shadow:none}
+/* Gold button, homepage style */
+.room-gold{display:flex;justify-content:center;align-items:center;width:100%;min-height:54px;margin:16px 0 6px;padding:16px 30px;border-radius:999px;background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00!important;font:italic 900 1rem var(--gdisplay);letter-spacing:.12em;text-decoration:none;box-shadow:0 10px 30px rgba(247,200,60,.45);transition:transform .25s}
+.room-gold:hover{transform:translateY(-3px)}
+.room-small .room-link{font-size:inherit;padding:0}
+/* Photo showcase: first photo large */
+.room-gallery button:first-child{grid-column:1/-1}
+.room-gallery img{object-fit:cover}
+@media(max-width:800px){
+  .room-banner{padding:7px 16px 7px 7px;gap:10px;border-radius:18px}
+  .room-banner>img{width:46px;height:46px}
+  .room-banner small{font-size:.5rem;letter-spacing:.2em}
+  .room-banner strong{font-size:1.1rem}
+  .room-membership{top:92px;right:16px;min-height:0;padding:9px 14px 9px 9px;border-radius:16px}
+  .room-membership .room-mark{width:26px;height:26px}
+  .room-membership strong{font-size:1.05rem}
+  .room-membership small{font-size:.5rem}
+  .client-sheet{top:158px}
+  .room-sheet-head h1{font-size:2.1rem}
+  .room-member-card h3{font-size:2rem!important}
+}
+@media(min-width:801px){.room-membership{top:26px;right:32px}}

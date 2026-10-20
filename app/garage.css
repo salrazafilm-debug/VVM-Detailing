@@ -99,3 +99,4 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .admin-password-wrap{display:flex;align-items:center;gap:8px}.admin-password-wrap input{flex:1}.admin-password-wrap .g-text-button{margin:0;min-width:48px}
 
 .admin-photo-options{border:1px solid #1a121419;border-radius:12px;padding:14px}.admin-photo-options summary{cursor:pointer;font-size:.8rem;font-weight:800}.admin-photo-options-fields{border:0;padding:18px 0 0;margin:0;min-width:0;display:grid;gap:14px}.admin-upload-status{margin:0;font-size:.78rem;font-weight:800;color:#685459;line-height:1.6}.admin-upload-status.is-saved{color:#216e45}.admin-upload-status.is-error{color:#a22738}.admin-upload-status.is-preparing,.admin-upload-status.is-saving{color:#825c16}
+.admin-status-actions{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.admin-status-actions .g-button{width:auto}.admin-status-actions .admin-delete{margin:0;color:#b3261e}

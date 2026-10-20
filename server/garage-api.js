@@ -61,7 +61,7 @@ exports.adminGet = async req => {
     if (error) throw Object.assign(new Error('Could not load customers.'), { status: 503 });
     // Photos reference vehicles, and vehicles also reference their cover photo.
     // Read each table explicitly: embedding garage_photos is ambiguous in PostgREST.
-    const {data: vehicles,error:vehicleError}=await ctx.admin.from('garage_vehicles').select('id,customer_id,year,make,model,color,hero_photo_id,created_at').order('created_at', {ascending:true});
+    const {data: vehicles,error:vehicleError}=await ctx.admin.from('garage_vehicles').select('*').order('created_at', {ascending:true});
     const ids=(vehicles||[]).map(v=>v.id);
     const [services,photos]=ids.length&&!vehicleError?await Promise.all([
       ctx.admin.from('garage_services').select('id,vehicle_id,service_date,title').in('vehicle_id',ids),
@@ -141,6 +141,23 @@ exports.adminPost = async req => {
         throw Object.assign(new Error(pendingUpdate ? 'Your Garage database still requires year and make. Apply the optional vehicle fields update, then retry.' : 'Could not add vehicle. Confirm the customer exists.'), { status: pendingUpdate ? 503 : 400 });
       }
       return json({ ok: true, vehicle: data });
+    }
+    if (action === 'update_vehicle') {
+      const vehicle_id = clean(b.vehicle_id, 80), years = Number(b.ceramic_years);
+      if (!vehicle_id || !Number.isInteger(years) || years < 1 || years > 15) throw Object.assign(new Error('Choose a vehicle and enter ceramic years from 1 to 15.'), { status: 400 });
+      const flags = Object.fromEntries(['paint_correction','recommend_headlights','recommend_paint_correction','recommend_ceramic'].map(k => [k, b[k] === true]));
+      const { error } = await ctx.admin.from('garage_vehicles').update({ ...flags, ceramic_years: years }).eq('id', vehicle_id);
+      if (error) throw Object.assign(new Error('Could not save. Run the Garage status update in Supabase first.'), { status: 503 });
+      return json({ ok: true, message: 'Garage status saved.' });
+    }
+    if (action === 'delete_vehicle') {
+      const vehicle_id = clean(b.vehicle_id, 80);
+      if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
+      const { data: photos } = await ctx.admin.from('garage_photos').select('storage_path').eq('vehicle_id', vehicle_id);
+      const { error } = await ctx.admin.from('garage_vehicles').delete().eq('id', vehicle_id);
+      if (error) throw Object.assign(new Error('Could not delete this vehicle.'), { status: 503 });
+      if (photos?.length) await ctx.admin.storage.from('garage-photos').remove(photos.map(p => p.storage_path)).catch(() => {});
+      return json({ ok: true, message: 'Vehicle deleted.' });
     }
     if (action === 'record_service') {
       const vehicle_id = clean(b.vehicle_id, 80), service_date = clean(b.service_date, 10), title = clean(b.title, 140);

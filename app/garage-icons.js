@@ -1,5 +1,7 @@
 export default function GarageIcon({ name, ...props }) {
   const paths = {
+    check: <path d="m5 12.5 4.5 4.5L19 7.5"/>,
+    x: <path d="M6 6l12 12M18 6 6 18"/>,
     home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v12h5v-7h4v7h5V9"/></>,
     services: <><path d="M12 2S5 10 5 15a7 7 0 0 0 14 0C19 10 12 2 12 2Z"/><path d="M8 15a4 4 0 0 0 4 4"/></>,
     garage: <><path d="m5 9 2-5h10l2 5M3 10h18v9H3zM5 19v2m14-2v2M3 14h18"/><path d="M6 12h1m10 0h1"/></>,
