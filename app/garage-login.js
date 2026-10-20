@@ -1,6 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { supabaseBrowser } from './garage-auth-client';
+import GarageIcon from './garage-icons';
+import './garage-login.css';
+
+function LoginIcon({ name }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    {name === 'email' ? <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 6 9 7 9-7M3 19l6-7m12 7-6-7"/></> : name === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/><path stroke="#ffdc46" d="M12 15v3"/></> : name === 'services' ? <path d="M21 3a6 6 0 0 1-7.5 7.5L5 19a2.1 2.1 0 0 1-3-3l8.5-8.5A6 6 0 0 1 18 0l-4 4 2 4 4-1Z" transform="translate(1 2) scale(.9)"/> : name === 'history' ? <><path d="M6 2h9l5 5v15H6Z"/><path d="M15 2v6h5M9 12h8M9 16h8M9 19h5"/></> : <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{name === 'hidden' && <path d="m3 21 18-18"/>}</>}
+  </svg>;
+}
 
 export default function GarageLogin({ admin = false }) {
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
@@ -21,24 +29,30 @@ export default function GarageLogin({ admin = false }) {
     } catch (err) { setMessage(err.message || 'Could not sign in.'); }
     finally { setBusy(false); }
   }
-  return <main className="garage-shell vvm-signin">
-    <header className="signin-header"><a className="garage-brand" href="/"><img src="/assets/logo.jpg" alt=""/> VVM DETAILS</a><a className="signin-back" href="/">Back to website <span aria-hidden="true">→</span></a></header>
-    <div className="signin-body"><aside className="signin-story" aria-label="Welcome to your VVM Garage">
-      <p className="signin-story-kicker"><span aria-hidden="true">✦</span> A LITTLE LOVE. EVERY DETAIL.</p>
-      <h2>Your car.<br/>{' '}Your care.<br/>{' '}<span>Your Garage.</span></h2>
-      <p className="signin-story-copy">That fresh-detail feeling.<br/>All in one happy place.</p>
-      <div className="signin-photo-strip" aria-hidden="true"><img src="/assets/white-lexus-is-front.jpg" alt=""/><img src="/assets/red-black-mercedes-amg-interior.jpg" alt=""/></div>
-      <div className="signin-perks"><span>PHOTOS</span><i aria-hidden="true">✦</i><span>PROTECTION</span><i aria-hidden="true">✦</i><span>YOUR HISTORY</span></div>
-    </aside><div className="signin-card-wrap"><section className="signin-panel" aria-labelledby="signin-title">
-      <div className="signin-accent" aria-hidden="true"><i/><i/><i/></div>
-      <div className="signin-intro"><span className="signin-kicker">{admin?'VVM ADMIN':'THE VVM FAMILY'}</span><h1 id="signin-title">{reset?'Reset password.':admin?'Let’s get to work.':'Welcome back.'}</h1><p>{reset?'Enter your email and we’ll send a reset link.':admin?'Sign in to manage your clients and their vehicles.':'Your car care deserves its own space. Enter yours.'}</p></div>
-      <form className="signin-form" onSubmit={submit} aria-busy={busy}>
-        <label htmlFor="signin-email">Email address</label><input id="signin-email" required type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/>
-        {!reset&&<><div className="signin-label-row"><label htmlFor="signin-password">Password</label><button type="button" disabled={busy} onClick={()=>{setReset(true);setMessage('');setPassword('')}}>Forgot password?</button></div><div className="signin-password"><input id="signin-password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}>{showPassword?'HIDE':'SHOW'}</button></div></>}
-        {message&&<p className="signin-message" role="status">{message}</p>}
-        <button className="signin-submit" disabled={busy}>{busy?'PLEASE WAIT…':reset?'SEND RESET LINK':'ENTER'}<span aria-hidden="true">→</span></button>
+  return <main className="virtual-login">
+    <picture className="virtual-login-scene" aria-hidden="true">
+      <source media="(max-width: 700px)" srcSet="/assets/garage/login-mobile.webp"/>
+      <img src="/assets/garage/login-desktop.webp" alt="" width="1672" height="941" fetchPriority="high"/>
+    </picture>
+    <a className="virtual-login-home" href="/" aria-label="VVM Details — back to website"><span aria-hidden="true">←</span> Back to website</a>
+    <section className="virtual-login-panel" aria-labelledby="signin-title">
+      <h1 id="signin-title" className={reset || admin ? 'virtual-login-title' : 'virtual-login-sr'}>{reset ? 'Reset password' : admin ? 'Admin sign in' : 'Sign in to your VVM Virtual Garage'}</h1>
+      {reset && <p className="virtual-login-description">Enter your email for a secure reset link.</p>}
+      <form className="virtual-login-form" onSubmit={submit} aria-busy={busy}>
+        <label className="virtual-login-sr" htmlFor="signin-email">Email address</label>
+        <div className="virtual-login-field"><LoginIcon name="email"/><input id="signin-email" name="email" required type="email" autoComplete="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/></div>
+        {!reset && <><label className="virtual-login-sr" htmlFor="signin-password">Password</label><div className="virtual-login-field"><LoginIcon name="lock"/><input id="signin-password" name="password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button className="virtual-login-eye" type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}><LoginIcon name={showPassword?'visible':'hidden'}/></button></div></>}
+        {message && <p className="virtual-login-message" role="status">{message}</p>}
+        <button className="virtual-login-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : reset ? 'Send reset link' : 'Sign In'}<span aria-hidden="true">→</span></button>
       </form>
-      {reset?<button className="signin-return" disabled={busy} onClick={()=>{setReset(false);setMessage('')}}>← Back to sign in</button>:!admin&&<p className="signin-help">Need your login? <a href="mailto:vvm.detailing@gmail.com">Contact the VVM team</a></p>}
-    </section><footer className="signin-footer">GOOD CARS. BRIGHTER DAYS.</footer></div></div>
+      <div className="virtual-login-divider"><span>{admin ? 'MANAGE YOUR GARAGE' : 'ENTER YOUR GARAGE'}</span></div>
+      <ul className="virtual-login-features" aria-label="Inside your garage">
+        <li><GarageIcon name="garage"/><span>Vehicles</span></li>
+        <li><LoginIcon name="services"/><span>Services</span></li>
+        <li><GarageIcon name="bookings"/><span>Appointments</span></li>
+        <li><LoginIcon name="history"/><span>History</span></li>
+      </ul>
+      <div className="virtual-login-support">{reset ? <button type="button" disabled={busy} onClick={()=>{setReset(false);setMessage('')}}>← Back to sign in</button> : <button type="button" disabled={busy} onClick={()=>{setReset(true);setMessage('');setPassword('');setShowPassword(false)}}>Forgot password?</button>}{!admin && <a href="mailto:vvm.detailing@gmail.com">Need help?</a>}</div>
+    </section>
   </main>;
 }
