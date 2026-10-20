@@ -1,0 +1,30 @@
+const assert=require('node:assert/strict');
+const sharp=require('sharp');
+const {prepareShowroomPhoto}=require('../server/garage-showroom');
+const auth=require('../server/garage-auth');
+const own='11111111-1111-4111-8111-111111111111',trent='22222222-2222-4222-8222-222222222222';
+let allowAdmin=false,reads=[];
+function db(kind){return {from(table){const filters={};const q={select(){return q},eq(key,value){filters[key]=value;return q},in(){return q},gte(){return q},lte(){return q},order(){return q},maybeSingle:async()=>{reads.push({kind,table,filters});return {data:{display_name:filters.user_id===trent?'Trent':'My Client',email:'client@example.invalid'},error:null}},then(resolve){reads.push({kind,table,filters});resolve({data:table==='garage_vehicles'?[{id:'vehicle-1',model:'2500',customer_id:filters.customer_id}]:table==='garage_photos'?[{id:'photo-1',vehicle_id:'vehicle-1',storage_path:'vehicle-1/cutout-private.webp'}]:[],error:null})}};return q},storage:{from(){return {createSignedUrl:async()=>({data:{signedUrl:'https://example.invalid/private-signed'}})}}}}}
+const userDb=db('user'),adminDb=db('admin');
+auth.customerContext=async()=>({user:{id:own,email:'me@example.invalid'},db:userDb,admin:adminDb});
+auth.requireAdmin=async ctx=>{if(!allowAdmin)throw Object.assign(new Error('Administrator access required.'),{status:403});return ctx};
+const garage=require('../server/garage-api');
+(async()=>{
+  let response=await garage.customerGet(new Request('https://example.invalid/api/garage'));let data=await response.json();
+  assert.equal(response.status,200);assert.equal(data.preview,false);assert.match(response.headers.get('cache-control'),/no-store/);
+  assert.equal(reads.find(r=>r.table==='garage_vehicles').filters.customer_id,own);
+  assert.equal(data.vehicles[0].photos[0].is_cutout,true);assert.equal(data.vehicles[0].photos[0].storage_path,undefined);
+  reads=[];response=await garage.customerGet(new Request(`https://example.invalid/api/garage?client=${trent}`));assert.equal(response.status,403);assert.equal(reads.length,0,'Non-admin preview must not query other clients');
+  allowAdmin=true;response=await garage.customerGet(new Request(`https://example.invalid/api/garage?client=${trent}`));data=await response.json();assert.equal(response.status,200);assert.equal(data.preview,true);assert.equal(data.profile.display_name,'Trent');assert.equal(reads.find(r=>r.table==='garage_vehicles').filters.customer_id,trent);assert.ok(reads.every(r=>r.kind==='admin'));
+  response=await garage.customerGet(new Request('https://example.invalid/api/garage?client=not-an-id'));assert.equal(response.status,400);
+  const cutout=await sharp({create:{width:600,height:400,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).composite([{input:await sharp({create:{width:200,height:100,channels:4,background:'#111'}}).png().toBuffer(),left:200,top:200}]).png().toBuffer();
+  let photo=await prepareShowroomPhoto(cutout);assert.equal(photo.isCutout,true);assert.equal(photo.warning,null);const size=await sharp(photo.bytes).metadata();assert.ok(size.width<600);assert.ok(size.height<400);
+  photo=await prepareShowroomPhoto(cutout,{keepFraming:true});assert.equal((await sharp(photo.bytes).metadata()).width,600);
+  const regular=await sharp({create:{width:100,height:80,channels:3,background:'#e9b3b3'}}).jpeg().toBuffer();
+  delete process.env.REMOVE_BG_API_KEY;photo=await prepareShowroomPhoto(regular,{removeBackground:true});assert.equal(photo.isCutout,false);assert.match(photo.warning,/Photo saved/);assert.equal((await sharp(photo.bytes).metadata()).format,'webp');
+  process.env.REMOVE_BG_API_KEY='test-placeholder';const originalFetch=global.fetch;let calls=0;global.fetch=async()=>{calls++;return new Response(cutout)};
+  photo=await prepareShowroomPhoto(regular,{removeBackground:true});assert.equal(photo.isCutout,true);assert.equal(calls,1);
+  await prepareShowroomPhoto(cutout,{removeBackground:true});assert.equal(calls,1,'Existing cutouts must not spend removal credits');
+  global.fetch=originalFetch;delete process.env.REMOVE_BG_API_KEY;
+  console.log('Showroom owner isolation, admin preview, private cutout URLs, framing, automatic removal and fallback passed.');
+})().catch(e=>{console.error(e);process.exitCode=1});

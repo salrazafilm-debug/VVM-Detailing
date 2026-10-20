@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js && node tests/garage.test.js && node tests/coupons.test.js && node tests/addons.test.js && node tests/customer-registration.test.js && node tests/prepare-photo.test.mjs && node tests/garage-photo.test.js"
+    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js && node tests/garage.test.js && node tests/coupons.test.js && node tests/addons.test.js && node tests/customer-registration.test.js && node tests/prepare-photo.test.mjs && node tests/garage-photo.test.js && node tests/garage-showroom.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",

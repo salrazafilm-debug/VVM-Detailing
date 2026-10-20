@@ -1,7 +1,7 @@
 const { customerContext, requireAdmin, responseError, config } = require('./garage-auth');
 const { createClient } = require('@supabase/supabase-js');
 const { vehicleLabel } = require('./garage-vehicle');
-const { normalizeGaragePhoto } = require('./garage-photo');
+const { prepareShowroomPhoto } = require('./garage-showroom');
 
 const json = (data, status = 200) => Response.json(data, { status });
 const clean = (s, max = 300) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -10,26 +10,35 @@ const easternToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Ne
 async function addPhotoUrls(admin, rows) {
   return Promise.all((rows || []).map(async row => {
     const { data } = await admin.storage.from('garage-photos').createSignedUrl(row.storage_path, 900);
-    return { ...row, url: data?.signedUrl || null };
+    const {storage_path,...photo}=row;
+    return { ...photo, is_cutout: /\/cutout-/.test(storage_path), url: data?.signedUrl || null };
   }));
 }
 
 exports.customerGet = async req => {
   try {
     const ctx = await customerContext(req);
+    const previewId = new URL(req.url).searchParams.get('client');
+    if (previewId) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(previewId)) throw Object.assign(new Error('Invalid client.'), {status:400});
+      await requireAdmin(ctx);
+    }
+    const owner = previewId || ctx.user.id, db = previewId ? ctx.admin : ctx.db;
     const [{ data: profile, error: pErr }, { data: vehicles, error: vErr }] = await Promise.all([
-      ctx.db.from('garage_profiles').select('display_name,email').eq('user_id', ctx.user.id).maybeSingle(),
-      ctx.db.from('garage_vehicles').select('*').order('created_at', { ascending: true }),
+      db.from('garage_profiles').select('display_name,email').eq('user_id', owner).maybeSingle(),
+      db.from('garage_vehicles').select('*').eq('customer_id', owner).order('created_at', { ascending: true }),
     ]);
+    if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
+    const clientJson = data => Response.json({...data,preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
-    if (!ids.length) return json({ profile: profile || { email: ctx.user.email }, vehicles: [] });
+    if (!ids.length) return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: [] });
     const [sv, ph, ap, cy, offers] = await Promise.all([
-      ctx.db.from('garage_services').select('*').in('vehicle_id', ids).order('service_date', { ascending: false }),
-      ctx.db.from('garage_photos').select('*').in('vehicle_id', ids).order('created_at', { ascending: false }),
-      ctx.db.from('garage_appointments').select('*').in('vehicle_id', ids).gte('starts_at', new Date().toISOString()).neq('status', 'cancelled').order('starts_at'),
-      ctx.db.from('garage_maintenance_cycles').select('*').in('vehicle_id', ids).eq('status', 'active'),
-      ctx.db.from('garage_offers').select('*').in('vehicle_id', ids).eq('status','available').lte('starts_on',easternToday()).gte('expires_at',easternToday()),
+      db.from('garage_services').select('*').in('vehicle_id', ids).order('service_date', { ascending: false }),
+      db.from('garage_photos').select('*').in('vehicle_id', ids).order('created_at', { ascending: false }),
+      db.from('garage_appointments').select('*').in('vehicle_id', ids).gte('starts_at', new Date().toISOString()).in('status', ['requested','confirmed']).order('starts_at'),
+      db.from('garage_maintenance_cycles').select('*').in('vehicle_id', ids).eq('status', 'active'),
+      db.from('garage_offers').select('*').in('vehicle_id', ids).eq('status','available').lte('starts_on',easternToday()).gte('expires_at',easternToday()),
     ]);
     for (const q of [sv, ph, ap, cy, offers]) if (q.error) throw Object.assign(new Error('Could not load Garage details.'), { status: 503 });
     const photos = await addPhotoUrls(ctx.admin, ph.data);
@@ -41,7 +50,7 @@ exports.customerGet = async req => {
       cycle: cy.data.find(x => x.vehicle_id === v.id) || null,
       offer: offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null,
     }));
-    return json({ profile: profile || { email: ctx.user.email }, vehicles: payload });
+    return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
   } catch (e) { return responseError(e); }
 };
 
@@ -60,8 +69,8 @@ exports.adminGet = async req => {
       const { data: signed } = await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.map(p => p.storage_path), 900);
       (signed || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
     }
-    (data || []).forEach(c => (c.garage_vehicles || []).forEach(v => { v.garage_photos = (v.garage_photos || []).map(({ storage_path, ...p }) => ({ ...p, url: urls[storage_path] || null })); }));
-    return Response.json({ customers: data, warning: vehicleError ? 'Customers loaded, but vehicle details could not be loaded. Please refresh before editing vehicles.' : null },{headers:{'Cache-Control':'no-store'}});
+    (data || []).forEach(c => (c.garage_vehicles || []).forEach(v => { v.garage_photos = (v.garage_photos || []).map(({ storage_path, ...p }) => ({ ...p, is_cutout: /\/cutout-/.test(storage_path), url: urls[storage_path] || null })); }));
+    return Response.json({ customers: data, showroom: {background_removal_available:!!process.env.REMOVE_BG_API_KEY}, warning: vehicleError ? 'Customers loaded, but vehicle details could not be loaded. Please refresh before editing vehicles.' : null },{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -160,8 +169,8 @@ exports.photoPost = async req => {
     if (!file.size || file.size > 4 * 1024 * 1024) throw Object.assign(new Error('This photo could not be prepared. Choose it again to resize it automatically.'), { status: 400 });
     const { data: vehicle, error: vErr } = await ctx.admin.from('garage_vehicles').select('id').eq('id', vehicle_id).single();
     if (vErr || !vehicle) throw Object.assign(new Error('Vehicle not found.'), { status: 404 });
-    const photoBytes = await normalizeGaragePhoto(await file.arrayBuffer());
-    const storage_path = `${vehicle_id}/${cryptoRandom()}.webp`;
+    const {bytes:photoBytes,isCutout,warning}=await prepareShowroomPhoto(await file.arrayBuffer(),{removeBackground:form.get('showroom')==='true',keepFraming:form.get('keep_framing')==='true'});
+    const storage_path = `${vehicle_id}/${isCutout?'cutout-':''}${cryptoRandom()}.webp`;
     const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(storage_path, photoBytes, { contentType: 'image/webp', upsert: false });
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
@@ -170,7 +179,7 @@ exports.photoPost = async req => {
       const {error:heroError}=await ctx.admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', vehicle_id);
       if(heroError) throw Object.assign(new Error('Photo saved to gallery, but could not set the cover. Select it again from admin.'),{status:503});
     }
-    return json({ ok: true, photo: data });
+    return json({ ok: true, photo: {...data,is_cutout:isCutout},warning });
   } catch (e) { return responseError(e); }
 };
 
