@@ -1,5 +1,7 @@
 /* The supplied artwork sets the composition; the opaque panel replaces its
    illustrated form with real, keyboard-accessible controls. */
+@font-face{font-family:'Nunito';font-style:normal;font-weight:400 800;font-display:swap;src:url('/assets/fonts/nunito-latin-wght-normal.woff2') format('woff2')}
+.virtual-login{--gbody:'Nunito',sans-serif}
 body:has(.virtual-login){margin:0;background:#121717}
 .virtual-login,.virtual-login *{box-sizing:border-box}
 .virtual-login{position:relative;isolation:isolate;width:100%;min-height:max(100svh,56.28vw);background:#121717;color:#fff;font-family:var(--gbody),sans-serif;overflow:hidden;padding:calc(max(100svh,56.28vw)*.452) 20px 70px}
@@ -23,28 +25,28 @@ body:has(.virtual-login){margin:0;background:#121717}
 .virtual-login-submit{display:flex;justify-content:center;align-items:center;gap:8px;width:100%;min-height:clamp(52px,3.55vw,68px);padding:12px 16px;margin-top:3px;border:1px solid #ffe661;border-radius:999px;background:linear-gradient(105deg,#ffde3f,#ffc52c 55%,#ffdf50);color:#080805;font:800 clamp(20px,1.4vw,26px)/1.2 var(--gbody),sans-serif;box-shadow:0 5px 25px #ffd02d30;cursor:pointer;transition:box-shadow .15s,filter .15s}
 .virtual-login-submit:hover{filter:brightness(1.06);box-shadow:0 5px 30px #ffd02d50}
 .virtual-login-submit span{font-size:1.2em;line-height:1}
-.virtual-login-divider{display:flex;align-items:center;gap:12px;margin:21px 0 18px;font-size:clamp(10px,.75vw,14px);font-weight:800;letter-spacing:.07em;text-align:center;white-space:nowrap}
+.virtual-login-divider{display:flex;align-items:center;gap:12px;margin:21px 0 18px;font-size:clamp(12px,.85vw,15px);font-weight:700;letter-spacing:.025em;text-align:center;white-space:nowrap}
 .virtual-login-divider:before,.virtual-login-divider:after{content:"";height:1px;flex:1;background:#b8b5a975}
 .virtual-login-features{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;list-style:none;padding:0;margin:0}
 .virtual-login-features li{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
 .virtual-login-features svg{width:clamp(30px,2.5vw,46px);height:clamp(30px,2.5vw,46px);color:#ffdf48;stroke-width:1.4}
-.virtual-login-features span{font-size:clamp(8px,.7vw,13px);font-weight:800;text-transform:uppercase;white-space:nowrap}
+.virtual-login-features span{font-size:clamp(10px,.8vw,14px);font-weight:700;white-space:nowrap}
 .virtual-login-support{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
 .virtual-login-support button,.virtual-login-support a{display:inline-flex;align-items:center;min-height:30px;padding:0;border:0;background:transparent;color:#e5d8af;font:600 11px/1.4 var(--gbody),sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .virtual-login-message{margin:0;padding:10px 12px;border:1px solid #ffdb4250;border-radius:10px;background:#ffdb4215;color:#fff1bb;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .virtual-login button:disabled,.virtual-login input:disabled{opacity:.65;cursor:wait}
 .virtual-login a:focus-visible,.virtual-login button:focus-visible{outline:3px solid #ffdf48;outline-offset:3px}
 @media(max-width:700px){
-  .virtual-login{min-height:max(100svh,217.27vw);padding:calc(max(100svh,217.27vw)*.5005) 16px max(60px,env(safe-area-inset-bottom))}
+  .virtual-login{min-height:max(100svh,217.27vw);padding:calc(max(100svh,217.27vw)*.355) 12px max(60px,env(safe-area-inset-bottom))}
   .virtual-login-home{top:max(12px,env(safe-area-inset-top));left:12px;font-size:11px;min-height:38px;padding:8px 12px}
-  .virtual-login-panel{width:67%;min-width:min(320px,100%);max-width:none;padding:20px;border-radius:24px}
+  .virtual-login-panel{display:flex;flex-direction:column;justify-content:center;width:100%;min-width:0;max-width:none;min-height:calc(max(100svh,217.27vw)*.42);padding:clamp(20px,4vw,28px);border-radius:28px}
   .virtual-login-field{height:48px;border-radius:17px}
   .virtual-login-field>svg{left:14px;width:22px;height:22px}
   .virtual-login-field input{font-size:16px;padding-left:46px}
   .virtual-login-submit{min-height:52px;font-size:21px}
-  .virtual-login-divider{font-size:10px;gap:9px;margin:20px 0 17px}
+  .virtual-login-divider{font-size:12px;gap:9px;margin:20px 0 17px}
   .virtual-login-features{gap:4px}
   .virtual-login-features svg{width:32px;height:32px}
-  .virtual-login-features span{font-size:8px}
+  .virtual-login-features span{font-size:clamp(9px,2.55vw,13px)}
 }
 @media(prefers-reduced-motion:reduce){.virtual-login-field,.virtual-login-submit{transition:none}}
