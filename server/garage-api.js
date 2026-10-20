@@ -159,6 +159,20 @@ exports.adminPost = async req => {
       if (photos?.length) await ctx.admin.storage.from('garage-photos').remove(photos.map(p => p.storage_path)).catch(() => {});
       return json({ ok: true, message: 'Vehicle deleted.' });
     }
+    if (action === 'delete_photo') {
+      const photo_id = clean(b.photo_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
+      const { data: photo, error: pErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path').eq('id', photo_id).maybeSingle();
+      if (pErr) throw Object.assign(new Error('Could not find this photo. Try again.'), { status: 503 });
+      if (!photo) throw Object.assign(new Error('Photo not found.'), { status: 404 });
+      // Clear the cover first so the vehicle never points at a deleted photo.
+      const { error: heroError } = await ctx.admin.from('garage_vehicles').update({ hero_photo_id: null }).eq('id', photo.vehicle_id).eq('hero_photo_id', photo.id);
+      if (heroError) throw Object.assign(new Error('Could not remove this photo as the cover. Nothing was deleted.'), { status: 503 });
+      const { error } = await ctx.admin.from('garage_photos').delete().eq('id', photo.id);
+      if (error) throw Object.assign(new Error('Could not delete this photo.'), { status: 503 });
+      await ctx.admin.storage.from('garage-photos').remove([photo.storage_path]).catch(() => {});
+      return json({ ok: true, vehicle_id: photo.vehicle_id, photo_id: photo.id, message: 'Photo deleted.' });
+    }
     if (action === 'record_service') {
       const vehicle_id = clean(b.vehicle_id, 80), service_date = clean(b.service_date, 10), title = clean(b.title, 140);
       if (!vehicle_id || !/^\d{4}-\d{2}-\d{2}$/.test(service_date) || service_date > easternToday() || !title) throw Object.assign(new Error('Enter the vehicle, completed service date, and service name.'), { status: 400 });
