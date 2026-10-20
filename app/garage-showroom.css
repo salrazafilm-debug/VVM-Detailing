@@ -175,3 +175,6 @@
 /* Owner-set showroom size and position (set in admin preview) */
 .showroom-car{transform:translateX(calc(-50% + var(--sx,0%))) translateY(var(--sy,0%)) scale(var(--ss,1));transform-origin:center bottom}
 .showroom-room.is-scene{transform:translate(var(--sx,0%),var(--sy,0%)) scale(var(--ss,1));transform-origin:center}
+/* Bigger brand logo at the top of My Garage */
+.room-garage-logo{max-width:92%;max-height:150px}
+@media(max-width:800px){.room-garage-logo{max-height:120px}}

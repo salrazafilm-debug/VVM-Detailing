@@ -55,17 +55,16 @@ function Health({ vehicle }) {
     {rows.length>0&&<p className={`room-health-title${good?'':' is-warn'}`}><GarageIcon name="medic"/>{good?'Your vehicle is healthy!':'Needs attention'}</p>}
     <div className="room-health-list">{rows.map(r=><HealthCard key={r.key} row={r}/>)}</div>
     {rows.some(r=>!r.ok)&&<a className="room-gold" href="/#book">BOOK MY DAY</a>}
+    <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{services[0]?<><strong>{services[0].title}</strong><time>{date(services[0].service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
     <section className="room-done-box"><span className="room-label">COMPLETED SERVICES</span>{services.length?<ul>{services.map(s=><li key={s.id}><time>{date(s.service_date)}</time><strong>{s.title}</strong>{s.description&&<p>{s.description}</p>}</li>)}</ul>:<p className="room-muted">Your completed details will show up here after each visit.</p>}</section>
   </>;
 }
 
 function VehicleDetails({ vehicle, onPhoto }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="garage"/><h3>Your space is ready.</h3><p>We’ll add your vehicle and care history here.</p></div>;
-  const prot=protectionOf(vehicle),photos=(vehicle.photos||[]).filter(p=>p.url&&p.show_on_garage!==false).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)),last=(vehicle.services||[])[0];
+  const photos=(vehicle.photos||[]).filter(p=>p.url&&p.show_on_garage!==false).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   return <>
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
-    {prot&&vehicle.show_protection!==false&&<HealthCard row={{label:prot.label,ok:prot.ok,note:prot.note,pct:prot.pct,bar:true}}/>}
-    <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{last?<><strong>{last.title}</strong><time>{date(last.service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
     {photos.length>0&&<div className="room-showcase">{photos.map(p=><button type="button" key={p.id} onClick={()=>onPhoto(p)} aria-label={`Open ${p.caption||'vehicle photo'}`}><img src={p.url} alt={p.caption||'Your vehicle'} loading="lazy"/></button>)}</div>}
   </>;
 }
