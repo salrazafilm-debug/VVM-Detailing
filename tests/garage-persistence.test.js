@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict');
 const sharp=require('sharp');
 const {persistenceFixture}=require('./garage-persistence-fixture');
+const {preferredGarageVehicleId}=require('../server/garage-vehicle');
 const {mergeAdminSnapshot,mergeSavedPhoto}=require('../server/garage-admin-state');
 const fixture=persistenceFixture(),{db,state,files,fail,clientId}=fixture;
 const auth=require('../server/garage-auth');auth.customerContext=async()=>({admin:db,db,user:{id:clientId}});auth.requireAdmin=async ctx=>ctx;
@@ -15,7 +16,7 @@ const get=()=>api.adminGet(new Request('https://example.invalid/api/garage/admin
   assert.equal(snapshot.customers[0].garage_vehicles[0].id,vehicle.id,'Confirmed vehicle survives its first database read');
   let screen=snapshot.customers;
   const bytes=await sharp({create:{width:2400,height:1600,channels:4,background:{r:10,g:10,b:10,alpha:.7}}}).png().toBuffer();
-  const upload=()=>{const form=new FormData();form.append('vehicle_id',vehicle.id);form.append('is_hero','true');form.append('file',new Blob([bytes],{type:'image/png'}),'truck.png');return api.photoPost(new Request('https://example.invalid/api/garage/photo',{method:'POST',body:form}))};
+  const upload=(uploadId='')=>{const form=new FormData();if(uploadId)form.append('upload_id',uploadId);form.append('vehicle_id',vehicle.id);form.append('is_hero','true');form.append('file',new Blob([bytes],{type:'image/png'}),'truck.png');return api.photoPost(new Request('https://example.invalid/api/garage/photo',{method:'POST',body:form}))};
   let response=await upload();assert.equal(response.status,200);let saved=await response.json();
   assert.ok(saved.cover_saved);assert.ok(saved.photo.url);assert.equal(saved.photo.storage_path,undefined);
   screen=mergeSavedPhoto(screen,saved);
@@ -46,6 +47,15 @@ const get=()=>api.adminGet(new Request('https://example.invalid/api/garage/admin
   fail['garage_photos:insert']=true;response=await upload();assert.equal(response.status,503);assert.equal(files.size,2,'Failed metadata save removes orphaned storage object');
   delete fail['garage_photos:insert'];fail.storage=true;response=await upload();assert.equal(response.status,503);assert.equal(state.garage_photos.length,2);
   delete fail.storage;
+  const retryId='44444444-4444-4444-8444-444444444444';
+  response=await upload(retryId);assert.equal(response.status,200);const firstAttempt=await response.json();assert.equal(files.size,3);
+  response=await upload(retryId);assert.equal(response.status,200);const replay=await response.json();assert.equal(replay.reused,true);assert.equal(replay.photo.id,firstAttempt.photo.id);assert.equal(files.size,3);assert.equal(state.garage_photos.length,3,'Retry after lost acknowledgement must not create duplicate photo records');
+  response=await upload('invalid-upload');assert.equal(response.status,400);assert.equal(files.size,3);
+  const choices=[{id:'empty',photos:[]},{id:'truck',hero_photo_id:saved.photo.id,photos:[saved.photo]}];
+  assert.equal(preferredGarageVehicleId(choices),'truck','An older empty vehicle must not hide a saved truck');
+  assert.equal(preferredGarageVehicleId(choices,'empty'),'empty','An explicit empty vehicle selection is respected');
+  assert.equal(preferredGarageVehicleId([]),'');
+  assert.equal(preferredGarageVehicleId([{id:'empty'},{id:'after',garage_photos:[{photo_kind:'after'}]}]),'after');
   state.garage_photos=[];snapshot=await(await get()).json();assert.equal(mergeAdminSnapshot(screen,snapshot)[0].garage_vehicles[0].garage_photos.length,0,'Successful empty reads are authoritative');
-  console.log('Vehicle and photo persistence: actual handlers, ambiguous FK regression, reload, client cover, partial-read recovery, upload cleanup and cover retry passed.');
+  console.log('Vehicle and photo persistence: actual handlers, ambiguous FK regression, reload, client cover, partial-read recovery, upload cleanup, cover retry, safe replay and preferred vehicle selection passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

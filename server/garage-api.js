@@ -171,34 +171,47 @@ exports.adminPost = async req => {
   } catch (e) { return responseError(e); }
 };
 
+async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, reused=false}) {
+  const warnings=warning?[warning]:[];
+  let coverSaved=false;
+  if (isHero) {
+    const {error:heroError}=await admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', data.vehicle_id);
+    coverSaved=!heroError;
+    if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
+  }
+  let url=null;
+  try {const signed=await admin.storage.from('garage-photos').createSignedUrl(data.storage_path,900);url=signed.data?.signedUrl||null;} catch { /* Saving succeeded even if the preview is unavailable. */ }
+  if(!url)warnings.push('Photo saved. Its private preview could not load; refresh to try again.');
+  const {storage_path:privatePath,...savedPhoto}=data;
+  return json({ok:true,photo:{...savedPhoto,is_cutout:isCutout,url},cover_saved:coverSaved,reused,warning:warnings.join(' ')||null});
+}
+
 exports.photoPost = async req => {
   try {
     const ctx = await requireAdmin(await customerContext(req));
     const form = await req.formData();
     const vehicle_id = clean(form.get('vehicle_id'), 80), kind = clean(form.get('kind'), 20);
     const file = form.get('file');
+    const uploadId=clean(form.get('upload_id'),80);
+    if(uploadId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uploadId))throw Object.assign(new Error('Choose the photo again to start a new upload.'),{status:400});
     if (!vehicle_id || !file || typeof file.arrayBuffer !== 'function') throw Object.assign(new Error('Choose a vehicle and photo.'), { status: 400 });
     if (!file.size || file.size > 4 * 1024 * 1024) throw Object.assign(new Error('This photo could not be prepared. Choose it again to resize it automatically.'), { status: 400 });
     const { data: vehicle, error: vErr } = await ctx.admin.from('garage_vehicles').select('id').eq('id', vehicle_id).single();
     if (vErr || !vehicle) throw Object.assign(new Error('Vehicle not found.'), { status: 404 });
+    // Retries keep the same upload ID, including after a lost success response.
+    // The existing unique storage_path gives us persistence without another table.
+    if(uploadId){
+      const {data:existing,error:lookupError}=await ctx.admin.from('garage_photos').select('*').eq('vehicle_id',vehicle_id).in('storage_path',[`${vehicle_id}/${uploadId}.webp`,`${vehicle_id}/cutout-${uploadId}.webp`]).maybeSingle();
+      if(lookupError)throw Object.assign(new Error('Could not check whether this photo was already saved. Retry in a moment.'),{status:503});
+      if(existing)return await savedPhotoResponse(ctx.admin,existing,{isCutout:/\/cutout-/.test(existing.storage_path),isHero:form.get('is_hero')==='true',reused:true});
+    }
     const {bytes:photoBytes,isCutout,warning}=await prepareShowroomPhoto(await file.arrayBuffer(),{removeBackground:form.get('showroom')==='true',keepFraming:form.get('keep_framing')==='true'});
-    const storage_path = `${vehicle_id}/${isCutout?'cutout-':''}${cryptoRandom()}.webp`;
+    const storage_path = `${vehicle_id}/${isCutout?'cutout-':''}${uploadId||cryptoRandom()}.webp`;
     const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(storage_path, photoBytes, { contentType: 'image/webp', upsert: false });
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
     if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
-    const warnings=warning?[warning]:[];
-    let coverSaved=false;
-    if (form.get('is_hero') === 'true') {
-      const {error:heroError}=await ctx.admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', vehicle_id);
-      coverSaved=!heroError;
-      if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
-    }
-    let url=null;
-    try {const signed=await ctx.admin.storage.from('garage-photos').createSignedUrl(storage_path,900);url=signed.data?.signedUrl||null;} catch { /* Saving succeeded even if the preview is unavailable. */ }
-    if(!url)warnings.push('Photo saved. Its private preview could not load; refresh to try again.');
-    const {storage_path:privatePath,...savedPhoto}=data;
-    return json({ok:true,photo:{...savedPhoto,vehicle_id,is_cutout:isCutout,url},cover_saved:coverSaved,warning:warnings.join(' ')||null});
+    return await savedPhotoResponse(ctx.admin,data,{isCutout,warning,isHero:form.get('is_hero')==='true'});
   } catch (e) { return responseError(e); }
 };
 

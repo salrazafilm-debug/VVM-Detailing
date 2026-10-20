@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { vehicleLabel } from '../server/garage-vehicle';
+import { vehicleLabel, preferredGarageVehicleId } from '../server/garage-vehicle';
 import { garageRequest, signOut } from './garage-auth-client';
 import { sealantProgress } from '../server/garage-dates';
 import GarageIcon from './garage-icons';
@@ -35,7 +35,7 @@ export default function Garage() {
   useEffect(()=>{
     let active=true;
     const client=new URLSearchParams(location.search).get('client');
-    async function load(){try{const d=await garageRequest(`/api/garage${client?`?client=${encodeURIComponent(client)}`:''}`,{cache:'no-store'});if(active){setData(d);setSelected(id=>d.vehicles.some(v=>v.id===id)?id:d.vehicles[0]?.id||'');setError('')}}catch(e){if(active)setError(e.message)}finally{if(active)setLoading(false)}}
+    async function load(){try{const d=await garageRequest(`/api/garage${client?`?client=${encodeURIComponent(client)}`:''}`,{cache:'no-store'});if(active){setData(d);setSelected(id=>preferredGarageVehicleId(d.vehicles,id));setError('')}}catch(e){if(active)setError(e.message)}finally{if(active)setLoading(false)}}
     load();const timer=setInterval(load,10*60*1000),clock=setInterval(()=>refreshClock(n=>n+1),60000);const visible=()=>{if(document.visibilityState==='visible')load()};document.addEventListener('visibilitychange',visible);
     return()=>{active=false;clearInterval(timer);clearInterval(clock);document.removeEventListener('visibilitychange',visible)};
   },[]);
