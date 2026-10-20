@@ -59,18 +59,30 @@ exports.adminGet = async req => {
     const ctx = await requireAdmin(await customerContext(req));
     const { data: profiles, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at').order('created_at', { ascending: false });
     if (error) throw Object.assign(new Error('Could not load customers.'), { status: 503 });
-    // Customer registration must not depend on nested vehicle/photo relationships.
-    const {data: vehicles,error:vehicleError}=await ctx.admin.from('garage_vehicles').select('id,customer_id,year,make,model,created_at,garage_services(id,service_date,title),garage_photos(id,photo_kind,caption,created_at,storage_path)');
-    const data=(profiles||[]).map(profile=>({...profile,garage_vehicles:(vehicles||[]).filter(v=>v.customer_id===profile.user_id)}));
-    // Private photos: short-lived links, signed in one batch. The storage path itself never leaves the server.
-    const photos = (data || []).flatMap(c => (c.garage_vehicles || []).flatMap(v => v.garage_photos || []));
-    const urls = {};
-    if (photos.length) {
-      const { data: signed } = await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.map(p => p.storage_path), 900);
-      (signed || []).forEach(s => { if (s.signedUrl) urls[s.path] = s.signedUrl; });
+    // Photos reference vehicles, and vehicles also reference their cover photo.
+    // Read each table explicitly: embedding garage_photos is ambiguous in PostgREST.
+    const {data: vehicles,error:vehicleError}=await ctx.admin.from('garage_vehicles').select('id,customer_id,year,make,model,color,hero_photo_id,created_at').order('created_at', {ascending:true});
+    const ids=(vehicles||[]).map(v=>v.id);
+    const [services,photos]=ids.length&&!vehicleError?await Promise.all([
+      ctx.admin.from('garage_services').select('id,vehicle_id,service_date,title').in('vehicle_id',ids),
+      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path').in('vehicle_id',ids).order('created_at',{ascending:false}),
+    ]):[{data:[]},{data:[]}];
+    const warnings=[];
+    if(vehicleError)warnings.push('Vehicle list could not refresh. Existing records have not been removed. Please refresh before adding vehicles.');
+    if(services.error)warnings.push('Service history could not refresh.');
+    if(photos.error)warnings.push('Photo list could not refresh. Saved photos have not been removed.');
+    const urls={};
+    if(photos.data?.length){
+      try {
+        const {data:signed,error:signError}=await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.data.map(p=>p.storage_path),900);
+        (signed||[]).forEach(s=>{if(s.signedUrl)urls[s.path]=s.signedUrl});
+        if(signError||photos.data.some(p=>!urls[p.storage_path]))warnings.push('Photos are saved, but some private previews could not refresh.');
+      } catch {warnings.push('Photos are saved, but private previews could not refresh.');}
     }
-    (data || []).forEach(c => (c.garage_vehicles || []).forEach(v => { v.garage_photos = (v.garage_photos || []).map(({ storage_path, ...p }) => ({ ...p, is_cutout: /\/cutout-/.test(storage_path), url: urls[storage_path] || null })); }));
-    return Response.json({ customers: data, showroom: {background_removal_available:!!process.env.REMOVE_BG_API_KEY}, warning: vehicleError ? 'Customers loaded, but vehicle details could not be loaded. Please refresh before editing vehicles.' : null },{headers:{'Cache-Control':'no-store'}});
+    const safePhotos=(photos.data||[]).map(({storage_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[storage_path]||null}));
+    const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id)}));
+    const data=(profiles||[]).map(profile=>({...profile,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
+    return Response.json({customers:data,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -144,7 +156,7 @@ exports.adminPost = async req => {
       if (pErr || !photo) throw Object.assign(new Error('Photo not found.'), { status: 404 });
       const { error } = await ctx.admin.from('garage_vehicles').update({ hero_photo_id: photo.id }).eq('id', photo.vehicle_id);
       if (error) throw Object.assign(new Error('Could not set vehicle cover photo.'), { status: 503 });
-      return json({ ok: true });
+      return json({ ok: true, vehicle_id: photo.vehicle_id, hero_photo_id: photo.id });
     }
     if (action === 'appointment') {
       const vehicle_id = clean(b.vehicle_id, 80), service_label = clean(b.service_label, 140);
@@ -175,11 +187,18 @@ exports.photoPost = async req => {
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
     if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
+    const warnings=warning?[warning]:[];
+    let coverSaved=false;
     if (form.get('is_hero') === 'true') {
       const {error:heroError}=await ctx.admin.from('garage_vehicles').update({ hero_photo_id: data.id }).eq('id', vehicle_id);
-      if(heroError) throw Object.assign(new Error('Photo saved to gallery, but could not set the cover. Select it again from admin.'),{status:503});
+      coverSaved=!heroError;
+      if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
     }
-    return json({ ok: true, photo: {...data,is_cutout:isCutout},warning });
+    let url=null;
+    try {const signed=await ctx.admin.storage.from('garage-photos').createSignedUrl(storage_path,900);url=signed.data?.signedUrl||null;} catch { /* Saving succeeded even if the preview is unavailable. */ }
+    if(!url)warnings.push('Photo saved. Its private preview could not load; refresh to try again.');
+    const {storage_path:privatePath,...savedPhoto}=data;
+    return json({ok:true,photo:{...savedPhoto,vehicle_id,is_cutout:isCutout,url},cover_saved:coverSaved,warning:warnings.join(' ')||null});
   } catch (e) { return responseError(e); }
 };
 

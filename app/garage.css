@@ -94,3 +94,5 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .admin-preview-link{margin-top:16px;width:max-content;font-size:.65rem}.admin-dash .room-link{font-size:.72rem;font-weight:800;text-decoration:underline;color:#72531d}
 
 .admin-preview-link{color:#fff!important}
+
+.admin-saved-photo{display:flex;flex-direction:column;align-items:flex-start;gap:10px;width:150px;max-width:100%;padding:8px;border:1px solid #1a121419;border-radius:12px}.admin-saved-photo .g-text-button{font-size:.64rem;text-align:left}.admin-saved-photo img{width:132px;height:100px;max-width:100%}
