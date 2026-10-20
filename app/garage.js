@@ -7,7 +7,7 @@ import GarageIcon from './garage-icons';
 import './garage-showroom.css';
 
 const tabs = [['home','Home'],['services','Services'],['garage','My Garage'],['bookings','Bookings'],['profile','Profile']];
-const date = value => value ? new Date(value.includes('T') ? value : `${value}T12:00:00Z`).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',year:'numeric'}) : '—';
+const date = value => value ? (value instanceof Date ? value : new Date(String(value).includes('T') ? value : `${value}T12:00:00Z`)).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',year:'numeric'}) : '—';
 const time = value => new Date(value).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
 const money = cents => (cents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});
 const isInterior = photo => photo.photo_kind==='interior' || /interior/i.test(photo.caption||'');
