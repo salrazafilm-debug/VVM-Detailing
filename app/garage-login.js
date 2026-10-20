@@ -11,17 +11,17 @@ function LoginIcon({ name }) {
 }
 
 export default function GarageLogin({ admin = false }) {
-  const [name, setName] = useState(''), [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
+  const [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
   const [showPassword,setShowPassword] = useState(false);
   async function submit(e) {
     e.preventDefault(); setBusy(true); setMessage('');
     try {
       if (reset) {
-        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:name.trim(), action:'reset', redirectTo:`${location.origin}/reset-password` }) });
+        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password, action:'reset', redirectTo:`${location.origin}/reset-password` }) });
         const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not send the reset link.');
         setMessage('Check your email for a secure password reset link.');
       } else {
-        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name:name.trim(), password, action:'login' }) });
+        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password, action:'login' }) });
         const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not sign in.');
         const { error } = await supabaseBrowser().auth.setSession(result.session); if (error) throw error;
         location.assign(admin ? '/garage-admin' : '/garage');
@@ -39,9 +39,8 @@ export default function GarageLogin({ admin = false }) {
       <h1 id="signin-title" className={reset || admin ? 'virtual-login-title' : 'virtual-login-sr'}>{reset ? 'Reset password' : admin ? 'Admin sign in' : 'Sign in to your VVM Virtual Garage'}</h1>
       {reset && <p className="virtual-login-description">Enter your email for a secure reset link.</p>}
       <form className="virtual-login-form" onSubmit={submit} aria-busy={busy}>
-        <label className="virtual-login-sr" htmlFor="signin-name">Name</label>
-        <div className="virtual-login-field"><LoginIcon name="profile"/><input id="signin-name" name="name" required type="text" autoComplete="username" placeholder="Name" value={name} onChange={e=>setName(e.target.value)} disabled={busy}/></div>
-        {!reset && <><label className="virtual-login-sr" htmlFor="signin-password">Password</label><div className="virtual-login-field"><LoginIcon name="lock"/><input id="signin-password" name="password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button className="virtual-login-eye" type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}><LoginIcon name={showPassword?'visible':'hidden'}/></button></div></>}
+        <label className="virtual-login-sr" htmlFor="signin-password">Password</label>
+        <div className="virtual-login-field"><LoginIcon name="lock"/><input id="signin-password" name="password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button className="virtual-login-eye" type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}><LoginIcon name={showPassword?'visible':'hidden'}/></button></div>
         {message && <p className="virtual-login-message" role="status">{message}</p>}
         <button className="virtual-login-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : reset ? 'Send reset link' : 'Sign In'}<span aria-hidden="true">→</span></button>
       </form>
@@ -52,7 +51,7 @@ export default function GarageLogin({ admin = false }) {
         <li><GarageIcon name="bookings"/><span>Appointments</span></li>
         <li><LoginIcon name="history"/><span>History</span></li>
       </ul>
-      <div className="virtual-login-support">{reset ? <button type="button" disabled={busy} onClick={()=>{setReset(false);setMessage('')}}>← Back to sign in</button> : <button type="button" disabled={busy} onClick={()=>{setReset(true);setMessage('');setPassword('');setShowPassword(false)}}>Forgot password?</button>}{!admin && <a href="mailto:vvm.detailing@gmail.com">Need help?</a>}</div>
+      <div className="virtual-login-support">{!admin && <a href="mailto:vvm.detailing@gmail.com">Need a new password?</a>}</div>
     </section>
   </main>;
 }

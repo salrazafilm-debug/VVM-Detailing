@@ -122,6 +122,13 @@ exports.adminPost = async req => {
       if (pErr) throw Object.assign(new Error('Login created but profile setup failed. Retry from the customer list.'), { status: 503 });
       return json({ ok: true, customer_id: data.user.id, customer:{...customer,garage_vehicles:[]}, message: recovered ? 'Customer profile recovered and selected. Their original password has not changed.' : 'Client login created and selected. Add their vehicle below, then share their login privately.' });
     }
+    if (action === 'set_password') {
+      const customer_id = clean(b.customer_id, 80), password = String(b.password || '');
+      if (!customer_id || password.length < 8) throw Object.assign(new Error('Use a password with at least 8 characters.'), { status: 400 });
+      const { error } = await ctx.admin.auth.admin.updateUserById(customer_id, { password });
+      if (error) throw Object.assign(new Error('Could not change this customer password.'), { status: 400 });
+      return json({ ok:true, message:'Customer password updated. Share it privately.' });
+    }
     if (action === 'create_vehicle') {
       const customer_id = clean(b.customer_id, 80);
       const yearText = String(b.year ?? '').trim();
