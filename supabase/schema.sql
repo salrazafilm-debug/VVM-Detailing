@@ -39,13 +39,15 @@ create table if not exists public.garage_profiles (
 create table if not exists public.garage_vehicles (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid not null references public.garage_profiles(user_id) on delete cascade,
-  year integer not null check (year between 1900 and 2200),
-  make text not null,
+  year integer check (year between 1900 and 2200),
+  make text,
   model text not null,
   color text,
   hero_photo_id uuid,
   created_at timestamptz not null default now()
 );
+-- Existing installations can also accept unknown year/make.
+alter table public.garage_vehicles alter column year drop not null, alter column make drop not null;
 create index if not exists garage_vehicles_customer_idx on public.garage_vehicles(customer_id);
 
 create table if not exists public.garage_services (

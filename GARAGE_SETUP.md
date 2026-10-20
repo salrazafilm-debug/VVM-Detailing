@@ -37,7 +37,9 @@ The Vercel cron calls `/api/garage/reminder` daily at 14:00 UTC. It finds only c
 
 ## 4. Admin workflow
 
-Open `/admin` to sign in, then use the client-first workspace at `/garage-admin`. Select a client by name (or create their login with a name, email and temporary password), then select one of their vehicles (or add a vehicle). New clients and vehicles are selected automatically. Upload photos next; the saved gallery refreshes after each upload. Share new client credentials privately; clients can use Forgot password to choose their own password.
+Existing databases: run `supabase/migrations/20261020004500_optional_vehicle_details.sql` once in the SQL Editor to allow unknown year/make. Existing vehicle records remain unchanged. New installations using `supabase/schema.sql` already include this update.
+
+Open `/admin` to sign in, then use the client-first workspace at `/garage-admin`. Select a client by name (or create their login with a name, email and temporary password), then select one of their vehicles (or add a vehicle). Only the model is required; year and make are optional. New clients and vehicles are selected automatically. Upload photos next; the saved gallery refreshes after each upload. Share new client credentials privately; clients can use Forgot password to choose their own password.
 
 Completed details, protection, appointments and the showroom photo studio are optional expandable sections for the selected vehicle. The client directory and dated history are below the workspace. Changing client or vehicle clears unsaved photo, service and appointment details. Mark **Paint Ceramic Sealant Applied** only for qualifying details; the other three protection selections default off. Photos are automatically resized and compressed before upload; HEIC is decoded in the browser when needed. The server validates and re-encodes image pixels as WebP, with a maximum 1800px long edge and no EXIF/GPS metadata, before storing them in the private bucket. No manual file conversion is required.
 
