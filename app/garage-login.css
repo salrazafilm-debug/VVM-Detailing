@@ -16,6 +16,7 @@ body:has(.virtual-login){margin:0;background:#121717}
 .virtual-login-field>svg{position:absolute;left:17px;width:24px;height:24px;pointer-events:none}
 .virtual-login-field input{width:100%;min-width:0;height:100%;padding:0 15px 0 52px;border:0;border-radius:inherit;background:transparent;color:#fff;font:500 clamp(16px,1.15vw,21px)/1.2 var(--gbody),sans-serif;outline:none}
 .virtual-login-field input::placeholder{color:#aaa9a6;opacity:1}
+.virtual-login-field input:-webkit-autofill,.virtual-login-field input:-webkit-autofill:hover,.virtual-login-field input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px #20201e inset;-webkit-text-fill-color:#fff;caret-color:#fff}
 .virtual-login-field input[name=password]{padding-right:52px}
 .virtual-login-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:44px;height:44px;padding:10px;border:0;border-radius:14px;background:transparent;color:#f8f8f7;cursor:pointer}
 .virtual-login-eye svg{width:24px;height:24px}
