@@ -10,5 +10,9 @@ const req=()=>new Request('https://example.invalid',{method:'POST',headers:{'con
   brokenVehicles=true;response=await garage.adminGet(req());result=await response.json();assert.equal(response.status,200);assert.equal(result.customers[0].user_id,'client-1');assert.ok(result.warning);assert.equal(response.headers.get('cache-control'),'no-store');
   mode='duplicate';profiles=[];response=await garage.adminPost(req());result=await response.json();assert.equal(response.status,200);assert.match(result.message,/recovered/);assert.equal(profiles.length,1);
   response=await garage.adminPost(req());result=await response.json();assert.equal(response.status,200);assert.match(result.message,/password has not changed/);
+  for (const year of ['not-a-year',2024.5,1899,new Date().getFullYear()+2]) {
+    response=await garage.adminPost(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'create_vehicle',customer_id:'client-1',year,make:'Lexus',model:'IS'})}));
+    assert.equal(response.status,400,`Invalid vehicle year ${year} must be rejected before writing`);
+  }
   console.log('Customer registration, independent listing, partial-account recovery and existing selection passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

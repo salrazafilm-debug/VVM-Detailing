@@ -37,7 +37,9 @@ The Vercel cron calls `/api/garage/reminder` daily at 14:00 UTC. It finds only c
 
 ## 4. Admin workflow
 
-Open `/garage-admin` after signing in with the administrator account. Invite the customer first; Supabase Auth sends the invitation. Then add their vehicle, record a service, upload photos, and add confirmed appointments. Mark **Paint Ceramic Sealant Applied** only for qualifying details. The other three protection selections default off. Uploads are resized and converted to WebP in the browser before they reach the private bucket, removing phone EXIF/GPS metadata.
+Open `/admin` to sign in, then use the client-first workspace at `/garage-admin`. Select a client by name (or create their login with a name, email and temporary password), then select one of their vehicles (or add a vehicle). New clients and vehicles are selected automatically. Upload photos next; the saved gallery refreshes after each upload. Share new client credentials privately; clients can use Forgot password to choose their own password.
+
+Completed details, protection, appointments and the showroom photo studio are optional expandable sections for the selected vehicle. The client directory and dated history are below the workspace. Changing client or vehicle clears unsaved photo, service and appointment details. Mark **Paint Ceramic Sealant Applied** only for qualifying details; the other three protection selections default off. Uploads are resized and converted to WebP in the browser before they reach the private bucket, removing phone EXIF/GPS metadata.
 
 Recording a qualifying detail saves the service and starts a three-month cycle atomically. The Month 1 offer expiration is one calendar month after its offer date. Only Full Factory Reset sizes with a half-price saving greater than $145 appear in the offer code flow. The customer must use the invited email at booking. The offer is reserved during booking and redeemed once the booking request is accepted by the existing flow.
 

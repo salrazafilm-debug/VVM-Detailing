@@ -103,7 +103,7 @@ exports.adminPost = async req => {
       const customer_id = clean(b.customer_id, 80);
       const year = Number(b.year);
       const make = clean(b.make, 80), model = clean(b.model, 100);
-      if (!customer_id || year < 1900 || year > new Date().getFullYear() + 1 || !make || !model) throw Object.assign(new Error('Enter a valid year, make, model, and customer.'), { status: 400 });
+      if (!customer_id || !Number.isInteger(year) || year < 1900 || year > new Date().getFullYear() + 1 || !make || !model) throw Object.assign(new Error('Enter a valid year, make, model, and customer.'), { status: 400 });
       const { data, error } = await ctx.admin.from('garage_vehicles').insert({ customer_id, year, make, model, color: clean(b.color, 60) || null, hero_photo_id: null }).select().single();
       if (error) throw Object.assign(new Error('Could not add vehicle. Confirm the customer exists.'), { status: 400 });
       return json({ ok: true, vehicle: data });
