@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { garageRequest, signOut } from './garage-auth-client';
 import GaragePhotoEditor from './garage-photo-editor';
+import { prepareGaragePhoto } from './garage-image';
+import { vehicleLabel } from '../server/garage-vehicle';
 
 const today = () => new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
 function easternDateTime(date, time) {
@@ -12,18 +14,6 @@ function easternDateTime(date, time) {
   const check=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(result).map(p=>[p.type,p.value]));
   if(+check.year!==y||+check.month!==m||+check.day!==d||+check.hour!==hh||+check.minute!==mm)throw new Error('That local appointment time does not exist because of the daylight saving time change.');
   return result.toISOString();
-}
-async function webp(file) {
-  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
-  if (file.size > 20*1024*1024) throw new Error('Choose a photo smaller than 20 MB.');
-  let image;
-  try { image = await createImageBitmap(file); } catch { throw new Error('This photo could not be opened. Try a JPEG, PNG or WebP.'); }
-  const scale = Math.min(1, 1800 / Math.max(image.width, image.height));
-  const canvas = document.createElement('canvas'); canvas.width = Math.round(image.width * scale); canvas.height = Math.round(image.height * scale);
-  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height); image.close();
-  const blob = await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not process this photo.')),'image/webp',0.84));
-  if (blob.size > 4*1024*1024) throw new Error('This photo is too large to upload.');
-  return blob;
 }
 
 const fmtDate = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -45,7 +35,7 @@ function ClientDashboard({ customers, onAddPhoto, busy }) {
         (v.garage_photos || []).forEach(p => { const d = easternDay(p.created_at); (days[d] = days[d] || { services: [], photos: [] }).photos.push(p); });
         const keys = Object.keys(days).sort().reverse();
         return <div className="dash-vehicle" key={v.id}>
-          <div className="dash-vhead"><b>{v.year} {v.make} {v.model}</b><button type="button" className="g-text-button" disabled={busy} onClick={() => onAddPhoto(c.user_id, v.id)}>+ ADD PHOTOS</button></div>
+          <div className="dash-vhead"><b>{vehicleLabel(v)}</b><button type="button" className="g-text-button" disabled={busy} onClick={() => onAddPhoto(c.user_id, v.id)}>+ ADD PHOTOS</button></div>
           {keys.length === 0 && <p className="g-muted">No services or photos yet.</p>}
           {keys.map(d => <div className="dash-day" key={d}>
             <p className="dash-date">{fmtDate(d)}<span>{days[d].services.join(' · ')}</span></p>
@@ -58,7 +48,6 @@ function ClientDashboard({ customers, onAddPhoto, busy }) {
   </section>;
 }
 
-const vehicleLabel = v => `${v.year} ${v.make} ${v.model}`;
 
 export default function GarageAdmin() {
   const [customers,setCustomers]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
@@ -102,9 +91,16 @@ export default function GarageAdmin() {
     if(d){setCustomers(list=>list.map(c=>c.user_id===customer?{...c,garage_vehicles:[...(c.garage_vehicles||[]),{...d.vehicle,garage_services:[],garage_photos:[]}]}:c));setVehicle(d.vehicle.id);clearVehicleDrafts();setCreatingVehicle(false);setYear('');setMake('');setModel('');setColor('')}
   }
   async function addService(e){e.preventDefault();if(!selectedVehicle)return;const d=await action({action:'record_service',vehicle_id:vehicle,service_date:serviceDate,title,description,paint_sealant:sealant,ceramic_coating:coating,leather_protection:leather,fabric_protection:fabric},'Completed detail saved.');if(d){setDescription('');setSealant(false);setCoating(false);setLeather(false);setFabric(false)}}
+  async function choosePhoto(file){
+    if(actionLock.current)return;setPhoto(null);setError('');setNotice('');if(!file)return;
+    actionLock.current=true;setBusy(true);setNotice('Preparing your photo…');
+    try{const blob=await prepareGaragePhoto(file);setPhoto(new File([blob],file.name.replace(/\.[^.]+$/,'')+(blob.type==='image/webp'?'.webp':'.jpg'),{type:blob.type}));setNotice('Photo ready. Resized, compressed and prepared automatically.');}
+    catch(err){setNotice('');setError(err.message);if(fileInput.current)fileInput.current.value='';}
+    finally{actionLock.current=false;setBusy(false)}
+  }
   async function upload(e){
     e.preventDefault();if(actionLock.current||!photo||!selectedVehicle)return;actionLock.current=true;setBusy(true);setError('');setNotice('');
-    try{const blob=await webp(photo);const form=new FormData();form.append('vehicle_id',vehicle);form.append('kind',photoKind);form.append('caption',caption);form.append('is_hero',String(isHero));form.append('file',blob,'garage-photo.webp');await garageRequest('/api/garage/photo',{method:'POST',body:form});setNotice(`Photo saved to ${client.display_name||client.email} · ${vehicleLabel(selectedVehicle)}.`);setPhoto(null);setCaption('');if(fileInput.current)fileInput.current.value='';await load()}
+    try{const blob=photo;const form=new FormData();form.append('vehicle_id',vehicle);form.append('kind',photoKind);form.append('caption',caption);form.append('is_hero',String(isHero));form.append('file',blob,blob.name);await garageRequest('/api/garage/photo',{method:'POST',body:form});setNotice(`Photo saved to ${client.display_name||client.email} · ${vehicleLabel(selectedVehicle)}.`);setPhoto(null);setCaption('');if(fileInput.current)fileInput.current.value='';await load()}
     catch(err){setError(err.message)}finally{actionLock.current=false;setBusy(false)}
   }
   async function addAppointment(e){e.preventDefault();if(!selectedVehicle||!apptDate||!apptTime)return;try{const d=await action({action:'appointment',vehicle_id:vehicle,starts_at:easternDateTime(apptDate,apptTime),service_label:apptService,status:apptStatus},'Appointment saved.');if(d){setApptDate('');setApptTime('')}}catch(err){setError(err.message)}}
@@ -130,7 +126,7 @@ export default function GarageAdmin() {
       </section>
       <section id="admin-upload" className={`g-panel admin-step${!selectedVehicle?' admin-locked':''}`} aria-labelledby="photo-step">
         <p className="g-eyebrow">03 / MAKE IT THEIRS</p><h2 id="photo-step">Bring on the photos.</h2>
-        {!selectedVehicle?<p className="g-muted">Choose a vehicle above to add its photos.</p>:<><p className="admin-context">{client.display_name||client.email}<span aria-hidden="true"> / </span><strong>{vehicleLabel(selectedVehicle)}</strong></p><form className="g-form admin-photo-form" onSubmit={upload}><label className="admin-dropzone">{preview?<img className="admin-photo-preview" src={preview} alt="Selected upload preview"/>:<span className="admin-upload-icon" aria-hidden="true">+</span>}<strong>{photo?photo.name:'Choose a vehicle photo'}</strong><span>JPEG, PNG or WebP · up to 20 MB</span><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e=>setPhoto(e.target.files?.[0]||null)} required/></label><div className="g-form-row"><label>Photo type<select value={photoKind} onChange={e=>setPhotoKind(e.target.value)}><option value="hero">Cover</option><option value="before">Before</option><option value="after">After</option><option value="gallery">Gallery</option></select></label><label>Caption <span className="admin-optional">Optional</span><input value={caption} onChange={e=>setCaption(e.target.value)} maxLength={160} placeholder="Fresh from a little VVM love"/></label></div><label className="g-check"><input type="checkbox" checked={isHero} onChange={e=>setIsHero(e.target.checked)}/> Use as their Garage cover</label><button className="g-button admin-save" disabled={!photo||busy}>{busy?'UPLOADING…':'UPLOAD PHOTO'}</button><p className="g-inline-help">Photos stay private. We resize each upload and remove embedded location data.</p></form>
+        {!selectedVehicle?<p className="g-muted">Choose a vehicle above to add its photos.</p>:<><p className="admin-context">{client.display_name||client.email}<span aria-hidden="true"> / </span><strong>{vehicleLabel(selectedVehicle)}</strong></p><form className="g-form admin-photo-form" onSubmit={upload}><label className="admin-dropzone">{preview?<img className="admin-photo-preview" src={preview} alt="Selected upload preview"/>:<span className="admin-upload-icon" aria-hidden="true">+</span>}<strong>{photo?photo.name:'Choose a vehicle photo'}</strong><span>JPEG, PNG, WebP or HEIC · up to 20 MB</span><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e=>choosePhoto(e.target.files?.[0]||null)} required/></label><div className="g-form-row"><label>Photo type<select value={photoKind} onChange={e=>setPhotoKind(e.target.value)}><option value="hero">Cover</option><option value="before">Before</option><option value="after">After</option><option value="gallery">Gallery</option></select></label><label>Caption <span className="admin-optional">Optional</span><input value={caption} onChange={e=>setCaption(e.target.value)} maxLength={160} placeholder="Fresh from a little VVM love"/></label></div><label className="g-check"><input type="checkbox" checked={isHero} onChange={e=>setIsHero(e.target.checked)}/> Use as their Garage cover</label><button className="g-button admin-save" disabled={!photo||busy}>{busy?'PROCESSING…':'UPLOAD PHOTO'}</button><p className="g-inline-help">No editing needed. We automatically resize, compress and convert photos to WebP, and remove embedded location data.</p></form>
         {!!selectedVehicle.garage_photos?.length&&<div className="admin-saved-photos"><h3>Saved photos <span>({selectedVehicle.garage_photos.length})</span></h3><div className="dash-photos">{selectedVehicle.garage_photos.map(p=>p.url&&<a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer"><img src={p.url} alt={p.caption||'Saved vehicle photo'} loading="lazy"/></a>)}</div></div>}
         </>}
       </section>

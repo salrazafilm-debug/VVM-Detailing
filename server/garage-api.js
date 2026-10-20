@@ -1,5 +1,7 @@
 const { customerContext, requireAdmin, responseError, config } = require('./garage-auth');
 const { createClient } = require('@supabase/supabase-js');
+const { vehicleLabel } = require('./garage-vehicle');
+const { normalizeGaragePhoto } = require('./garage-photo');
 
 const json = (data, status = 200) => Response.json(data, { status });
 const clean = (s, max = 300) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -151,11 +153,12 @@ exports.photoPost = async req => {
     const vehicle_id = clean(form.get('vehicle_id'), 80), kind = clean(form.get('kind'), 20);
     const file = form.get('file');
     if (!vehicle_id || !file || typeof file.arrayBuffer !== 'function') throw Object.assign(new Error('Choose a vehicle and photo.'), { status: 400 });
-    if (file.type !== 'image/webp' || file.size > 4 * 1024 * 1024) throw Object.assign(new Error('Photos must be resized to WebP and smaller than 4 MB.'), { status: 400 });
+    if (!file.size || file.size > 4 * 1024 * 1024) throw Object.assign(new Error('This photo could not be prepared. Choose it again to resize it automatically.'), { status: 400 });
     const { data: vehicle, error: vErr } = await ctx.admin.from('garage_vehicles').select('id').eq('id', vehicle_id).single();
     if (vErr || !vehicle) throw Object.assign(new Error('Vehicle not found.'), { status: 404 });
+    const photoBytes = await normalizeGaragePhoto(await file.arrayBuffer());
     const storage_path = `${vehicle_id}/${cryptoRandom()}.webp`;
-    const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(storage_path, await file.arrayBuffer(), { contentType: 'image/webp', upsert: false });
+    const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(storage_path, photoBytes, { contentType: 'image/webp', upsert: false });
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
     const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
     if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
@@ -193,7 +196,7 @@ exports.reminderPost = async req => {
     const { data: deliveryId, error: claimError } = await admin.rpc('garage_claim_email_delivery',{p_cycle_id:cycle.id,p_message_type:type});
     if (claimError) throw Object.assign(new Error('Could not reserve this reminder for delivery.'), { status:503 });
     if (!deliveryId) return json({ sent:false, reason:'already_claimed' });
-    const vehicle = `${cycle.garage_vehicles.year} ${cycle.garage_vehicles.make} ${cycle.garage_vehicles.model}`;
+    const vehicle = vehicleLabel(cycle.garage_vehicles);
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vvmdetails.com').replace(/\/$/,'');
     const { data: currentCycle } = await admin.from('garage_maintenance_cycles').select('status').eq('id',cycle.id).single();
     if (currentCycle?.status !== 'active') {

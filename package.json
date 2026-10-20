@@ -6,12 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js && node tests/garage.test.js && node tests/coupons.test.js && node tests/addons.test.js && node tests/customer-registration.test.js && node tests/prepare-photo.test.mjs"
+    "test": "node tests/rules.test.js && node tests/holds.test.js && node tests/book.test.js && node tests/reviews.test.js && node tests/garage.test.js && node tests/coupons.test.js && node tests/addons.test.js && node tests/customer-registration.test.js && node tests/prepare-photo.test.mjs && node tests/garage-photo.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",
+    "heic-to": "1.6.6",
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "sharp": "0.35.5"
   }
 }

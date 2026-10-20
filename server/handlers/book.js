@@ -5,6 +5,7 @@ const { sendBookingEmail } = require('../mail');
 const { findCoupon, store: couponStore } = require('../coupon-db');
 const { resolveAddons } = require('../addons');
 const crypto = require('crypto');
+const { vehicleLabel } = require('../garage-vehicle');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 const money = c => '$' + (c / 100).toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -29,7 +30,7 @@ exports.handler = async (event) => {
     const garageOffer = b.coupon && !coupon ? await couponStore().garageOffer(b.coupon) : null;
     if (b.coupon && !coupon && !garageOffer) throw httpError(400, 'That offer is no longer available.');
     // The coupon's own car, when it has one, replaces what the browser sent.
-    const vehicles = (coupon && coupon.vehicle) || garageOffer ? [coupon?.vehicle || `${garageOffer.vehicle.year} ${garageOffer.vehicle.make} ${garageOffer.vehicle.model}`] : (Array.isArray(b.vehicles) ? b.vehicles : [b.vehicle]).map(v => clean(v, 120));
+    const vehicles = (coupon && coupon.vehicle) || garageOffer ? [coupon?.vehicle || vehicleLabel(garageOffer.vehicle)] : (Array.isArray(b.vehicles) ? b.vehicles : [b.vehicle]).map(v => clean(v, 120));
     if (!coupon && (!plan.length || vehicles.length !== plan.length || vehicles.some(v => v.length < 2))) {
       throw httpError(400, plan.length > 1 ? 'Please enter the year, make and model of both vehicles.' : 'Please enter your vehicle year, make and model.');
     }
