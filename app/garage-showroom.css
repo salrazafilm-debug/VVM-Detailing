@@ -178,3 +178,8 @@
 /* Bigger brand logo at the top of My Garage */
 .room-garage-logo{max-width:92%;max-height:150px}
 @media(max-width:800px){.room-garage-logo{max-height:120px}}
+/* Entering-your-garage screen: black, logo and text for at least 5 seconds */
+.room-intro{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#000;color:#fff;animation:roomIntroIn .4s ease-out}
+.room-intro img{width:min(62vw,300px);height:auto}
+.room-intro p{margin:0;font:italic 900 clamp(1.1rem,2.6vw,1.6rem)/1 var(--gdisplay);letter-spacing:.12em;text-transform:uppercase;color:#f0d63c}
+@keyframes roomIntroIn{from{opacity:0}to{opacity:1}}
