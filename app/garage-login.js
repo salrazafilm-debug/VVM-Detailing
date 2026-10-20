@@ -11,19 +11,19 @@ function LoginIcon({ name }) {
 }
 
 export default function GarageLogin({ admin = false }) {
-  const [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
+  const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
   const [showPassword,setShowPassword] = useState(false);
   async function submit(e) {
     e.preventDefault(); setBusy(true); setMessage('');
     try {
+      const sb = supabaseBrowser(), address = email.trim().toLowerCase();
       if (reset) {
-        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password, action:'reset', redirectTo:`${location.origin}/reset-password` }) });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not send the reset link.');
-        setMessage('Check your email for a secure password reset link.');
+        // Same message whether or not the email has an account, so nobody can use this to find out who is a client
+        await sb.auth.resetPasswordForEmail(address, { redirectTo: `${location.origin}/reset-password` });
+        setMessage('If that email has a Garage, a secure password reset link is on its way.');
       } else {
-        const response = await fetch('/api/garage/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ password, action:'login' }) });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Could not sign in.');
-        const { error } = await supabaseBrowser().auth.setSession(result.session); if (error) throw error;
+        const { error } = await sb.auth.signInWithPassword({ email: address, password });
+        if (error) throw new Error('That email or password is not correct.');
         location.assign(admin ? '/garage-admin' : '/garage');
       }
     } catch (err) { setMessage(err.message || 'Could not sign in.'); }
@@ -39,8 +39,10 @@ export default function GarageLogin({ admin = false }) {
       <h1 id="signin-title" className={reset || admin ? 'virtual-login-title' : 'virtual-login-sr'}>{reset ? 'Reset password' : admin ? 'Admin sign in' : 'Sign in to your VVM Virtual Garage'}</h1>
       {reset && <p className="virtual-login-description">Enter your email for a secure reset link.</p>}
       <form className="virtual-login-form" onSubmit={submit} aria-busy={busy}>
-        <label className="virtual-login-sr" htmlFor="signin-password">Password</label>
-        <div className="virtual-login-field"><LoginIcon name="lock"/><input id="signin-password" name="password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button className="virtual-login-eye" type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}><LoginIcon name={showPassword?'visible':'hidden'}/></button></div>
+        <label className="virtual-login-sr" htmlFor="signin-email">Email</label>
+        <div className="virtual-login-field"><LoginIcon name="email"/><input id="signin-email" name="email" required type="email" autoComplete="username" inputMode="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} disabled={busy}/></div>
+        {!reset && <><label className="virtual-login-sr" htmlFor="signin-password">Password</label>
+        <div className="virtual-login-field"><LoginIcon name="lock"/><input id="signin-password" name="password" required type={showPassword?'text':'password'} autoComplete="current-password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} disabled={busy}/><button className="virtual-login-eye" type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)} disabled={busy}><LoginIcon name={showPassword?'visible':'hidden'}/></button></div></>}
         {message && <p className="virtual-login-message" role="status">{message}</p>}
         <button className="virtual-login-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : reset ? 'Send reset link' : 'Sign In'}<span aria-hidden="true">→</span></button>
       </form>
@@ -51,7 +53,7 @@ export default function GarageLogin({ admin = false }) {
         <li><GarageIcon name="bookings"/><span>Appointments</span></li>
         <li><LoginIcon name="history"/><span>History</span></li>
       </ul>
-      <div className="virtual-login-support">{!admin && <a href="mailto:vvm.detailing@gmail.com">Need a new password?</a>}</div>
+      <div className="virtual-login-support"><button type="button" onClick={()=>{setReset(v=>!v);setMessage('')}}>{reset?'Back to sign in':'Forgot password?'}</button></div>
     </section>
   </main>;
 }
