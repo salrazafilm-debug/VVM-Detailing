@@ -100,3 +100,7 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 
 .admin-photo-options{border:1px solid #1a121419;border-radius:12px;padding:14px}.admin-photo-options summary{cursor:pointer;font-size:.8rem;font-weight:800}.admin-photo-options-fields{border:0;padding:18px 0 0;margin:0;min-width:0;display:grid;gap:14px}.admin-upload-status{margin:0;font-size:.78rem;font-weight:800;color:#685459;line-height:1.6}.admin-upload-status.is-saved{color:#216e45}.admin-upload-status.is-error{color:#a22738}.admin-upload-status.is-preparing,.admin-upload-status.is-saving{color:#825c16}
 .admin-status-actions{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.admin-status-actions .g-button{width:auto}.admin-status-actions .admin-delete{margin:0;color:#b3261e}
+.admin-vehicle-list,.admin-service-list{display:grid;gap:8px;margin:0 0 18px}.admin-vehicle-list h3,.admin-service-list h3{font:800 .85rem var(--gbody);margin:6px 0 2px}.admin-vehicle-list h3 span{color:#75686c;font-weight:600}
+.admin-vehicle-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #ead9d2;font-size:.88rem}.admin-vehicle-row.is-selected{border-color:#f0d63c;background:#fffbe8}.admin-vehicle-row>span{min-width:0;overflow-wrap:anywhere}
+.admin-vehicle-pick{text-align:left;padding:0;color:var(--gink);font-size:.9rem}.admin-delete-btn{background:#b3261e;padding:10px 16px;min-height:40px;width:auto;flex-shrink:0}
+.admin-service-list{margin:0 0 4px}

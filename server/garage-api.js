@@ -159,6 +159,16 @@ exports.adminPost = async req => {
       if (photos?.length) await ctx.admin.storage.from('garage-photos').remove(photos.map(p => p.storage_path)).catch(() => {});
       return json({ ok: true, message: 'Vehicle deleted.' });
     }
+    if (action === 'delete_service') {
+      const service_id = clean(b.service_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(service_id)) throw Object.assign(new Error('Choose a service.'), { status: 400 });
+      const { data: row, error: rowError } = await ctx.admin.from('garage_services').select('id,vehicle_id').eq('id', service_id).maybeSingle();
+      if (rowError) throw Object.assign(new Error('Could not find this service. Try again.'), { status: 503 });
+      if (!row) throw Object.assign(new Error('Service not found.'), { status: 404 });
+      const { error } = await ctx.admin.from('garage_services').delete().eq('id', service_id);
+      if (error) throw Object.assign(new Error('Could not delete this service.'), { status: 503 });
+      return json({ ok: true, vehicle_id: row.vehicle_id, message: 'Service deleted.' });
+    }
     if (action === 'delete_photo') {
       const photo_id = clean(b.photo_id, 80);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
@@ -176,6 +186,9 @@ exports.adminPost = async req => {
     if (action === 'record_service') {
       const vehicle_id = clean(b.vehicle_id, 80), service_date = clean(b.service_date, 10), title = clean(b.title, 140);
       if (!vehicle_id || !/^\d{4}-\d{2}-\d{2}$/.test(service_date) || service_date > easternToday() || !title) throw Object.assign(new Error('Enter the vehicle, completed service date, and service name.'), { status: 400 });
+      const { data: sameDay, error: dupError } = await ctx.admin.from('garage_services').select('id,title').eq('vehicle_id', vehicle_id).eq('service_date', service_date);
+      if (dupError) throw Object.assign(new Error('Could not check existing services. Try again.'), { status: 503 });
+      if ((sameDay || []).some(x => x.title.trim().toLowerCase() === title.trim().toLowerCase())) throw Object.assign(new Error('This service is already recorded for this vehicle on that date.'), { status: 409 });
       const applied = b.paint_sealant === true;
       const { data, error } = await ctx.admin.rpc('garage_record_service', {
         p_vehicle_id: vehicle_id, p_service_date: service_date, p_title: title,
