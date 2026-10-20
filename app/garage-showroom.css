@@ -132,3 +132,7 @@
   .room-member-card h3{font-size:2rem!important}
 }
 @media(min-width:801px){.room-membership{top:26px;right:32px}}
+/* Bigger car in the showroom (cutouts and framed photos) */
+.showroom-car{height:70%;max-height:820px;bottom:20%}
+.showroom-car.is-photo{height:58%;bottom:23%;width:min(72vw,1000px)}
+@media(max-width:800px){.showroom-car{height:60%;bottom:22%}.showroom-car.is-photo{height:44%;bottom:28%;width:88%}}
