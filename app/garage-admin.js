@@ -50,16 +50,60 @@ function ClientDashboard({ customers, onAddPhoto, busy, vehiclesLoaded }) {
 }
 
 
-// What the client sees on their Services tab: recommendations, paint correction, ceramic years
+// Health + protection settings: what the client sees on their Health tab and My Garage
 function VehicleStatus({ vehicle, busy, onSave }) {
-  const [f,setF]=useState(()=>({paint_correction:!!vehicle.paint_correction,recommend_headlights:!!vehicle.recommend_headlights,recommend_paint_correction:!!vehicle.recommend_paint_correction,recommend_ceramic:!!vehicle.recommend_ceramic,ceramic_years:vehicle.ceramic_years||5}));
+  const [f,setF]=useState(()=>({protection_type:vehicle.protection_type||'',ceramic_years:vehicle.ceramic_years||5,headlights_done:!!vehicle.headlights_done,paint_correction:!!vehicle.paint_correction,recommend_ceramic:!!vehicle.recommend_ceramic,show_headlights:vehicle.show_headlights!==false,show_paint:vehicle.show_paint!==false,show_protection:vehicle.show_protection!==false,show_ceramic_rec:vehicle.show_ceramic_rec!==false}));
   const box=(k,label)=><label><input type="checkbox" checked={f[k]} onChange={e=>setF({...f,[k]:e.target.checked})}/> {label}</label>;
-  return <form className="g-form admin-status" onSubmit={e=>{e.preventDefault();onSave({...f,ceramic_years:Number(f.ceramic_years)})}}>
-    <p className="g-inline-help">Recommended for their next visit. Anything not ticked shows as Healthy.</p>
-    <div className="g-check-grid">{box('recommend_headlights','Recommend Headlights')}{box('recommend_paint_correction','Recommend Paint Correction')}{box('recommend_ceramic','Recommend Ceramic Coating')}{box('paint_correction','Paint Correction done')}</div>
-    <label>Ceramic coating lasts (years)<input type="number" min="1" max="15" value={f.ceramic_years} onChange={e=>setF({...f,ceramic_years:e.target.value})}/></label>
-    <div className="admin-status-actions"><button className="g-button" disabled={busy}>SAVE GARAGE STATUS</button><button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm(`Delete ${vehicleLabel(vehicle)}? Its photos, services and bookings are removed for good.`))onDelete()}}>DELETE VEHICLE</button></div>
+  const radio=(v,label)=><label><input type="radio" name="protection" checked={f.protection_type===v} onChange={()=>setF({...f,protection_type:v})}/> {label}</label>;
+  return <form className="g-form admin-status" onSubmit={e=>{e.preventDefault();onSave({...f,protection_type:f.protection_type||null,ceramic_years:Number(f.ceramic_years)})}}>
+    <p className="g-inline-help">Anything not ticked as done shows a red X on the client’s Health tab.</p>
+    <fieldset className="admin-status-group"><legend>Protection · pick one</legend><div className="g-check-grid">{radio('','None')}{radio('sealant','Ceramic Sealant · 3 months')}{radio('coating','Ceramic Coating · years')}</div>{f.protection_type==='coating'&&<label>Ceramic coating lasts (years)<input type="number" min="1" max="15" value={f.ceramic_years} onChange={e=>setF({...f,ceramic_years:e.target.value})}/></label>}</fieldset>
+    <fieldset className="admin-status-group"><legend>Done</legend><div className="g-check-grid">{box('headlights_done','Headlights done')}{box('paint_correction','Paint Correction done')}</div></fieldset>
+    <fieldset className="admin-status-group"><legend>Recommend</legend><div className="g-check-grid">{box('recommend_ceramic','Recommend Ceramic Coating')}</div></fieldset>
+    <fieldset className="admin-status-group"><legend>What the client sees</legend><div className="g-check-grid">{box('show_headlights','Headlights')}{box('show_paint','Paint condition')}{box('show_protection','Protection')}{box('show_ceramic_rec','Ceramic coating recommendation')}</div></fieldset>
+    <div className="admin-status-actions"><button className="g-button" disabled={busy}>SAVE</button></div>
   </form>;
+}
+
+// Per-client brand logo, shown top center in their My Garage
+function ClientLogo({ client, busy, onChanged, onError, onNotice }) {
+  const [working,setWorking]=useState(false),input=useRef(null);
+  async function choose(file){
+    if(!file)return;onError('');
+    if(file.size>2*1024*1024){onError('Choose a logo under 2 MB.');if(input.current)input.current.value='';return}
+    setWorking(true);
+    try{const form=new FormData();form.append('customer_id',client.user_id);form.append('file',file,file.name);const d=await garageRequest('/api/garage/logo',{method:'POST',body:form});onNotice(d.message||'Logo saved.');await onChanged()}
+    catch(e){onError(e.message)}finally{setWorking(false);if(input.current)input.current.value=''}
+  }
+  async function remove(){
+    if(!confirm('Remove this client’s logo?'))return;setWorking(true);
+    try{const d=await garageRequest('/api/garage/admin',{method:'POST',body:JSON.stringify({action:'delete_logo',customer_id:client.user_id})});onNotice(d.message||'Logo removed.');await onChanged()}
+    catch(e){onError(e.message)}finally{setWorking(false)}
+  }
+  return <div className="g-form admin-logo">
+    <p className="g-inline-help">PNG with a clear background works best. It’s resized to 400 px tall automatically. Up to 2 MB.</p>
+    {client.logo_url&&<div className="admin-logo-current"><img src={client.logo_url} alt={`${client.display_name||'Client'} logo`}/></div>}
+    <label className="admin-dropzone"><strong>{working?'Saving logo…':client.has_logo?'Replace logo':'Choose logo'}</strong><span>PNG, JPG or WebP · up to 2 MB</span><input ref={input} type="file" accept="image/png,image/webp,image/jpeg" disabled={busy||working} onChange={e=>choose(e.target.files?.[0])}/></label>
+    {client.has_logo&&<button type="button" className="g-text-button admin-delete" disabled={busy||working} onClick={remove}>REMOVE LOGO</button>}
+  </div>;
+}
+
+// Scaled iframe so a phone or desktop screen fits the admin page
+function PreviewFrame({ src, w, h, label }) {
+  const box=useRef(null),[scale,setScale]=useState(1);
+  useEffect(()=>{const el=box.current;if(!el)return;const fit=()=>setScale(Math.min(1,el.clientWidth/w));fit();const ro=new ResizeObserver(fit);ro.observe(el);return()=>ro.disconnect()},[w]);
+  return <div className="admin-preview-frame" ref={box}><p className="g-eyebrow">{label}</p><div className="admin-preview-screen" style={{width:w*scale,height:h*scale}}><iframe title={label} src={src} style={{width:w,height:h,transform:`scale(${scale})`}}/></div></div>;
+}
+
+function ClientPreview({ clientId, vehicleId, sig }) {
+  const [device,setDevice]=useState('both'),[view,setView]=useState('home'),[nonce,setNonce]=useState(0);
+  useEffect(()=>{const t=setTimeout(()=>setNonce(n=>n+1),400);return()=>clearTimeout(t)},[sig]);
+  const src=`/garage?client=${encodeURIComponent(clientId)}&vehicle=${encodeURIComponent(vehicleId)}&view=${view}&r=${nonce}`;
+  const pick=(items,value,set)=><div className="admin-segment" role="group">{items.map(([id,label])=><button key={id} type="button" className={value===id?'is-active':''} aria-pressed={value===id} onClick={()=>set(id)}>{label}</button>)}</div>;
+  return <div className="admin-preview">
+    <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button></div>
+    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE"/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP"/>}</div>
+  </div>;
 }
 
 export default function GarageAdmin() {
@@ -157,9 +201,11 @@ export default function GarageAdmin() {
         {!!selectedVehicle.garage_photos?.length&&<div className="admin-saved-photos"><h3>Saved photos <span>({selectedVehicle.garage_photos.length})</span></h3><div className="dash-photos">{selectedVehicle.garage_photos.map(p=><div key={p.id} className="admin-saved-photo">{p.url?<a href={p.url} target="_blank" rel="noopener noreferrer"><img src={p.url} alt={p.caption||'Saved vehicle photo'} loading="lazy"/></a>:<p className="g-inline-help">Photo saved. Preview unavailable.</p>}<button type="button" className="g-text-button" disabled={busy||selectedVehicle.hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id},'Garage cover saved.')}>{selectedVehicle.hero_photo_id===p.id?'✓ GARAGE COVER':'USE AS COVER'}</button><button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm('Delete this photo for good? It will be removed from the client\'s Garage.'))action({action:'delete_photo',photo_id:p.id},'Photo deleted.')}}>DELETE PHOTO</button></div>)}</div></div>}
         </>}
       </section>
+      <section className={`g-panel admin-step${!selectedVehicle?' admin-locked':''}`} aria-labelledby="preview-step"><p className="g-eyebrow">PREVIEW</p><h2 id="preview-step">See what they see.</h2>{!selectedVehicle?<p className="g-muted">Choose a vehicle above to preview its Garage.</p>:<ClientPreview clientId={customer} vehicleId={vehicle} sig={JSON.stringify([selectedVehicle.protection_type,selectedVehicle.headlights_done,selectedVehicle.paint_correction,selectedVehicle.recommend_ceramic,selectedVehicle.show_headlights,selectedVehicle.show_paint,selectedVehicle.show_protection,selectedVehicle.show_ceramic_rec,selectedVehicle.ceramic_years,selectedVehicle.hero_photo_id,selectedVehicle.garage_photos?.length,selectedVehicle.garage_services?.length,client?.has_logo])}/>}</section>
       <section className="admin-extras" aria-labelledby="optional-step"><p className="g-eyebrow">04 / WHEN YOU NEED IT</p><h2 id="optional-step">The extra details.</h2><p className="g-muted">All optional. Add what matters, whenever you’re ready.</p>
         {!selectedVehicle?<p className="g-inline-help">Choose a vehicle to add service history, appointments or a showroom cover.</p>:<div key={vehicle} className="admin-details-list">
-          <details className="g-panel admin-disclosure" open><summary><span>Garage status<small>Recommended services and ceramic years</small></span><b aria-hidden="true">+</b></summary><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>
+          <details className="g-panel admin-disclosure" open><summary><span>Garage health<small>Protection, done ticks and what the client sees</small></span><b aria-hidden="true">+</b></summary><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>
+          <details className="g-panel admin-disclosure"><summary><span>Client logo<small>Shown top center in their My Garage</small></span><b aria-hidden="true">+</b></summary><ClientLogo client={client} busy={busy} onChanged={load} onError={setError} onNotice={setNotice}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Completed detail & protection<small>Service history, notes and protection applied</small></span><b aria-hidden="true">+</b></summary><div className="admin-service-list">{!!selectedVehicle.garage_services?.length&&<><h3>Completed services</h3>{[...selectedVehicle.garage_services].sort((a,b)=>b.service_date.localeCompare(a.service_date)).map(sv=><div key={sv.id} className="admin-vehicle-row"><span><strong>{sv.title}</strong> · {fmtDate(sv.service_date)}</span><button type="button" className="g-button admin-delete-btn" disabled={busy} onClick={()=>{if(confirm(`Delete "${sv.title}" from ${fmtDate(sv.service_date)}?`))action({action:'delete_service',service_id:sv.id},'Service deleted.')}}>DELETE</button></div>)}</>}</div><form className="g-form" onSubmit={addService}><p className="admin-context">For {vehicleLabel(selectedVehicle)}</p><div className="g-form-row"><label>Completed on<input type="date" max={today()} value={serviceDate} onChange={e=>setServiceDate(e.target.value)} required/></label><label>Service name<input value={title} onChange={e=>setTitle(e.target.value)} required maxLength={140}/></label></div><label>Notes <span className="admin-optional">Optional</span><textarea value={description} onChange={e=>setDescription(e.target.value)} rows="3" maxLength={1500}/></label><div className="g-check-grid"><label><input type="checkbox" checked={sealant} onChange={e=>setSealant(e.target.checked)}/> Paint Ceramic Sealant Applied</label><label><input type="checkbox" checked={coating} onChange={e=>setCoating(e.target.checked)}/> True Ceramic Coating Applied</label><label><input type="checkbox" checked={leather} onChange={e=>setLeather(e.target.checked)}/> Leather Protection Applied</label><label><input type="checkbox" checked={fabric} onChange={e=>setFabric(e.target.checked)}/> Fabric Protection Applied</label></div>{sealant&&<p className="g-inline-help">Starts a new 3-month maintenance cycle, replaces the previous offer and schedules maintenance reminders.</p>}<button className="g-button">SAVE COMPLETED DETAIL</button></form></details>
           <details className="g-panel admin-disclosure"><summary><span>Appointment<small>Add a requested or confirmed visit</small></span><b aria-hidden="true">+</b></summary><form className="g-form" onSubmit={addAppointment}><p className="admin-context">For {vehicleLabel(selectedVehicle)}</p><div className="g-form-row"><label>Date (Eastern)<input type="date" value={apptDate} onChange={e=>setApptDate(e.target.value)} required/></label><label>Time (Eastern)<input type="time" value={apptTime} onChange={e=>setApptTime(e.target.value)} required/></label></div><label>Service<input value={apptService} onChange={e=>setApptService(e.target.value)} required maxLength={140}/></label><label>Status<select value={apptStatus} onChange={e=>setApptStatus(e.target.value)}><option value="confirmed">Confirmed</option><option value="requested">Requested</option></select></label><button className="g-button">SAVE APPOINTMENT</button></form></details>
           <details className="g-panel admin-disclosure"><summary><span>Showroom photo studio<small>Prepare and approve a styled cover</small></span><b aria-hidden="true">+</b></summary><GaragePhotoEditor vehicles={[selectedVehicle]} selectedVehicleId={vehicle} onBusyChange={value=>{actionLock.current=value;setBusy(value)}} onSaved={async result=>{setCustomers(list=>mergeSavedPhoto(list,result));await load()}}/></details>

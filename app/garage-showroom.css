@@ -136,3 +136,38 @@
 .showroom-car{height:70%;max-height:820px;bottom:20%}
 .showroom-car.is-photo{height:58%;bottom:23%;width:min(72vw,1000px)}
 @media(max-width:800px){.showroom-car{height:60%;bottom:22%}.showroom-car.is-photo{height:44%;bottom:28%;width:88%}}
+
+/* --- Health tab and My Garage (v3) --- */
+/* Red X = not done / expired */
+.room-mark.is-bad{background:linear-gradient(135deg,#ff5a4d,#e11d2e);color:#fff;border:2px solid #ff9a90;box-shadow:0 0 14px rgba(225,29,46,.65)}
+.room-health-title{display:flex;align-items:center;gap:10px;margin:6px 0 14px;font:italic 900 1.35rem/1.1 var(--gdisplay);letter-spacing:-.02em;color:#1f7a3a}
+.room-health-title svg{width:30px;height:30px;color:#e11d2e;flex-shrink:0}
+.room-health-title:not(.is-warn) svg{color:#1f7a3a}
+.room-health-title.is-warn{color:#c8201a}
+.room-health-list{display:grid;gap:12px}
+.room-health-card{margin-top:0}
+.room-health-card em{display:block;margin-top:5px;font:700 .82rem var(--gbody);font-style:normal;color:#cfe3f7}
+.room-health-card.is-bad em{color:#ffb3ab}
+.room-health-card.is-bad{box-shadow:0 10px 26px rgba(11,42,74,.3),0 0 0 2px rgba(225,29,46,.55)}
+.room-health-card .room-label{color:#9fd0f3}
+/* Completed services: its own box, readable text */
+.room-done-box{margin-top:18px;padding:20px 20px 8px;border-radius:22px;background:linear-gradient(135deg,#fff8f1,#fff2cf);border:2px solid #f0d63c55;box-shadow:0 8px 22px rgba(104,64,52,.1)}
+.room-done-box ul{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:0}
+.room-done-box li{display:grid;gap:3px;padding:14px 0;border-top:1px solid #d6c1b466}
+.room-done-box li:first-child{border-top:0;padding-top:4px}
+.room-done-box time{font:800 .8rem var(--gbody);color:#9a6b00;letter-spacing:.04em}
+.room-done-box strong{font:italic 900 1.15rem/1.25 var(--gdisplay);letter-spacing:-.01em}
+.room-done-box p{margin:2px 0 0;font-size:.95rem;color:#5a403c;line-height:1.55;white-space:pre-line}
+.room-done-box>.room-muted{padding-bottom:12px}
+/* My Garage: last detail card + big photos */
+.room-last-card{margin-top:12px;padding:18px 20px;border-radius:22px;background:linear-gradient(135deg,#0b2a4a,#1d4f86);color:#fff;display:grid;gap:4px;box-shadow:0 10px 26px rgba(11,42,74,.3)}
+.room-last-card .room-label{color:#9fd0f3}
+.room-last-card strong{font:italic 900 1.35rem/1.15 var(--gdisplay)}
+.room-last-card time,.room-last-card em{font:700 .95rem var(--gbody);font-style:normal;color:#f0d63c}
+.room-showcase{display:grid;gap:16px;margin-top:18px}
+.room-showcase button{display:block;width:100%;padding:0;border:0;border-radius:22px;overflow:hidden;background:#eee1d4;cursor:pointer;box-shadow:0 14px 34px rgba(60,32,24,.25)}
+.room-showcase img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+/* Client logo, top center of My Garage */
+.room-sheet-head h1.has-logo{flex:1;display:flex;justify-content:center;margin:0;padding-left:44px;text-transform:none}
+.room-garage-logo{display:block;max-width:75%;max-height:84px;object-fit:contain}
+@media(max-width:800px){.room-garage-logo{max-height:68px}.room-done-box strong{font-size:1.05rem}}

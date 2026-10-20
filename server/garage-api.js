@@ -25,11 +25,13 @@ exports.customerGet = async req => {
     }
     const owner = previewId || ctx.user.id, db = previewId ? ctx.admin : ctx.db;
     const [{ data: profile, error: pErr }, { data: vehicles, error: vErr }] = await Promise.all([
-      db.from('garage_profiles').select('display_name,email').eq('user_id', owner).maybeSingle(),
+      db.from('garage_profiles').select('*').eq('user_id', owner).maybeSingle(),
       db.from('garage_vehicles').select('*').eq('customer_id', owner).order('created_at', { ascending: true }),
     ]);
     if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
-    const clientJson = data => Response.json({...data,preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
+    const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
+    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, logo_url: logo } : p;
+    const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
     if (!ids.length) return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: [] });
@@ -57,7 +59,7 @@ exports.customerGet = async req => {
 exports.adminGet = async req => {
   try {
     const ctx = await requireAdmin(await customerContext(req));
-    const { data: profiles, error } = await ctx.admin.from('garage_profiles').select('user_id,display_name,email,created_at').order('created_at', { ascending: false });
+    const { data: profiles, error } = await ctx.admin.from('garage_profiles').select('*').order('created_at', { ascending: false });
     if (error) throw Object.assign(new Error('Could not load customers.'), { status: 503 });
     // Photos reference vehicles, and vehicles also reference their cover photo.
     // Read each table explicitly: embedding garage_photos is ambiguous in PostgREST.
@@ -81,7 +83,9 @@ exports.adminGet = async req => {
     }
     const safePhotos=(photos.data||[]).map(({storage_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[storage_path]||null}));
     const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id)}));
-    const data=(profiles||[]).map(profile=>({...profile,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
+    const logoUrls={};
+    await Promise.all((profiles||[]).filter(p=>p.logo_path).map(async p=>{try{logoUrls[p.user_id]=(await ctx.admin.storage.from('garage-photos').createSignedUrl(p.logo_path,900)).data?.signedUrl||null}catch{}}));
+    const data=(profiles||[]).map(({logo_path,...profile})=>({...profile,has_logo:!!logo_path,logo_url:logoUrls[profile.user_id]||null,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
     return Response.json({customers:data,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
@@ -143,12 +147,18 @@ exports.adminPost = async req => {
       return json({ ok: true, vehicle: data });
     }
     if (action === 'update_vehicle') {
-      const vehicle_id = clean(b.vehicle_id, 80), years = Number(b.ceramic_years);
-      if (!vehicle_id || !Number.isInteger(years) || years < 1 || years > 15) throw Object.assign(new Error('Choose a vehicle and enter ceramic years from 1 to 15.'), { status: 400 });
-      const flags = Object.fromEntries(['paint_correction','recommend_headlights','recommend_paint_correction','recommend_ceramic'].map(k => [k, b[k] === true]));
-      const { error } = await ctx.admin.from('garage_vehicles').update({ ...flags, ceramic_years: years }).eq('id', vehicle_id);
-      if (error) throw Object.assign(new Error('Could not save. Run the Garage status update in Supabase first.'), { status: 503 });
-      return json({ ok: true, message: 'Garage status saved.' });
+      const vehicle_id = clean(b.vehicle_id, 80);
+      if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
+      const protection_type = b.protection_type === 'sealant' || b.protection_type === 'coating' ? b.protection_type : null;
+      const years = Number(b.ceramic_years);
+      // Years only matter for a ceramic coating.
+      if (protection_type === 'coating' && (!Number.isInteger(years) || years < 1 || years > 15)) throw Object.assign(new Error('Enter ceramic years from 1 to 15.'), { status: 400 });
+      const flags = Object.fromEntries(['paint_correction','headlights_done','recommend_ceramic','show_headlights','show_paint','show_protection','show_ceramic_rec'].map(k => [k, b[k] === true]));
+      const patch = { ...flags, protection_type };
+      if (protection_type === 'coating') patch.ceramic_years = years;
+      const { error } = await ctx.admin.from('garage_vehicles').update(patch).eq('id', vehicle_id);
+      if (error) throw Object.assign(new Error('Could not save. Run the Garage health update in Supabase first.'), { status: 503 });
+      return json({ ok: true, message: 'Garage saved.' });
     }
     if (action === 'delete_vehicle') {
       const vehicle_id = clean(b.vehicle_id, 80);
@@ -168,6 +178,14 @@ exports.adminPost = async req => {
       const { error } = await ctx.admin.from('garage_services').delete().eq('id', service_id);
       if (error) throw Object.assign(new Error('Could not delete this service.'), { status: 503 });
       return json({ ok: true, vehicle_id: row.vehicle_id, message: 'Service deleted.' });
+    }
+    if (action === 'delete_logo') {
+      const customer_id = clean(b.customer_id, 80);
+      const { data: prof } = await ctx.admin.from('garage_profiles').select('logo_path').eq('user_id', customer_id).maybeSingle();
+      const { error } = await ctx.admin.from('garage_profiles').update({ logo_path: null }).eq('user_id', customer_id);
+      if (error) throw Object.assign(new Error('Could not remove the logo.'), { status: 503 });
+      if (prof?.logo_path) await ctx.admin.storage.from('garage-photos').remove([prof.logo_path]).catch(() => {});
+      return json({ ok: true, message: 'Logo removed.' });
     }
     if (action === 'delete_photo') {
       const photo_id = clean(b.photo_id, 80);
@@ -266,6 +284,29 @@ exports.photoPost = async req => {
   } catch (e) { return responseError(e); }
 };
 
+exports.logoPost = async req => {
+  try {
+    const ctx = await requireAdmin(await customerContext(req));
+    const form = await req.formData();
+    const customer_id = clean(form.get('customer_id'), 80), file = form.get('file');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id) || !file || typeof file.arrayBuffer !== 'function') throw Object.assign(new Error('Choose a client and a logo file.'), { status: 400 });
+    if (!file.size || file.size > 2 * 1024 * 1024) throw Object.assign(new Error('Choose a logo under 2 MB.'), { status: 400 });
+    const { data: prof, error: pErr } = await ctx.admin.from('garage_profiles').select('*').eq('user_id', customer_id).maybeSingle();
+    if (pErr || !prof) throw Object.assign(new Error('Client not found.'), { status: 404 });
+    let bytes;
+    try { bytes = await require('sharp')(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 50_000_000, failOn: 'error' }).rotate().resize({ width: 1200, height: 400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 90, alphaQuality: 100 }).toBuffer(); }
+    catch { throw Object.assign(new Error('That logo could not be read. Use a PNG, JPG or WebP.'), { status: 400 }); }
+    const path = `logos/${customer_id}-${cryptoRandom()}.webp`;
+    const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(path, bytes, { contentType: 'image/webp', upsert: false });
+    if (upErr) throw Object.assign(new Error('Logo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
+    const { error } = await ctx.admin.from('garage_profiles').update({ logo_path: path }).eq('user_id', customer_id);
+    if (error) { await ctx.admin.storage.from('garage-photos').remove([path]).catch(() => {}); throw Object.assign(new Error('Could not save the logo. Run the Garage health update in Supabase first.'), { status: 503 }); }
+    if (prof.logo_path) await ctx.admin.storage.from('garage-photos').remove([prof.logo_path]).catch(() => {});
+    const url = (await ctx.admin.storage.from('garage-photos').createSignedUrl(path, 900)).data?.signedUrl || null;
+    return json({ ok: true, logo_url: url, message: 'Logo saved.' });
+  } catch (e) { return responseError(e); }
+};
+
 exports.reminderPost = async req => {
   try {
     const secret = process.env.GARAGE_REMINDER_SECRET;
@@ -344,4 +385,4 @@ exports.remindersCronGet = async req => {
 
 function cryptoRandom() { return require('crypto').randomUUID(); }
 
-module.exports = { customerGet: exports.customerGet, adminGet: exports.adminGet, adminPost: exports.adminPost, photoPost: exports.photoPost, reminderPost: exports.reminderPost, remindersCronGet: exports.remindersCronGet };
+module.exports = { customerGet: exports.customerGet, adminGet: exports.adminGet, adminPost: exports.adminPost, photoPost: exports.photoPost, logoPost: exports.logoPost, reminderPost: exports.reminderPost, remindersCronGet: exports.remindersCronGet };
