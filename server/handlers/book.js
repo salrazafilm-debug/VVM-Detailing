@@ -10,6 +10,34 @@ const { vehicleLabel } = require('../garage-vehicle');
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 const money = c => '$' + (c / 100).toLocaleString('en-US', { maximumFractionDigits: 2 });
 
+// Booking request when Square cannot be read. Only the email is sent; the owner confirms price and time.
+async function emailRequestWithoutSquare({ b, name, email, digits, plan, vehicles, coupon, garageOffer, notes }) {
+  const two = vehicles.length > 1;
+  const services = plan.map((ids, i) => `${two ? `Vehicle ${i + 1}: ` : ''}${ids.join(' + ')}`).join(' | ');
+  const addonIds = Array.isArray(b.addons) ? b.addons.map(a => clean(a, 40)).filter(Boolean).join(', ') : '';
+  try {
+    await sendBookingEmail({
+      subject: `New booking request (price to confirm): ${b.date} ${b.time} - ${name}`,
+      replyTo: email,
+      lines: [
+        `Name: ${name}`, `Phone: ${b.phone}`, `Email: ${email}`,
+        `Date: ${b.date}`, `Start: ${b.time}`,
+        `Vehicle: ${two ? vehicles.map((v, i) => `Vehicle ${i + 1}: ${v}`).join(' | ') : vehicles[0] || 'Not given'}`,
+        `Services (Square item ids, check in Square): ${services || (b.coupon || '')}`,
+        `Total: TO CONFIRM. Square could not be read when this request was sent.`,
+        ...(addonIds ? [`Add-ons (ids): ${addonIds}`] : []),
+        ...(garageOffer ? [`MEMBERSHIP BOOKING: code ${garageOffer.coupon_code}, size ${garageOffer.size || 'not set'}. The membership offer was NOT marked used. Mark it in Garage admin after confirming.`] : []),
+        ...(coupon && !garageOffer ? [`Coupon: ${coupon.code}`] : []),
+        `Concerns / where to arrive: ${notes || 'None'}`,
+      ],
+    });
+  } catch (e) {
+    console.error('booking email failed:', e.message);
+    throw httpError(e.status || 502, e.status === 503 ? e.message : 'We could not send your request. Please call or text us to book.');
+  }
+  return json(200, { ok: true, when: `${b.date} ${b.time}`, service: services, mode: 'request', priceToConfirm: true });
+}
+
 exports.handler = async (event) => {
   let claimedGarageOfferId = null;
   try {
@@ -38,7 +66,14 @@ exports.handler = async (event) => {
 
 
     if (coupon && await couponStore().count(coupon.code) >= coupon.uses) throw httpError(400, 'This code has been used up.');
-    const catalog = await loadCatalog();
+    let catalog = null;
+    try { catalog = await loadCatalog(); }
+    catch (e) {
+      // Square unreachable: a booking request is still emailed to the owner, with the price to confirm.
+      if (process.env.BOOKING_MODE === 'square') throw e;
+      console.error('Square unavailable for booking request, emailing without it:', e.message);
+      return await emailRequestWithoutSquare({ b, name, email, digits, plan, vehicles, coupon, garageOffer, notes });
+    }
     if (coupon) {
       const v = Object.values(catalog).find(x => x.item === coupon.item && x.label === coupon.label && isPublic(x));
       if (!v) throw httpError(503, 'Online booking is not set up for this code yet.');
@@ -103,7 +138,8 @@ exports.handler = async (event) => {
       }
       // 2) Only after the owner has been notified, hold the time(s) so nobody else can pick them.
       //    Each vehicle is held as its own booking, back to back, so it matches how it is entered in Square.
-      for (const blk of partyBlocks(fromHHMM(b.time), jobs)) await addHold({ date: b.date, ...blk });
+      try { for (const blk of partyBlocks(fromHHMM(b.time), jobs)) await addHold({ date: b.date, ...blk }); }
+      catch (e) { console.error('hold not saved (request already emailed):', e.message); }
       // 3) The booking is sent and held, so the coupon use counts now.
       if (coupon?.garageOfferId) { await couponStore().redeemGarageOffer(coupon.garageOfferId); claimedGarageOfferId = null; }
       else if (coupon) await couponStore().add(coupon.code).catch(e => console.error('coupon use not counted:', e.message));
