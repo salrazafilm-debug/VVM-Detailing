@@ -278,13 +278,13 @@ function render() {
       <h3 class="yay-big">YAY!</h3>
       ${S.coupon ? `<p class="yay-sub">Congrats, your booking is complete!</p>
       <p class="yay-line" style="text-transform:none;letter-spacing:.02em">Hi ${esc(S.coupon.customer || 'there')}! Thank you for redeeming your coupon - you are saving ${money(S.coupon.savingCents)}! See you on ${esc(longDate(S.date))} at ${fmtTime(S.time)}.</p>` : `<p class="yay-sub">You're all booked and ready!</p>
-      <p class="yay-line">Your booking is now reserved.</p>`}
+      <p class="yay-line">Your request is in.</p>`}
       <div class="yay-card">
         <p class="yay-t">${esc(title())}</p>
         <p class="yay-l">${lines().map(esc).join('<br>')}</p>
         <p class="yay-d">${esc(longDate(S.date))} <span>at ${fmtTime(S.time)}</span></p>
       </div>
-      <p class="yay-note">We will reach out shortly to answer any questions and confirm all details! Thank you!</p>
+      <p class="yay-note">We'll text or email you back to confirm your booking!</p>
       ${contactLine}</div>`;
   }
   bk.innerHTML = html;
