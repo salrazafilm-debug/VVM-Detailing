@@ -183,3 +183,15 @@
 .room-intro img{width:min(62vw,300px);height:auto}
 .room-intro p{margin:0;font:italic 900 clamp(1.1rem,2.6vw,1.6rem)/1 var(--gdisplay);letter-spacing:.12em;text-transform:uppercase;color:#f0d63c}
 @keyframes roomIntroIn{from{opacity:0}to{opacity:1}}
+
+/* No cover photo yet: the whole Garage is black (clients only get a login once their showcase is added) */
+.client-showroom.is-black{background:#000}
+.room-showroom.is-black,.showroom-room.is-black{background:#000;inset:0;position:absolute;width:100%;height:100%}
+.client-showroom.is-black .room-awaiting{background:#0c0a12cc;border-color:#f0d63c55;box-shadow:0 0 30px rgba(240,214,60,.12)}
+.client-showroom.is-black .room-awaiting h1{color:#fff}
+.client-showroom.is-black .room-awaiting p{color:#d8d0e6}
+.client-showroom.is-black .room-awaiting .room-label{color:#f0d63c}
+.client-showroom.is-black .room-vehicle-plate{background:#0c0a12cc;border-color:#f0d63c55}
+.client-showroom.is-black .room-vehicle-plate strong{color:#fff}
+.client-showroom.is-black .room-vehicle-plate .room-label{color:#f0d63c}
+.client-showroom.is-black .room-plate-action{background:#f0d63c22;color:#f0d63c}
