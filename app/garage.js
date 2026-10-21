@@ -4,6 +4,7 @@ import { vehicleLabel, preferredGarageVehicleId } from '../server/garage-vehicle
 import { garageRequest, signOut } from './garage-auth-client';
 import { sealantProgress } from '../server/garage-dates';
 import GarageIcon from './garage-icons';
+import GarageIntro from './garage-intro';
 import './garage-showroom.css';
 
 const tabs = [['home','Home'],['garage','My Garage'],['health','Health'],['bookings','Bookings']];
@@ -103,7 +104,7 @@ export default function Garage() {
   const title={health:'HEALTH',garage:'MY GARAGE',bookings:'BOOKINGS'}[view],logo=data?.profile?.logo_url;
   const showIntro=!introDone||loading;
   return <main className="garage-shell client-showroom">
-    {showIntro&&<div className="room-intro" role="status" aria-live="polite"><img src="/assets/garage/vvm-logo-splash.png" alt="VVM Details" width="520" height="455"/><p>Entering your garage</p></div>}
+    {showIntro&&<GarageIntro/>}
     {(()=>{const scene=hero?.url&&!imageFailed&&!(hero.is_cutout||legacyCutout);return <img className={`showroom-room${scene?" is-scene":""}`} style={place} src={scene?hero.url:"/assets/garage/showroom.webp"} alt={scene?`${vehicleLabel(vehicle)} in ${firstName?`${firstName}’s`:"your"} Garage`:"Pink detailing showroom with white ceiling lights and a glossy tiled floor"} fetchPriority="high" onError={()=>setImageFailed(true)}/>})()}
     <header className="room-header"><a className="room-banner" href="/" aria-label="VVM Details website"><img src="/assets/garage/vvm-badge.webp" alt="" width="400" height="400"/><span><small>{data?.preview?'CLIENT PREVIEW':'VVM DETAILS'}</small><strong>{firstName?`${firstName.toUpperCase()}’S`:'YOUR'} GARAGE</strong></span></a>{data?.preview&&<a className="room-preview-back" href="/garage-admin">Back to admin</a>}</header>
     {data&&(()=>{const on=membershipActive(vehicle);return <button className={`room-membership${on?'':' is-off'}`} type="button" onClick={()=>navigate('bookings')}><Mark ok={on}/><span><small>MAINTENANCE MEMBERSHIP</small><strong>{on?'ACTIVE':vehicle?.cycle?'EXPIRED':'NOT ACTIVE'}</strong></span></button>})()}

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabaseBrowser } from './garage-auth-client';
 import GarageIcon from './garage-icons';
+import GarageIntro from './garage-intro';
 import './garage-login.css';
 
 function LoginIcon({ name }) {
@@ -13,8 +14,11 @@ function LoginIcon({ name }) {
 export default function GarageLogin({ admin = false }) {
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false), [reset, setReset] = useState(false);
   const [showPassword,setShowPassword] = useState(false);
+  const [entering,setEntering] = useState(false);
   async function submit(e) {
     e.preventDefault(); setBusy(true); setMessage('');
+    // Show the Garage intro the moment sign-in is pressed; it returns to the form only if sign-in fails.
+    if (!reset && !admin) setEntering(true);
     try {
       const sb = supabaseBrowser(), address = email.trim().toLowerCase();
       if (reset) {
@@ -23,13 +27,14 @@ export default function GarageLogin({ admin = false }) {
         setMessage('If that email has a Garage, a secure password reset link is on its way.');
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: address, password });
-        if (error) throw new Error('That email or password is not correct.');
+        if (error) { setEntering(false); throw new Error('That email or password is not correct.'); }
         location.assign(admin ? '/garage-admin' : '/garage');
       }
-    } catch (err) { setMessage(err.message || 'Could not sign in.'); }
+    } catch (err) { setEntering(false); setMessage(err.message || 'Could not sign in.'); }
     finally { setBusy(false); }
   }
   return <main className="virtual-login">
+    {entering&&<GarageIntro/>}
     <picture className="virtual-login-scene" aria-hidden="true">
       <source media="(max-width: 700px)" srcSet="/assets/garage/login-mobile.webp"/>
       <img src="/assets/garage/login-desktop.webp" alt="" width="1672" height="941" fetchPriority="high"/>
