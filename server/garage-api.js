@@ -4,13 +4,19 @@ const { vehicleLabel } = require('./garage-vehicle');
 const { prepareShowroomPhoto } = require('./garage-showroom');
 
 const json = (data, status = 200) => Response.json(data, { status });
+const sharp = require('sharp');
+// Smaller copy served to clients: loads faster on phones. The original is kept.
+async function displayCopy(bytes) {
+  try { return await sharp(bytes).resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toBuffer(); }
+  catch { return null; }
+}
 const clean = (s, max = 300) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 const easternToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
 async function addPhotoUrls(admin, rows) {
   return Promise.all((rows || []).map(async row => {
-    const { data } = await admin.storage.from('garage-photos').createSignedUrl(row.storage_path, 900);
-    const {storage_path,...photo}=row;
+    const { data } = await admin.storage.from('garage-photos').createSignedUrl(row.display_path || row.storage_path, 900);
+    const {storage_path,display_path,...photo}=row;
     return { ...photo, is_cutout: /\/cutout-/.test(storage_path), url: data?.signedUrl || null };
   }));
 }
@@ -67,7 +73,7 @@ exports.adminGet = async req => {
     const ids=(vehicles||[]).map(v=>v.id);
     const [services,photos]=ids.length&&!vehicleError?await Promise.all([
       ctx.admin.from('garage_services').select('id,vehicle_id,service_date,title').in('vehicle_id',ids),
-      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path,show_on_garage,sort_order').in('vehicle_id',ids).order('created_at',{ascending:false}),
+      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path,display_path,show_on_garage,sort_order').in('vehicle_id',ids).order('created_at',{ascending:false}),
     ]):[{data:[]},{data:[]}];
     const warnings=[];
     if(vehicleError)warnings.push('Vehicle list could not refresh. Existing records have not been removed. Please refresh before adding vehicles.');
@@ -76,12 +82,12 @@ exports.adminGet = async req => {
     const urls={};
     if(photos.data?.length){
       try {
-        const {data:signed,error:signError}=await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.data.map(p=>p.storage_path),900);
+        const {data:signed,error:signError}=await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.data.map(p=>p.display_path||p.storage_path),900);
         (signed||[]).forEach(s=>{if(s.signedUrl)urls[s.path]=s.signedUrl});
-        if(signError||photos.data.some(p=>!urls[p.storage_path]))warnings.push('Photos are saved, but some private previews could not refresh.');
+        if(signError||photos.data.some(p=>!urls[p.display_path||p.storage_path]))warnings.push('Photos are saved, but some private previews could not refresh.');
       } catch {warnings.push('Photos are saved, but private previews could not refresh.');}
     }
-    const safePhotos=(photos.data||[]).map(({storage_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[storage_path]||null}));
+    const safePhotos=(photos.data||[]).map(({storage_path,display_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[display_path||storage_path]||null}));
     const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id)}));
     const logoUrls={};
     await Promise.all((profiles||[]).filter(p=>p.logo_path).map(async p=>{try{logoUrls[p.user_id]=(await ctx.admin.storage.from('garage-photos').createSignedUrl(p.logo_path,900)).data?.signedUrl||null}catch{}}));
@@ -190,10 +196,10 @@ exports.adminPost = async req => {
     if (action === 'delete_vehicle') {
       const vehicle_id = clean(b.vehicle_id, 80);
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
-      const { data: photos } = await ctx.admin.from('garage_photos').select('storage_path').eq('vehicle_id', vehicle_id);
+      const { data: photos } = await ctx.admin.from('garage_photos').select('storage_path,display_path').eq('vehicle_id', vehicle_id);
       const { error } = await ctx.admin.from('garage_vehicles').delete().eq('id', vehicle_id);
       if (error) throw Object.assign(new Error('Could not delete this vehicle.'), { status: 503 });
-      if (photos?.length) await ctx.admin.storage.from('garage-photos').remove(photos.map(p => p.storage_path)).catch(() => {});
+      if (photos?.length) await ctx.admin.storage.from('garage-photos').remove(photos.flatMap(p => [p.storage_path, p.display_path].filter(Boolean))).catch(() => {});
       return json({ ok: true, message: 'Vehicle deleted.' });
     }
     if (action === 'delete_service') {
@@ -217,7 +223,7 @@ exports.adminPost = async req => {
     if (action === 'delete_photo') {
       const photo_id = clean(b.photo_id, 80);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
-      const { data: photo, error: pErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path').eq('id', photo_id).maybeSingle();
+      const { data: photo, error: pErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path,display_path').eq('id', photo_id).maybeSingle();
       if (pErr) throw Object.assign(new Error('Could not find this photo. Try again.'), { status: 503 });
       if (!photo) throw Object.assign(new Error('Photo not found.'), { status: 404 });
       // Clear either cover first so the vehicle never points at a deleted photo.
@@ -226,7 +232,7 @@ exports.adminPost = async req => {
       if (heroError) throw Object.assign(new Error('Could not remove this photo as the cover. Nothing was deleted.'), { status: 503 });
       const { error } = await ctx.admin.from('garage_photos').delete().eq('id', photo.id);
       if (error) throw Object.assign(new Error('Could not delete this photo.'), { status: 503 });
-      await ctx.admin.storage.from('garage-photos').remove([photo.storage_path]).catch(() => {});
+      await ctx.admin.storage.from('garage-photos').remove([photo.storage_path, photo.display_path].filter(Boolean)).catch(() => {});
       return json({ ok: true, vehicle_id: photo.vehicle_id, photo_id: photo.id, message: 'Photo deleted.' });
     }
     if (action === 'record_service') {
@@ -282,7 +288,7 @@ async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, cover
     if(heroError)warnings.push('Photo saved to gallery. Tap USE AS COVER on the saved photo to retry the cover without uploading again.');
   }
   let url=null;
-  try {const signed=await admin.storage.from('garage-photos').createSignedUrl(data.storage_path,900);url=signed.data?.signedUrl||null;} catch { /* Saving succeeded even if the preview is unavailable. */ }
+  try {const signed=await admin.storage.from('garage-photos').createSignedUrl(data.display_path||data.storage_path,900);url=signed.data?.signedUrl||null;} catch { /* Saving succeeded even if the preview is unavailable. */ }
   if(!url)warnings.push('Photo saved. Its private preview could not load; refresh to try again.');
   const {storage_path:privatePath,...savedPhoto}=data;
   return json({ok:true,photo:{...savedPhoto,is_cutout:isCutout,url},cover_saved:coverSaved,reused,warning:warnings.join(' ')||null});
@@ -311,8 +317,15 @@ exports.photoPost = async req => {
     const storage_path = `${vehicle_id}/${isCutout?'cutout-':''}${uploadId||cryptoRandom()}.webp`;
     const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(storage_path, photoBytes, { contentType: 'image/webp', upsert: false });
     if (upErr) throw Object.assign(new Error('Photo upload failed. Check that the private garage-photos bucket exists.'), { status: 503 });
-    const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
-    if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path]); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
+    let display_path = null;
+    const small = await displayCopy(photoBytes);
+    if (small) {
+      display_path = `${vehicle_id}/display-${storage_path.split('/')[1].replace(/^cutout-/, '')}`;
+      const { error: dErr } = await ctx.admin.storage.from('garage-photos').upload(display_path, small, { contentType: 'image/webp', upsert: false });
+      if (dErr) display_path = null;
+    }
+    const { data, error } = await ctx.admin.from('garage_photos').insert({ vehicle_id, storage_path, display_path, caption: clean(form.get('caption'), 160) || null, photo_kind: ['hero', 'before', 'after', 'gallery'].includes(kind) ? kind : 'gallery' }).select().single();
+    if (error) { await ctx.admin.storage.from('garage-photos').remove([storage_path, display_path].filter(Boolean)); throw Object.assign(new Error('Could not save photo details.'), { status: 503 }); }
     return await savedPhotoResponse(ctx.admin,data,{isCutout,warning,isHero:form.get('is_hero')==='true',coverFor:form.get('cover_for')==='mobile'?'mobile':'desktop'});
   } catch (e) { return responseError(e); }
 };

@@ -63,6 +63,7 @@ alter table public.garage_vehicles
   add column if not exists show_ceramic_rec boolean not null default true;
 alter table public.garage_profiles add column if not exists logo_path text;
 alter table public.garage_vehicles add column if not exists mobile_hero_photo_id uuid references public.garage_photos(id) on delete set null;
+alter table public.garage_photos add column if not exists display_path text;
 create index if not exists garage_vehicles_customer_idx on public.garage_vehicles(customer_id);
 
 create table if not exists public.garage_services (
