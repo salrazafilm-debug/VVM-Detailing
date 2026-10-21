@@ -1,5 +1,5 @@
 const { loadCatalog, json, fail, httpError, isPublic } = require('../square');
-const { findCoupon, store: couponStore } = require('../coupon-db');
+const { findCoupon, store: couponStore, sizeMatches } = require('../coupon-db');
 
 // GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
@@ -10,10 +10,11 @@ exports.handler = async (event) => {
       const offer = await couponStore().garageOffer(code);
       if (!offer) throw httpError(404, 'That offer is no longer available.');
       const catalog = await loadCatalog();
-      const sizes = Object.values(catalog).filter(v => v.item === 'Full Factory Reset' && isPublic(v) && Math.floor(v.priceCents / 2) > 14500).map(v => ({ id:v.id,label:v.label,normalCents:v.priceCents,priceCents:Math.ceil(v.priceCents/2),savingCents:Math.floor(v.priceCents/2) }));
-      if (!sizes.length) throw httpError(503, 'The Full Factory Reset offer is not configured in Square yet.');
-      const selected = sizes.find(v => v.label.toLowerCase() === 'suv') || sizes[0];
-      return json(200, { code:offer.coupon_code, item:'Full Factory Reset', label:selected.label, id:selected.id, priceCents:selected.priceCents, normalCents:selected.normalCents, savingCents:selected.savingCents, size_options:sizes, garage_offer:true, vehicle:'Vehicle on file' });
+      if (!offer.size) throw httpError(400, 'Your Full Factory Reset size is not set yet. Please call or text VVM to book.');
+      const v = Object.values(catalog).find(x => x.item === 'Full Factory Reset' && isPublic(x) && sizeMatches(x.label, offer.size));
+      if (!v) throw httpError(503, 'Your Full Factory Reset price is not set up yet. Please call or text VVM.');
+      const selected = { id:v.id,label:v.label,normalCents:v.priceCents,priceCents:Math.ceil(v.priceCents/2),savingCents:Math.floor(v.priceCents/2) };
+      return json(200, { code:offer.coupon_code, item:'Full Factory Reset', label:selected.label, id:selected.id, priceCents:selected.priceCents, normalCents:selected.normalCents, savingCents:selected.savingCents, garage_offer:true, membership:true, vehicle:[offer.vehicle.year, offer.vehicle.make, offer.vehicle.model].filter(Boolean).join(' ') });
     }
     if (await couponStore().count(coupon.code) >= coupon.uses) throw httpError(404, 'This code has been used up.');
     const catalog = await loadCatalog();

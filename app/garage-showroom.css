@@ -211,3 +211,12 @@
   .room-pill-short{display:inline}
   .client-sheet{top:92px}
 }
+/* Membership reset card (Bookings) */
+.room-reset-card{margin:16px 0 0;padding:20px;border-radius:22px;background:linear-gradient(135deg,#0b2a4a,#1d4f86);color:#fff;text-align:center;box-shadow:0 12px 30px rgba(11,42,74,.3)}
+.room-reset-card .room-label{color:#f0d63c}
+.room-reset-card h3{font:italic 900 1.6rem/1.1 var(--gdisplay);margin:8px 0 2px;color:#fff}
+.room-reset-size{margin:0;color:#9fd0f3;font-weight:700}
+.room-reset-prices{margin:12px 0 0;display:flex;justify-content:center;align-items:baseline;gap:14px}
+.room-reset-prices s{font:700 1.2rem var(--gbody);color:#ffb3ab}
+.room-reset-prices strong{font:italic 900 2.6rem/1 var(--gdisplay);color:#f0d63c}
+.room-reset-card .room-gold{margin-top:16px}

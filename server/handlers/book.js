@@ -2,7 +2,7 @@ const { sq, loadCatalog, getLocationId, blocksByDay, json, fail, httpError, isPu
 const { slotsForJobs, localToUtc, fromHHMM, resolvePlan, partyBlocks } = require('../rules');
 const { blocksWithHolds, addHold } = require('../holds');
 const { sendBookingEmail } = require('../mail');
-const { findCoupon, store: couponStore } = require('../coupon-db');
+const { findCoupon, store: couponStore, sizeMatches } = require('../coupon-db');
 const { resolveAddons } = require('../addons');
 const crypto = require('crypto');
 const { vehicleLabel } = require('../garage-vehicle');
@@ -45,9 +45,10 @@ exports.handler = async (event) => {
       plan = [[v.id]];
     } else if (garageOffer) {
       if (String(garageOffer.email).toLowerCase() !== email.toLowerCase()) throw httpError(403, 'This offer is linked to a different customer email.');
-      const v = Object.values(catalog).find(x => x.id === b.offerVariationId && x.item === 'Full Factory Reset' && isPublic(x));
-      if (!v || Math.floor(v.priceCents / 2) <= 14500) throw httpError(400, 'Choose an eligible Full Factory Reset size for your offer.');
-      coupon = { code:garageOffer.coupon_code, item:v.item, label:v.label, priceCents:Math.ceil(v.priceCents/2), savingCents:Math.floor(v.priceCents/2), normalCents:v.priceCents, customer:name, vehicle:vehicles[0], garageOfferId:garageOffer.id };
+      // The membership reset is always the size the owner set for this vehicle. The browser cannot choose it.
+      const v = Object.values(catalog).find(x => x.item === 'Full Factory Reset' && isPublic(x) && sizeMatches(x.label, garageOffer.size));
+      if (!v) throw httpError(400, 'Your Full Factory Reset size is not set yet. Please call or text VVM to book.');
+      coupon = { code:garageOffer.coupon_code, item:v.item, label:v.label, priceCents:Math.ceil(v.priceCents/2), savingCents:Math.floor(v.priceCents/2), normalCents:v.priceCents, customer:name, vehicle:vehicles[0], garageOfferId:garageOffer.id, membership:true };
       plan = [[v.id]];
     }
     const { cars, jobs } = resolvePlan(plan, catalog, isPublic);
@@ -89,7 +90,8 @@ exports.handler = async (event) => {
             `Vehicle: ${vehicleText}`, `Services: ${serviceText}`,
             `Party: ${two ? '2 vehicles, back to back' : '1 vehicle'}`, `Total: ${money(totalCents)}`,
             ...(addonText ? [`Add-ons: ${addonText}`] : []),
-            ...(coupon ? [`Coupon: ${coupon.code} (special price, not the Square price)`] : []),
+            ...(coupon?.membership ? [`MEMBERSHIP BOOKING: VVM Maintenance membership, 50% off Full Factory Reset. Normal ${money(coupon.normalCents)}, customer pays ${money(coupon.priceCents)}.`] : []),
+            ...(coupon && !coupon.membership ? [`Coupon: ${coupon.code} (special price, not the Square price)`] : []),
             `Concerns / where to arrive: ${notes || 'None'}`,
           ],
         });

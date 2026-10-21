@@ -35,8 +35,39 @@ async function findCoupon(code) {
   return data ? toCoupon(data) : null;
 }
 
+// Membership offers: one Full Factory Reset at half off per membership cycle. Lives in garage_offers.
+const SIZE_WORDS = { coupe: /^coupe/i, sedan: /^sedan/i, suv: /^suv/i, truck: /^truck/i, minivan: /^mini-?\s?van/i };
+function sizeMatches(label, size) { return !!SIZE_WORDS[size] && SIZE_WORDS[size].test(String(label || '')); }
+
 function store() {
   return {
+    async garageOffer(code) {
+      const key = String(code || '').replace(/\s+/g, '').toUpperCase();
+      if (!key) return null;
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const { data: offer, error } = await client().from('garage_offers')
+        .select('id,coupon_code,status,vehicle_id,garage_vehicles!inner(id,year,make,model,vehicle_size,customer_id)')
+        .eq('coupon_code', key).eq('status', 'available').lte('starts_on', today).gte('expires_at', today).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!offer) return null;
+      const { data: profile } = await client().from('garage_profiles').select('email,display_name').eq('user_id', offer.garage_vehicles.customer_id).maybeSingle();
+      const v = offer.garage_vehicles;
+      return { id: offer.id, coupon_code: offer.coupon_code, email: profile?.email || '', name: profile?.display_name || '', size: v.vehicle_size || null, vehicle: { year: v.year, make: v.make, model: v.model } };
+    },
+    // Reserve the offer while the booking is checked; released if the booking fails, redeemed once it is sent.
+    async claimGarageOffer(code, email) {
+      const { data, error } = await client().from('garage_offers').update({ status: 'reserved' }).eq('coupon_code', code).eq('status', 'available').select('id').maybeSingle();
+      if (error) throw new Error(error.message);
+      return data?.id || null;
+    },
+    async releaseGarageOffer(id) {
+      const { error } = await client().from('garage_offers').update({ status: 'available' }).eq('id', id).eq('status', 'reserved');
+      if (error) throw new Error(error.message);
+    },
+    async redeemGarageOffer(id) {
+      const { error } = await client().from('garage_offers').update({ status: 'redeemed' }).eq('id', id);
+      if (error) throw new Error(error.message);
+    },
     async count(code) {
       const { count, error } = await client().from('coupon_uses').select('code', { count: 'exact', head: true }).eq('code', code);
       if (error) throw new Error(error.message);
@@ -49,4 +80,4 @@ function store() {
   };
 }
 
-module.exports = { store, findCoupon, toCoupon };
+module.exports = { sizeMatches, store, findCoupon, toCoupon };

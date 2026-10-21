@@ -15,6 +15,8 @@ const dayMs = 86400000;
 const dayNum = day => Date.parse(`${day}T00:00:00Z`)/dayMs;
 const daysUntil = day => Math.max(0,Math.ceil(dayNum(day)-dayNum(todayET())));
 const plusMonths = (day,n) => {const d=new Date(`${day}T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+n);return d};
+const sizeName = s => ({coupe:'Coupe',sedan:'Sedan',suv:'SUV',truck:'Truck',minivan:'Mini-van'})[s] || '';
+const money = cents => (cents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
 const membershipActive = v => !!v?.cycle && todayET() <= v.cycle.offer_expires_at;
 const Mark = ({ ok, bad }) => <span className={`room-mark ${ok?'is-yes':bad?'is-bad':'is-no'}`}><GarageIcon name={ok?'check':'x'}/></span>;
 
@@ -75,7 +77,8 @@ function Bookings({ vehicle, preview }) {
   return <>
     <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<><p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p><p className="room-member-note">Membership expires {date(c.offer_expires_at)}.</p></>:<p>Book a detail with sealant to start your membership.</p>}</section>
     {vehicle?.appointments?.length?<ul className="room-bookings">{vehicle.appointments.map(a=><li key={a.id}><GarageIcon name="bookings"/><div><span className="room-badge">{a.status==='requested'?'REQUESTED':'CONFIRMED'}</span><h3>{a.service_label}</h3><strong>{date(a.starts_at)}</strong><p>{time(a.starts_at)}</p></div></li>)}</ul>:null}
-    <a className="room-gold" href="/#book">BOOK MY DAY</a>
+    {active&&vehicle?.offer?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{vehicle.offer.size?sizeName(vehicle.offer.size):'Your size'}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{vehicle.offer.price_cents?money(vehicle.offer.price_cents):'Ask us'}</strong></p><a className="room-gold" href={`/?coupon=${encodeURIComponent(vehicle.offer.coupon_code)}#book`}>BOOK MY DAY</a></section>:<a className="room-gold" href="/#book">BOOK MY DAY</a>}
+    {active&&!vehicle?.offer&&<p className="room-small">Your membership reset is used for this visit. It unlocks again after your next sealant detail.</p>}
     <p className="room-small">Need to change a visit? <a href="sms:+12406019451">Text us</a>{!preview&&<> · <a href="/reset-password">Change password</a> · <button type="button" className="room-link" onClick={signOut}>Sign out</button></>}</p>
   </>;
 }

@@ -50,13 +50,26 @@ exports.customerGet = async req => {
     ]);
     for (const q of [sv, ph, ap, cy, offers]) if (q.error) throw Object.assign(new Error('Could not load Garage details.'), { status: 503 });
     const photos = await addPhotoUrls(ctx.admin, ph.data);
+    // Membership price for the reset, from Square. The page shows it struck through and the half price.
+    const reset = await (async () => {
+      try {
+        const { loadCatalog } = require('./square');
+        return Object.values(await loadCatalog()).filter(x => x.item === 'Full Factory Reset');
+      } catch { return []; }
+    })();
     const payload = vehicles.map(v => ({
       ...v,
       services: sv.data.filter(x => x.vehicle_id === v.id),
       photos: photos.filter(x => x.vehicle_id === v.id),
       appointments: ap.data.filter(x => x.vehicle_id === v.id),
       cycle: cy.data.find(x => x.vehicle_id === v.id) || null,
-      offer: offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null,
+      offer: (() => {
+        const o = offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null;
+        if (!o) return null;
+        const { sizeMatches } = require('./coupon-db');
+        const match = v.vehicle_size ? reset.find(x => sizeMatches(x.label, v.vehicle_size)) : null;
+        return { ...o, size: v.vehicle_size || null, normal_cents: match?.priceCents ?? null, price_cents: match ? Math.ceil(match.priceCents / 2) : null };
+      })(),
     }));
     return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
   } catch (e) { return responseError(e); }
@@ -157,6 +170,10 @@ exports.adminPost = async req => {
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
       const patch = {};
       for (const k of ['paint_correction','headlights_done','recommend_ceramic','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
+      if ('vehicle_size' in b) {
+        if (b.vehicle_size !== null && !['coupe','sedan','suv','truck','minivan'].includes(b.vehicle_size)) throw Object.assign(new Error('Choose a vehicle size.'), { status: 400 });
+        patch.vehicle_size = b.vehicle_size || null;
+      }
       if ('protection_type' in b) patch.protection_type = b.protection_type === 'sealant' || b.protection_type === 'coating' ? b.protection_type : null;
       if ('ceramic_years' in b || patch.protection_type === 'coating') {
         const years = Number(b.ceramic_years);

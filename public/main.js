@@ -137,6 +137,7 @@ function multiBlock() {
 function couponStep() {
   const c = S.coupon;
   const sizes = c.garage_offer && c.size_options ? `<label class="g-offer-size">Choose your vehicle size<select id="offerSize">${c.size_options.map(v=>`<option value="${esc(v.id)}" ${v.id===c.id?'selected':''}>${esc(v.label)} · ${money(v.priceCents)} (save ${money(v.savingCents)})</option>`).join('')}</select></label>` : '';
+  if (c.membership) return `<div class="coupon-bar"><p><b>VVM Maintenance membership</b> · Full Factory Reset, ${esc(c.label)}<br><s class="was-price">${money(c.normalCents)}</s> <b class="now-price">${money(c.priceCents)}</b> <span class="picked-sub">50% off</span>${c.vehicle ? `<br><span class="picked-sub">${esc(c.vehicle)}</span>` : ''}</p><button type="button" class="link" data-act="nocoupon">Remove</button></div><button class="btn primary" type="button" data-act="go">Choose a day</button>`;
   return `<div class="coupon-bar"><p><b>${esc(c.code)}</b> · Full Factory Reset, ${esc(c.label)} · <b>${money(c.priceCents)}</b>${c.vehicle ? `<br><span class="picked-sub">${esc(c.vehicle)}</span>` : ''}</p><button type="button" class="link" data-act="nocoupon">Remove</button></div>${sizes}
     <button class="btn primary" type="button" data-act="go">Choose a day</button>`;
 }
