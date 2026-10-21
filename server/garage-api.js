@@ -220,6 +220,28 @@ exports.adminPost = async req => {
       if (prof?.logo_path) await ctx.admin.storage.from('garage-photos').remove([prof.logo_path]).catch(() => {});
       return json({ ok: true, message: 'Logo removed.' });
     }
+    if (action === 'make_display_copies') {
+      // One-time catch-up for photos saved before smaller copies existed. Works in small batches.
+      const { data: rows, error: rErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path').is('display_path', null).order('created_at', { ascending: true }).limit(20);
+      if (rErr) throw Object.assign(new Error('Could not list photos. Check the Garage database update.'), { status: 503 });
+      let done = 0, failed = 0;
+      for (const row of rows || []) {
+        try {
+          const { data: file, error: dlErr } = await ctx.admin.storage.from('garage-photos').download(row.storage_path);
+          if (dlErr || !file) throw new Error('download');
+          const small = await displayCopy(Buffer.from(await file.arrayBuffer()));
+          if (!small) throw new Error('resize');
+          const display_path = `${row.vehicle_id}/display-${row.storage_path.split('/')[1].replace(/^cutout-/, '')}`;
+          const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(display_path, small, { contentType: 'image/webp', upsert: true });
+          if (upErr) throw new Error('upload');
+          const { error: saveErr } = await ctx.admin.from('garage_photos').update({ display_path }).eq('id', row.id);
+          if (saveErr) throw new Error('save');
+          done++;
+        } catch { failed++; }
+      }
+      const { count } = await ctx.admin.from('garage_photos').select('id', { count: 'exact', head: true }).is('display_path', null);
+      return json({ ok: true, done, failed, remaining: count ?? 0, message: `Made ${done} faster ${done === 1 ? 'copy' : 'copies'}.${failed ? ` ${failed} could not be converted.` : ''}` });
+    }
     if (action === 'delete_photo') {
       const photo_id = clean(b.photo_id, 80);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });

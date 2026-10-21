@@ -64,6 +64,24 @@ function VehicleStatus({ vehicle, busy, onSave }) {
   </form>;
 }
 
+// Runs the one-time smaller-copy job in batches until nothing is left
+function SpeedUp({ onNotice, onError, onDone }) {
+  const [running,setRunning]=useState(false),[left,setLeft]=useState(null);
+  async function run(){
+    setRunning(true);onError('');let total=0;
+    try{
+      for(let i=0;i<200;i++){
+        const d=await garageRequest('/api/garage/admin',{method:'POST',body:JSON.stringify({action:'make_display_copies'})});
+        total+=d.done;setLeft(d.remaining);
+        if(d.remaining===0||d.done===0)break;
+      }
+      onNotice(total?`Made ${total} faster ${total===1?'copy':'copies'}.`:'Everything is already fast.');
+      await onDone();
+    }catch(e){onError(e.message)}finally{setRunning(false)}
+  }
+  return <div className="admin-speed-row"><button type="button" className="g-button" disabled={running} onClick={run}>{running?'WORKING…':'SPEED UP PHOTOS'}</button>{left!==null&&<span className="g-inline-help">{left} left to convert</span>}</div>;
+}
+
 // Per-client brand logo, shown top center in their My Garage
 function ClientLogo({ client, busy, onChanged, onError, onNotice }) {
   const [working,setWorking]=useState(false),input=useRef(null);
@@ -211,6 +229,7 @@ export default function GarageAdmin() {
         </>}
       </section>
       <section className={`g-panel admin-step${!selectedVehicle?' admin-locked':''}`} aria-labelledby="preview-step"><p className="g-eyebrow">PREVIEW</p><h2 id="preview-step">See what they see.</h2>{!selectedVehicle?<p className="g-muted">Choose a vehicle above to preview its Garage.</p>:<ClientPreview clientId={customer} vehicleId={vehicle} vehicle={selectedVehicle} busy={busy} onSaveSizing={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f},'Showroom size saved.')} sig={JSON.stringify([selectedVehicle.desktop_scale,selectedVehicle.desktop_x,selectedVehicle.desktop_y,selectedVehicle.phone_scale,selectedVehicle.phone_x,selectedVehicle.phone_y,selectedVehicle.mobile_hero_photo_id,selectedVehicle.protection_type,selectedVehicle.headlights_done,selectedVehicle.paint_correction,selectedVehicle.recommend_ceramic,selectedVehicle.show_headlights,selectedVehicle.show_paint,selectedVehicle.show_protection,selectedVehicle.show_ceramic_rec,selectedVehicle.ceramic_years,selectedVehicle.hero_photo_id,selectedVehicle.garage_photos?.length,selectedVehicle.garage_services?.length,client?.has_logo])}/>}</section>
+      <section className="g-panel admin-speed" aria-labelledby="speed-step"><p className="g-eyebrow">FASTER LOADING</p><h2 id="speed-step">Speed up older photos.</h2><p className="g-muted">Makes a smaller copy of every photo saved before this update, so clients’ Garages load faster. Run it once. New photos are already fast.</p><SpeedUp onNotice={setNotice} onError={setError} onDone={load}/></section>
       <section className="admin-extras" aria-labelledby="optional-step"><p className="g-eyebrow">04 / WHEN YOU NEED IT</p><h2 id="optional-step">The extra details.</h2><p className="g-muted">All optional. Add what matters, whenever you’re ready.</p>
         {!selectedVehicle?<p className="g-inline-help">Choose a vehicle to add service history, appointments or a showroom cover.</p>:<div key={vehicle} className="admin-details-list">
           <details className="g-panel admin-disclosure" open><summary><span>Garage health<small>Protection, done ticks and what the client sees</small></span><b aria-hidden="true">+</b></summary><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>

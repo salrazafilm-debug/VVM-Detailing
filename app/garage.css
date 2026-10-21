@@ -111,3 +111,4 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .admin-preview-screen{overflow:hidden;border-radius:22px;border:6px solid #1a1214;background:#fff;box-shadow:0 14px 34px rgba(26,18,20,.3);max-width:100%}.admin-preview-screen iframe{display:block;border:0;transform-origin:0 0}
 .g-form input[type=radio]{width:17px;height:17px;padding:0;min-height:0;accent-color:#3579d4;flex-shrink:0}.admin-status-group .g-check-grid label{display:flex;align-items:center;gap:8px;font-size:.85rem}
 .admin-show-toggle{margin:4px 0 0}.admin-move{display:flex;gap:14px;align-items:center}.admin-move .g-text-button:disabled{opacity:.35;cursor:not-allowed}
+.admin-speed-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:14px}
