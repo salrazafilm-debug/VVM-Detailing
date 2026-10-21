@@ -13,7 +13,11 @@ exports.handler = async (event) => {
 
     const [y, m] = month.split('-').map(Number);
     const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-    const blocks = await blocksWithHolds(await blocksByDay(`${month}-01`, `${next}-01`, catalog), month);
+    // Square is only used to see booked times. If it cannot be read, the days still show as open.
+    let booked = {};
+    try { booked = await blocksByDay(`${month}-01`, `${next}-01`, catalog); }
+    catch (e) { console.error('Square booked times unavailable, showing days open:', e.message); }
+    const blocks = await blocksWithHolds(booked, month);
     const now = new Date();
     const total = new Date(Date.UTC(y, m, 0)).getUTCDate();
     const days = {};

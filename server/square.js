@@ -1,5 +1,6 @@
 // Thin Square API client plus the helpers the functions share.
 const { kindOf, localToUtc, utcToLocal, CFG } = require('./rules');
+const { STATIC_CATALOG } = require('./catalog-static');
 
 const BASE = process.env.SQUARE_ENV === 'sandbox' ? 'https://connect.squareupsandbox.com' : 'https://connect.squareup.com';
 const VERSION = '2025-10-16';
@@ -27,36 +28,9 @@ async function sq(path, { method = 'GET', body } = {}) {
   return j;
 }
 
-let catalogCache = { at: 0, data: null };
+// Prices and durations come from catalog-static.js, not from Square (edit them there).
 async function loadCatalog() {
-  if (catalogCache.data && Date.now() - catalogCache.at < 5 * 60000) return catalogCache.data;
-  const variations = {};
-  let cursor;
-  do {
-    const res = await sq('/v2/catalog/search-catalog-items', { method: 'POST', body: { product_types: ['APPOINTMENTS_SERVICE'], limit: 100, cursor } });
-    for (const item of res.items || []) {
-      const d = item.item_data || {};
-      if (item.is_deleted || d.is_archived) continue;
-      for (const v of d.variations || []) {
-        const vd = v.item_variation_data || {};
-        variations[v.id] = {
-          id: v.id,
-          item: d.name,
-          label: vd.name,
-          kind: kindOf(d.name),
-          priceCents: vd.price_money ? vd.price_money.amount : 0,
-          durationMin: Math.round((vd.service_duration || 0) / 60000),
-          transitionMin: Math.round((vd.transition_time || 0) / 60000),
-          version: v.version,
-          bookable: vd.available_for_booking !== false,
-          teamMemberId: (vd.team_member_ids || [])[0],
-        };
-      }
-    }
-    cursor = res.cursor;
-  } while (cursor);
-  catalogCache = { at: Date.now(), data: variations };
-  return variations;
+  return STATIC_CATALOG;
 }
 
 let locationCache;
