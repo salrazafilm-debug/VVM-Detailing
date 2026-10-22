@@ -220,3 +220,11 @@
 .room-reset-prices s{font:700 1.2rem var(--gbody);color:#ffb3ab}
 .room-reset-prices strong{font:italic 900 2.6rem/1 var(--gdisplay);color:#f0d63c}
 .room-reset-card .room-gold{margin-top:16px}
+/* Phones: keep the menu, vehicle box and sheet above Safari's bottom toolbar */
+@media(max-width:800px){
+  .client-showroom{height:100vh;height:100dvh;min-height:0}
+  .room-nav{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
+  .room-vehicle-plate{bottom:calc(env(safe-area-inset-bottom,0px) + 190px)}
+  .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 190px)}
+  .room-refresh-error{top:150px}
+}
