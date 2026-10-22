@@ -237,3 +237,11 @@
   .room-vehicle-plate{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
   .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
 }
+/* Phones: the photo fills the whole screen, under Safari's bottom bar, so no colour shows at the bottom */
+html:has(.client-showroom),body:has(.client-showroom){background:#000}
+@media(max-width:800px){
+  .client-showroom{position:fixed;inset:0;height:100vh;height:100lvh;width:100%}
+  .room-nav{bottom:calc(env(safe-area-inset-bottom,0px) + 96px)}
+  .room-vehicle-plate{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)}
+  .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)}
+}
