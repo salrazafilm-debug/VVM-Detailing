@@ -228,3 +228,12 @@
   .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 190px)}
   .room-refresh-error{top:150px}
 }
+/* Phones: menu sits just above Safari's bottom bar; shorter menu */
+@media(max-width:800px){
+  .client-showroom{background:#000}
+  .room-nav{bottom:calc(env(safe-area-inset-bottom,0px) + 12px)}
+  .room-nav button{min-height:52px;padding:6px 3px}
+  .room-nav svg{width:21px;height:21px}
+  .room-vehicle-plate{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+  .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)}
+}
