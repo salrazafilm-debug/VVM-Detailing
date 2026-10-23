@@ -50,14 +50,14 @@ function HealthCard({ row }) {
   return <div className={`room-sealant room-health-card${row.ok?' is-on':' is-bad'}`}><div><span className="room-label">{row.bar?'PROTECTION':'HEALTH'}</span><strong>{row.label}</strong><em>{row.note}</em></div><Mark ok={row.ok} bad/>{row.bar&&<div className="room-progress" role="progressbar" aria-label={`${row.label} time left`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><span style={{width:`${row.pct}%`}}/></div>}</div>;
 }
 
-function Health({ vehicle }) {
+function Health({ vehicle, onBook }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="health"/><h3>Your space is ready.</h3><p>Your vehicle’s health will show up here.</p></div>;
   const rows=healthRows(vehicle),services=vehicle.services||[],good=rows.every(r=>r.ok);
   return <>
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
     {rows.length>0&&<p className={`room-health-title${good?'':' is-warn'}`}><GarageIcon name="medic"/>{good?'Your vehicle is healthy!':'Needs attention'}</p>}
     <div className="room-health-list">{rows.map(r=><HealthCard key={r.key} row={r}/>)}</div>
-    {rows.some(r=>!r.ok)&&<a className="room-gold" href="/#book">BOOK MY DAY</a>}
+    {rows.some(r=>!r.ok)&&<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button>}
     <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{services[0]?<><strong>{services[0].title}</strong><time>{date(services[0].service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
     <section className="room-done-box"><span className="room-label">COMPLETED SERVICES</span>{services.length?<ul>{services.map(s=><li key={s.id}><time>{date(s.service_date)}</time><strong>{s.title}</strong>{s.description&&<p>{s.description}</p>}</li>)}</ul>:<p className="room-muted">Your completed details will show up here after each visit.</p>}</section>
   </>;
@@ -146,8 +146,9 @@ function Bookings({ vehicle, preview, onBook }) {
   return <>
     <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<><p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p><p className="room-member-note">Membership expires {date(c.offer_expires_at)}.</p></>:<p>Book a detail with sealant to start your membership.</p>}</section>
     {vehicle?.appointments?.length?<ul className="room-bookings">{vehicle.appointments.map(a=><li key={a.id}><GarageIcon name="bookings"/><div><span className="room-badge">{a.status==='requested'?'REQUESTED':'CONFIRMED'}</span><h3>{a.service_label}</h3><strong>{date(a.starts_at)}</strong><p>{time(a.starts_at)}</p></div></li>)}</ul>:null}
-    {active&&vehicle?.offer?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{vehicle.offer.size?sizeName(vehicle.offer.size):'Your size'}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{vehicle.offer.price_cents?money(vehicle.offer.price_cents):'Ask us'}</strong></p><button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>:<a className="room-gold" href="/#book">BOOK MY DAY</a>}
-    {active&&!vehicle?.offer&&<p className="room-small">Your membership reset is used for this visit. It unlocks again after your next sealant detail.</p>}
+    {active&&vehicle?.offer?.variation_id?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{sizeName(vehicle.offer.size)}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{vehicle.offer.price_cents?money(vehicle.offer.price_cents):'Ask us'}</strong></p><p className="room-small">Open until {date(vehicle.offer.expires_at)}</p><button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>
+    :active&&vehicle?<section className="room-membership-note"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span>{!vehicle.vehicle_size?<p>Your reset size is being set up. Text us and we'll book it.</p>:vehicle.cycle&&todayET()<vehicle.cycle.offer_date?<p>Your 50% off Full Factory Reset opens <strong>{date(vehicle.cycle.offer_date)}</strong> and stays open until <strong>{date(vehicle.cycle.offer_expires_at)}</strong>.</p>:<p>Your 50% off reset window is not open right now. Text us to book.</p>}</section>:null}
+
     <p className="room-small">Need to change a visit? <a href="sms:+12406019451">Text us</a>{!preview&&<> · <a href="/reset-password">Change password</a> · <button type="button" className="room-link" onClick={signOut}>Sign out</button></>}</p>
   </>;
 }
@@ -194,7 +195,7 @@ export default function Garage() {
       </section>}
       {view!=='home'&&<section className="client-sheet" aria-labelledby="room-panel-title"><div className="room-sheet-head"><h1 id="room-panel-title" tabIndex="-1" ref={heading} className={view==='garage'&&logo?'has-logo':''}>{view==='garage'&&logo?<img className="room-garage-logo" src={logo} alt={`${firstName?`${firstName}’s `:''}Garage`}/>:title}</h1><button className="room-close" onClick={()=>navigate('home')} aria-label="Return to showroom"><GarageIcon name="close"/></button></div>
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
-        {view==='health'&&<Health vehicle={vehicle}/>}
+        {view==='health'&&<Health vehicle={vehicle} onBook={()=>{navigate('bookings');setBooking(!!vehicle?.offer?.variation_id)}}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto}/>}
         {view==='bookings'&&(booking&&vehicle?.offer?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
       </section>}
