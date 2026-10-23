@@ -47,7 +47,7 @@ function store() {
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
       const { data: offer, error } = await client().from('garage_offers')
         .select('id,coupon_code,status,vehicle_id,garage_vehicles!inner(id,year,make,model,vehicle_size,customer_id)')
-        .eq('coupon_code', key).eq('status', 'available').lte('starts_on', today).gte('expires_at', today).maybeSingle();
+        .eq('coupon_code', key).eq('status', 'available').gte('expires_at', today).maybeSingle();
       if (error) throw new Error(error.message);
       if (!offer) return null;
       const { data: profile } = await client().from('garage_profiles').select('email,display_name').eq('user_id', offer.garage_vehicles.customer_id).maybeSingle();

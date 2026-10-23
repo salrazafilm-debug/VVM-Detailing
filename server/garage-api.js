@@ -46,7 +46,7 @@ exports.customerGet = async req => {
       db.from('garage_photos').select('*').in('vehicle_id', ids).order('created_at', { ascending: false }),
       db.from('garage_appointments').select('*').in('vehicle_id', ids).gte('starts_at', new Date().toISOString()).in('status', ['requested','confirmed']).order('starts_at'),
       db.from('garage_maintenance_cycles').select('*').in('vehicle_id', ids).eq('status', 'active'),
-      db.from('garage_offers').select('*').in('vehicle_id', ids).eq('status','available').lte('starts_on',easternToday()).gte('expires_at',easternToday()),
+      db.from('garage_offers').select('*').in('vehicle_id', ids).eq('status','available').gte('expires_at',easternToday()),
     ]);
     for (const q of [sv, ph, ap, cy, offers]) if (q.error) throw Object.assign(new Error('Could not load Garage details.'), { status: 503 });
     const photos = await addPhotoUrls(ctx.admin, ph.data);
