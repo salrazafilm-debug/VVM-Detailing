@@ -36,7 +36,7 @@ exports.customerGet = async req => {
     ]);
     if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
     const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
-    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, logo_url: logo } : p;
+    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', logo_url: logo } : p;
     const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
@@ -68,7 +68,7 @@ exports.customerGet = async req => {
         if (!o) return null;
         const { sizeMatches } = require('./coupon-db');
         const match = v.vehicle_size ? reset.find(x => sizeMatches(x.label, v.vehicle_size)) : null;
-        return { ...o, size: v.vehicle_size || null, normal_cents: match?.priceCents ?? null, price_cents: match ? Math.ceil(match.priceCents / 2) : null };
+        return { ...o, size: v.vehicle_size || null, variation_id: match?.id || null, normal_cents: match?.priceCents ?? null, price_cents: match ? Math.ceil(match.priceCents / 2) : null };
       })(),
     }));
     return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
@@ -228,6 +228,14 @@ exports.adminPost = async req => {
       const { error } = await ctx.admin.from('garage_services').delete().eq('id', service_id);
       if (error) throw Object.assign(new Error('Could not delete this service.'), { status: 503 });
       return json({ ok: true, vehicle_id: row.vehicle_id, message: 'Service deleted.' });
+    }
+    if (action === 'set_contact') {
+      const customer_id = clean(b.customer_id, 80), phone = String(b.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
+      if (phone && phone.length !== 10) throw Object.assign(new Error('Enter a 10-digit phone number.'), { status: 400 });
+      const { error } = await ctx.admin.from('garage_profiles').update({ phone: phone || null }).eq('user_id', customer_id);
+      if (error) throw Object.assign(new Error('Could not save the phone number. Run the client phone update in Supabase first.'), { status: 503 });
+      return json({ ok: true, message: 'Phone number saved.' });
     }
     if (action === 'delete_logo') {
       const customer_id = clean(b.customer_id, 80);

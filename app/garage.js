@@ -72,19 +72,88 @@ function VehicleDetails({ vehicle, onPhoto }) {
   </>;
 }
 
-function Bookings({ vehicle, preview }) {
+const clock = t => { const [h,m]=t.split(':').map(Number); return `${((h+11)%12)+1}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`; };
+const addMonth = (ym,n) => { const [y,m]=ym.split('-').map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); return d.toISOString().slice(0,7); };
+const monthLabel = ym => new Date(`${ym}-01T12:00:00Z`).toLocaleDateString('en-US',{month:'long',year:'numeric',timeZone:'UTC'});
+const dayLabel = k => new Date(`${k}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'});
+
+// Full Factory Reset booking for an active membership. Calendar and times come from the website's availability; Book sends the request by email.
+function ResetBooking({ vehicle, profile, onBack }) {
+  const offer=vehicle.offer;
+  const thisMonth=todayET().slice(0,7);
+  const [month,setMonth]=useState(thisMonth),[days,setDays]=useState(null),[loadErr,setLoadErr]=useState(''),[day,setDay]=useState(''),[time,setTime]=useState('');
+  const [name,setName]=useState(profile?.display_name||''),[phone,setPhone]=useState(profile?.phone||''),[email,setEmail]=useState(profile?.email||''),[notes,setNotes]=useState('');
+  const [busy,setBusy]=useState(false),[err,setErr]=useState(''),[done,setDone]=useState(null);
+  useEffect(()=>{let live=true;setDays(null);setLoadErr('');setDay('');setTime('');if(!offer?.variation_id)return;
+    fetch(`/api/availability?plan=${encodeURIComponent(offer.variation_id)}&month=${month}`,{cache:'no-store'})
+      .then(r=>r.json().then(j=>{if(!r.ok)throw new Error(j.error||'Could not load open days.');return j}))
+      .then(j=>{if(live)setDays(j.days||{})}).catch(e=>{if(live)setLoadErr(e.message)});
+    return()=>{live=false}},[month,offer?.variation_id]);
+  const dayKeys=Object.keys(days||{}).sort();
+  async function confirm(){
+    setErr('');
+    if(!day||!time)return setErr('Choose a day and time.');
+    if(name.trim().length<2)return setErr('Enter your name.');
+    if(phone.replace(/\D/g,'').length!==10)return setErr('Enter a 10-digit phone number.');
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
+    setBusy(true);
+    try{
+      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:[[offer.variation_id]],date:day,time,coupon:offer.coupon_code,
+        summary:`${vehicleLabel(vehicle)}: Full Factory Reset (${sizeName(offer.size)}). MEMBERSHIP 50% OFF: normal ${money(offer.normal_cents)}, client pays ${money(offer.price_cents)}.`})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
+      setDone({day,time});
+    }catch(e){setErr(e.message)}finally{setBusy(false)}
+  }
+  if(done)return <section className="room-yay" role="status" aria-live="polite">
+    <span className="room-yay-badge"><GarageIcon name="check"/></span>
+    <h3 className="room-yay-big">YAY!</h3>
+    <p className="room-yay-sub">You're all booked and ready!</p>
+    <p className="room-yay-line">Your request is in. We'll text or email you back to confirm your booking!</p>
+    <p className="room-yay-when">{dayLabel(done.day)} at {clock(done.time)}</p>
+    <button type="button" className="room-gold" onClick={onBack}>DONE</button>
+  </section>;
+  return <>
+    {profile?.logo_url&&<div className="room-book-logo"><img src={profile.logo_url} alt={`${profile.display_name||'Client'} logo`}/></div>}
+    <p className="room-vehicle-name">{vehicleLabel(vehicle)}</p>
+    <section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{sizeName(offer.size)}</p><p className="room-reset-prices">{offer.normal_cents?<s>{money(offer.normal_cents)}</s>:null} <strong>{offer.price_cents?money(offer.price_cents):'Ask us'}</strong></p></section>
+    <section className="room-section"><div className="room-section-heading"><h3>Pick a day</h3></div>
+      <div className="room-month"><button type="button" className="room-link" disabled={month<=thisMonth} onClick={()=>setMonth(addMonth(month,-1))} aria-label="Previous month">‹ Prev</button><strong>{monthLabel(month)}</strong><button type="button" className="room-link" onClick={()=>setMonth(addMonth(month,1))} aria-label="Next month">Next ›</button></div>
+      {loadErr&&<p className="room-err" role="alert">{loadErr}</p>}
+      {!loadErr&&!days&&<p className="room-muted" role="status">Loading open days…</p>}
+      {days&&!dayKeys.length&&<p className="room-muted">No open days this month. Try next month.</p>}
+      {days&&!!dayKeys.length&&<div className="room-days">{dayKeys.map(k=><button type="button" key={k} className={`room-day${day===k?' is-on':''}`} aria-pressed={day===k} onClick={()=>{setDay(k);setTime('')}}>{dayLabel(k)}<small>{days[k].length} {days[k].length===1?"time":"times"}</small></button>)}</div>}
+    </section>
+    {day&&<section className="room-section"><div className="room-section-heading"><h3>Pick a time</h3><span className="room-muted">{dayLabel(day)}</span></div>
+      <div className="room-times">{days[day].map(t=><button type="button" key={t} className={`room-time${time===t?' is-on':''}`} aria-pressed={time===t} onClick={()=>setTime(t)}>{clock(t)}</button>)}</div>
+    </section>}
+    {time&&<section className="room-section"><div className="room-section-heading"><h3>Your details</h3></div>
+      <div className="room-form">
+        <label>Name<input value={name} onChange={e=>setName(e.target.value)} autoComplete="name"/></label>
+        <label>Phone<input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel"/></label>
+        <label>Email<input value={email} onChange={e=>setEmail(e.target.value)} inputMode="email" autoComplete="email"/></label>
+        <label>Notes <span className="room-muted">Optional</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}/></label>
+      </div>
+      {err&&<p className="room-err" role="alert">{err}</p>}
+      <button type="button" className="room-gold" disabled={busy} onClick={confirm}>{busy?'SENDING…':'CONFIRM MY DAY'}</button>
+    </section>}
+    <button type="button" className="room-link room-back" onClick={onBack}>‹ Back to bookings</button>
+  </>;
+}
+
+function Bookings({ vehicle, preview, onBook }) {
   const c=vehicle?.cycle,active=membershipActive(vehicle);
   return <>
     <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<><p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p><p className="room-member-note">Membership expires {date(c.offer_expires_at)}.</p></>:<p>Book a detail with sealant to start your membership.</p>}</section>
     {vehicle?.appointments?.length?<ul className="room-bookings">{vehicle.appointments.map(a=><li key={a.id}><GarageIcon name="bookings"/><div><span className="room-badge">{a.status==='requested'?'REQUESTED':'CONFIRMED'}</span><h3>{a.service_label}</h3><strong>{date(a.starts_at)}</strong><p>{time(a.starts_at)}</p></div></li>)}</ul>:null}
-    {active&&vehicle?.offer?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{vehicle.offer.size?sizeName(vehicle.offer.size):'Your size'}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{vehicle.offer.price_cents?money(vehicle.offer.price_cents):'Ask us'}</strong></p><a className="room-gold" href={`/?coupon=${encodeURIComponent(vehicle.offer.coupon_code)}#book`}>BOOK MY DAY</a></section>:<a className="room-gold" href="/#book">BOOK MY DAY</a>}
+    {active&&vehicle?.offer?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · 50% OFF</span><h3>Full Factory Reset</h3><p className="room-reset-size">{vehicle.offer.size?sizeName(vehicle.offer.size):'Your size'}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{vehicle.offer.price_cents?money(vehicle.offer.price_cents):'Ask us'}</strong></p><button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>:<a className="room-gold" href="/#book">BOOK MY DAY</a>}
     {active&&!vehicle?.offer&&<p className="room-small">Your membership reset is used for this visit. It unlocks again after your next sealant detail.</p>}
     <p className="room-small">Need to change a visit? <a href="sms:+12406019451">Text us</a>{!preview&&<> · <a href="/reset-password">Change password</a> · <button type="button" className="room-link" onClick={signOut}>Sign out</button></>}</p>
   </>;
 }
 
 export default function Garage() {
-  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
+  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
   const heading=useRef(null),dialog=useRef(null),previousFocus=useRef(null);
   useEffect(()=>{
     let active=true;
@@ -107,7 +176,7 @@ export default function Garage() {
   const dev=isPhone?'phone':'desktop',place={'--ss':(vehicle?.[`${dev}_scale`]??100)/100,'--sx':`${(vehicle?.[`${dev}_x`]??50)-50}%`,'--sy':`${(vehicle?.[`${dev}_y`]??58)-58}%`};
   const hero=vehicle?.photos.find(p=>p.id===coverId) || vehicle?.photos.find(p=>p.id===vehicle.hero_photo_id) || vehicle?.photos.find(p=>p.photo_kind==='hero') || vehicle?.photos.find(p=>p.photo_kind==='after');
   const firstName=(data?.profile?.display_name||'').trim().split(/\s+/)[0];
-  function navigate(next){setView(next);setPhoto(null)}
+  function navigate(next){setView(next);setPhoto(null);setBooking(false)}
   const title={health:'HEALTH',garage:'MY GARAGE',bookings:'BOOKINGS'}[view],logo=data?.profile?.logo_url;
   // Keep the intro until the cover photo has loaded (or 12 seconds pass), so the Garage opens with its photo ready.
   const waitingCover=!!hero?.url&&!imageFailed&&coverLoaded!==hero.url&&!coverWaitDone;
@@ -127,7 +196,7 @@ export default function Garage() {
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
         {view==='health'&&<Health vehicle={vehicle}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto}/>}
-        {view==='bookings'&&<Bookings vehicle={vehicle} preview={data.preview}/>}
+        {view==='bookings'&&(booking&&vehicle?.offer?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
       </section>}
     </>}
     {data&&<nav className="room-nav" aria-label="Garage navigation">{tabs.map(([id,label])=><button key={id} type="button" className={view===id?'is-active':''} aria-pressed={view===id} onClick={()=>navigate(id)}><GarageIcon name={id}/><span>{label}</span></button>)}</nav>}

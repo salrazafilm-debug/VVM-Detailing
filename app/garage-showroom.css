@@ -245,3 +245,31 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
   .room-vehicle-plate{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)}
   .client-sheet{bottom:calc(env(safe-area-inset-bottom,0px) + 168px)}
 }
+
+/* Garage booking (Book My Day inside the Garage) */
+.room-book-logo{display:flex;justify-content:center;margin:0 0 6px}.room-book-logo img{max-height:110px;max-width:80%;object-fit:contain}
+.room-month{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;font:800 .95rem var(--gbody)}
+.room-month .room-link:disabled{opacity:.35}
+.room-days{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.room-day{display:grid;gap:3px;padding:14px;border-radius:16px;border:2px solid #e4cfc7;background:#fff;text-align:left;font:800 .95rem var(--gbody);color:#191617;cursor:pointer}
+.room-day small{font:700 .72rem var(--gbody);color:#80645b}
+.room-day.is-on{border-color:#f0d63c;background:#fffbe8;box-shadow:0 6px 16px rgba(240,180,41,.25)}
+.room-times{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.room-time{padding:12px 6px;border-radius:14px;border:2px solid #e4cfc7;background:#fff;font:800 .85rem var(--gbody);color:#191617;cursor:pointer}
+.room-time.is-on{border-color:#f0d63c;background:#fff4c2}
+.room-form{display:grid;gap:12px}.room-form label{display:grid;gap:5px;font:800 .75rem var(--gbody);color:#5a403c}
+.room-form input,.room-form textarea{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #d4bcb5;background:#fff;font:700 .95rem var(--gbody);color:#191617}
+.room-err{margin:10px 0;padding:10px 12px;border-radius:12px;background:#ffe6e6;color:#842b32;font-weight:700;font-size:.85rem}
+.room-back{margin-top:18px;display:block}
+.room-yay{text-align:center;padding:20px 8px 8px}
+.room-yay-badge{display:grid;place-items:center;width:84px;height:84px;margin:0 auto;border-radius:50%;background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00;box-shadow:0 0 30px rgba(247,200,60,.6);animation:roomPop .5s ease-out}
+.room-yay-badge svg{width:44px;height:44px;stroke-width:3}
+.room-yay-big{font:italic 900 clamp(2.6rem,9vw,3.6rem)/1 var(--gdisplay);color:#f0b429;margin:14px 0 6px;letter-spacing:-.02em;text-shadow:0 0 22px rgba(240,214,60,.5)}
+.room-yay-sub{font:800 1.1rem var(--gbody);margin:0 0 8px}
+.room-yay-line{color:#5a403c;font-weight:600;line-height:1.6;margin:0 0 10px}
+.room-yay-when{font:italic 900 1.15rem var(--gdisplay);margin:0 0 18px}
+@keyframes roomPop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+@media(prefers-reduced-motion:reduce){.room-yay-badge{animation:none}}
+.client-sheet .room-yay-big{font:italic 900 clamp(2.6rem,9vw,3.6rem)/1 var(--gdisplay);margin:14px 0 6px;color:#f0b429}
+.client-sheet .room-yay-when{font:italic 900 1.15rem/1.2 var(--gdisplay);margin:0 0 18px}
+.client-sheet .room-yay-sub{font:800 1.1rem/1.3 var(--gbody);margin:0 0 8px}
