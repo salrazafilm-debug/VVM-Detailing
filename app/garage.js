@@ -39,7 +39,7 @@ function protectionOf(v) {
 function healthRows(v) {
   const rows=[];
   if(v?.show_headlights!==false)rows.push({key:'headlights',label:'Headlights',ok:!!v?.headlights_done,note:v?.headlights_done?'Healthy':'Not done'});
-  if(v?.show_paint!==false)rows.push({key:'paint',label:'Paint condition',ok:!!v?.paint_correction,note:v?.paint_correction?'Paint correction complete':'Not done'});
+  if(v?.show_paint!==false)rows.push({key:'paint',label:'Paint condition',ok:!!v?.paint_correction,note:v?.paint_correction?'Paint correction complete':v?.recommend_paint_correction?'Recommended':'Not done'});
   const prot=protectionOf(v);
   if(prot&&v?.show_protection!==false)rows.push({key:'protection',label:prot.label,ok:prot.ok,note:prot.note,pct:prot.pct,bar:true});
   if(v?.recommend_ceramic&&v?.show_ceramic_rec!==false&&v?.protection_type!=='coating')rows.push({key:'ceramic',label:'Ceramic Coating',ok:false,note:'Recommended'});

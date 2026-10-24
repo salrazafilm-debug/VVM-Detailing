@@ -86,7 +86,7 @@ exports.adminGet = async req => {
     const ids=(vehicles||[]).map(v=>v.id);
     const [services,photos]=ids.length&&!vehicleError?await Promise.all([
       ctx.admin.from('garage_services').select('id,vehicle_id,service_date,title').in('vehicle_id',ids),
-      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path,display_path,show_on_garage,sort_order').in('vehicle_id',ids).order('created_at',{ascending:false}),
+      ctx.admin.from('garage_photos').select('id,vehicle_id,photo_kind,caption,created_at,storage_path,display_path,show_on_garage,sort_order,crop').in('vehicle_id',ids).order('created_at',{ascending:false}),
     ]):[{data:[]},{data:[]}];
     const warnings=[];
     if(vehicleError)warnings.push('Vehicle list could not refresh. Existing records have not been removed. Please refresh before adding vehicles.');
@@ -100,7 +100,9 @@ exports.adminGet = async req => {
         if(signError||photos.data.some(p=>!urls[p.display_path||p.storage_path]))warnings.push('Photos are saved, but some private previews could not refresh.');
       } catch {warnings.push('Photos are saved, but private previews could not refresh.');}
     }
-    const safePhotos=(photos.data||[]).map(({storage_path,display_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[display_path||storage_path]||null}));
+    const originals={};
+    if(photos.data?.length){try{const {data:orig}=await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.data.map(p=>p.storage_path),900);(orig||[]).forEach(s=>{if(s.signedUrl)originals[s.path]=s.signedUrl})}catch{}}
+    const safePhotos=(photos.data||[]).map(({storage_path,display_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[display_path||storage_path]||null,original_url:originals[storage_path]||null}));
     const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id)}));
     const logoUrls={};
     await Promise.all((profiles||[]).filter(p=>p.logo_path).map(async p=>{try{logoUrls[p.user_id]=(await ctx.admin.storage.from('garage-photos').createSignedUrl(p.logo_path,900)).data?.signedUrl||null}catch{}}));
@@ -169,7 +171,7 @@ exports.adminPost = async req => {
       const vehicle_id = clean(b.vehicle_id, 80);
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
       const patch = {};
-      for (const k of ['paint_correction','headlights_done','recommend_ceramic','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
+      for (const k of ['paint_correction','headlights_done','recommend_ceramic','recommend_paint_correction','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
       if ('vehicle_size' in b) {
         if (b.vehicle_size !== null && !['coupe','sedan','suv','truck','minivan'].includes(b.vehicle_size)) throw Object.assign(new Error('Choose a vehicle size.'), { status: 400 });
         patch.vehicle_size = b.vehicle_size || null;
@@ -201,6 +203,36 @@ exports.adminPost = async req => {
       const { error } = await ctx.admin.from('garage_photos').update({ show_on_garage: b.show === true }).eq('id', photo_id);
       if (error) throw Object.assign(new Error('Could not update this photo. Run the Garage visibility update in Supabase first.'), { status: 503 });
       return json({ ok: true, message: b.show === true ? 'Shown on My Garage.' : 'Hidden from My Garage.' });
+    }
+    if (action === 'crop_photo' || action === 'reset_crop') {
+      // Cropped copy of the ORIGINAL photo for clients. The original is never changed, so Reset crop always works.
+      const photo_id = clean(b.photo_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
+      let crop = null;
+      if (action === 'crop_photo') {
+        crop = { x: Number(b.x), y: Number(b.y), w: Number(b.w), h: Number(b.h) };
+        const ok = Object.values(crop).every(Number.isFinite) && crop.x >= 0 && crop.y >= 0 && crop.w > 0.02 && crop.h > 0.02 && crop.x + crop.w <= 1.001 && crop.y + crop.h <= 1.001;
+        if (!ok) throw Object.assign(new Error('Choose a crop inside the photo.'), { status: 400 });
+      }
+      const { data: row, error: rErr } = await ctx.admin.from('garage_photos').select('id,vehicle_id,storage_path,display_path').eq('id', photo_id).maybeSingle();
+      if (rErr || !row) throw Object.assign(new Error('Photo not found.'), { status: 404 });
+      const { data: file, error: dErr } = await ctx.admin.storage.from('garage-photos').download(row.storage_path);
+      if (dErr || !file) throw Object.assign(new Error('Could not open the original photo. Try again.'), { status: 503 });
+      let small;
+      try {
+        const original = await sharp(Buffer.from(await file.arrayBuffer())).rotate().toBuffer();
+        const meta = await sharp(original).metadata();
+        let out = sharp(original);
+        if (crop) out = out.extract({ left: Math.round(crop.x * meta.width), top: Math.round(crop.y * meta.height), width: Math.max(1, Math.round(crop.w * meta.width)), height: Math.max(1, Math.round(crop.h * meta.height)) });
+        small = await out.resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toBuffer();
+      } catch { throw Object.assign(new Error('That photo could not be cropped. Try another photo.'), { status: 400 }); }
+      const display_path = `${row.vehicle_id}/display-${crypto.randomUUID()}.webp`;
+      const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(display_path, small, { contentType: 'image/webp', upsert: false });
+      if (upErr) throw Object.assign(new Error('Could not save the cropped photo. Try again.'), { status: 503 });
+      const { error: saveErr } = await ctx.admin.from('garage_photos').update({ display_path, crop }).eq('id', row.id);
+      if (saveErr) { await ctx.admin.storage.from('garage-photos').remove([display_path]).catch(() => {}); throw Object.assign(new Error('Could not save the crop. Run the photo crop update in Supabase first.'), { status: 503 }); }
+      if (row.display_path) await ctx.admin.storage.from('garage-photos').remove([row.display_path]).catch(() => {});
+      return json({ ok: true, message: crop ? 'Crop saved. Clients see the cropped photo.' : 'Crop removed. Clients see the full photo.' });
     }
     if (action === 'save_photo_layout') {
       // One save for the photo order and Show on My Garage. Nothing changes until the admin presses Save.

@@ -51,7 +51,7 @@ function ClientDashboard({ customers, onAddPhoto, busy, vehiclesLoaded }) {
 
 // Health + protection settings: what the client sees on their Health tab and My Garage
 function VehicleStatus({ vehicle, busy, onSave }) {
-  const [f,setF]=useState(()=>({vehicle_size:vehicle.vehicle_size||'',protection_type:vehicle.protection_type||'',ceramic_years:vehicle.ceramic_years||5,headlights_done:!!vehicle.headlights_done,paint_correction:!!vehicle.paint_correction,recommend_ceramic:!!vehicle.recommend_ceramic,show_headlights:vehicle.show_headlights!==false,show_paint:vehicle.show_paint!==false,show_protection:vehicle.show_protection!==false,show_ceramic_rec:vehicle.show_ceramic_rec!==false}));
+  const [f,setF]=useState(()=>({recommend_paint_correction:!!vehicle.recommend_paint_correction,vehicle_size:vehicle.vehicle_size||'',protection_type:vehicle.protection_type||'',ceramic_years:vehicle.ceramic_years||5,headlights_done:!!vehicle.headlights_done,paint_correction:!!vehicle.paint_correction,recommend_ceramic:!!vehicle.recommend_ceramic,show_headlights:vehicle.show_headlights!==false,show_paint:vehicle.show_paint!==false,show_protection:vehicle.show_protection!==false,show_ceramic_rec:vehicle.show_ceramic_rec!==false}));
   const box=(k,label)=><label><input type="checkbox" checked={f[k]} onChange={e=>setF({...f,[k]:e.target.checked})}/> {label}</label>;
   const radio=(v,label)=><label><input type="radio" name="protection" checked={f.protection_type===v} onChange={()=>setF({...f,protection_type:v})}/> {label}</label>;
   return <form className="g-form admin-status" onSubmit={e=>{e.preventDefault();onSave({...f,vehicle_size:f.vehicle_size||null,protection_type:f.protection_type||null,ceramic_years:Number(f.ceramic_years)})}}>
@@ -59,7 +59,7 @@ function VehicleStatus({ vehicle, busy, onSave }) {
     <label>Membership reset size (client gets half off this size)<select value={f.vehicle_size} onChange={e=>setF({...f,vehicle_size:e.target.value})}><option value="">Not set</option><option value="coupe">Coupe · $265 → $133</option><option value="sedan">Sedan · $295 → $148</option><option value="suv">SUV · $320 → $160</option><option value="truck">Truck · $345 → $173</option><option value="minivan">Mini-van · $410 → $205</option></select></label>
     <fieldset className="admin-status-group"><legend>Protection · pick one</legend><div className="g-check-grid">{radio('','None')}{radio('sealant','Ceramic Sealant · 3 months')}{radio('coating','Ceramic Coating · years')}</div>{f.protection_type==='coating'&&<label>Ceramic coating lasts (years)<input type="number" min="1" max="15" value={f.ceramic_years} onChange={e=>setF({...f,ceramic_years:e.target.value})}/></label>}</fieldset>
     <fieldset className="admin-status-group"><legend>Done</legend><div className="g-check-grid">{box('headlights_done','Headlights done')}{box('paint_correction','Paint Correction done')}</div></fieldset>
-    <fieldset className="admin-status-group"><legend>Recommend</legend><div className="g-check-grid">{box('recommend_ceramic','Recommend Ceramic Coating')}</div></fieldset>
+    <fieldset className="admin-status-group"><legend>Recommend</legend><div className="g-check-grid">{box('recommend_paint_correction','Recommend Paint Correction')}{box('recommend_ceramic','Recommend Ceramic Coating')}</div></fieldset>
     <fieldset className="admin-status-group"><legend>What the client sees</legend><div className="g-check-grid">{box('show_headlights','Headlights')}{box('show_paint','Paint condition')}{box('show_protection','Protection')}{box('show_ceramic_rec','Ceramic coating recommendation')}</div></fieldset>
     <div className="admin-status-actions"><button className="g-button" disabled={busy}>SAVE</button></div>
   </form>;
@@ -118,11 +118,44 @@ function ClientLogo({ client, busy, onChanged, onError, onNotice }) {
 }
 
 
+
+// Crop a saved photo. Drag the box to move it, drag the corner to resize. The cropped copy is what clients see; the original is kept.
+function CropDialog({ photo, busy, onClose, onAction }) {
+  const [crop,setCrop]=useState(photo.crop||{x:0,y:0,w:1,h:1});
+  const [aspect,setAspect]=useState('free'),[nat,setNat]=useState(null);
+  const wrap=useRef(null),drag=useRef(null);
+  const ratios={free:null,'16:9':16/9,'9:16':9/16,'4:3':4/3};
+  const clamp=c=>{const w=Math.min(Math.max(c.w,0.05),1),h=Math.min(Math.max(c.h,0.05),1);return {w,h,x:Math.min(Math.max(c.x,0),1-w),y:Math.min(Math.max(c.y,0),1-h)}};
+  function applyAspect(c,a){if(!a||!nat)return c;const cur=(c.w*nat.w)/(c.h*nat.h);return cur>a?{...c,w:c.h*nat.h*a/nat.w}:{...c,h:c.w*nat.w/a/nat.h}}
+  function pick(a){setAspect(a);setCrop(c=>clamp(applyAspect(c,ratios[a])))}
+  const pt=e=>{const r=wrap.current.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height}};
+  const down=mode=>e=>{e.stopPropagation();e.currentTarget.setPointerCapture(e.pointerId);drag.current={mode,start:pt(e),crop};};
+  const move=e=>{const d0=drag.current;if(!d0)return;const p=pt(e),dx=p.x-d0.start.x,dy=p.y-d0.start.y,s=d0.crop;
+    if(d0.mode==='move')return setCrop(clamp({...s,x:s.x+dx,y:s.y+dy}));
+    let w=Math.min(s.w+dx,1-s.x),h=Math.min(s.h+dy,1-s.y);
+    if(ratios[aspect]&&nat){h=w*nat.w/ratios[aspect]/nat.h;if(s.y+h>1){h=1-s.y;w=h*nat.h*ratios[aspect]/nat.w}}
+    setCrop(clamp({x:s.x,y:s.y,w,h}));};
+  const up=()=>{drag.current=null};
+  const pct=v=>`${(v*100).toFixed(2)}%`;
+  return <div className="crop-modal" role="dialog" aria-modal="true" aria-label="Crop photo">
+    <div className="crop-card">
+      <p className="g-eyebrow">CROP PHOTO</p>
+      <div className="crop-presets" role="group" aria-label="Shape">{[['free','Free'],['16:9','Desktop 16:9'],['9:16','Phone 9:16'],['4:3','4:3']].map(([id,l])=><button key={id} type="button" className={aspect===id?'is-active':''} aria-pressed={aspect===id} onClick={()=>pick(id)}>{l}</button>)}</div>
+      <div className="crop-wrap" ref={wrap} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+        <img src={photo.original_url||photo.url} alt="Original photo" onLoad={e=>setNat({w:e.currentTarget.naturalWidth,h:e.currentTarget.naturalHeight})} draggable={false}/>
+        {nat&&<div className="crop-frame" style={{left:pct(crop.x),top:pct(crop.y),width:pct(crop.w),height:pct(crop.h)}} onPointerDown={down('move')}><span className="crop-handle" onPointerDown={down('resize')} aria-hidden="true"/></div>}
+      </div>
+      <p className="g-inline-help">Drag the box to move it. Drag the corner to resize. Clients see only what is inside the box.</p>
+      <div className="admin-status-actions"><button type="button" className="g-button" disabled={busy||!nat} onClick={()=>onAction({action:'crop_photo',photo_id:photo.id,...crop},'Crop saved.')}>SAVE CROP</button><button type="button" className="g-text-button" disabled={busy||!photo.crop} onClick={()=>onAction({action:'reset_crop',photo_id:photo.id},'Crop removed.')}>RESET CROP</button><button type="button" className="g-text-button" onClick={onClose}>CLOSE</button></div>
+    </div>
+  </div>;
+}
+
 // Saved photos: arrange and show/hide locally, then press Save once. Covers still change right away when you pick one.
 function PhotoLayout({ vehicle, busy, action, onSave }) {
   const photos=vehicle.garage_photos||[];
   const saved=[...photos].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(p=>p.id);
-  const [ids,setIds]=useState(saved),[show,setShow]=useState({});
+  const [ids,setIds]=useState(saved),[show,setShow]=useState({}),[cropping,setCropping]=useState(null);
   useEffect(()=>{setIds([...photos].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(p=>p.id));setShow({})},[vehicle.id,photos.map(p=>p.id+':'+p.sort_order+':'+p.show_on_garage).join('|')]);
   const byId=Object.fromEntries(photos.map(p=>[p.id,p]));
   const visible=id=>id in show?show[id]:byId[id]?.show_on_garage!==false;
@@ -133,11 +166,12 @@ function PhotoLayout({ vehicle, busy, action, onSave }) {
     <div className="dash-photos">{ids.map((id,i)=>{const p=byId[id];if(!p)return null;return <div key={id} className="admin-saved-photo">{p.url?<a href={p.url} target="_blank" rel="noopener noreferrer"><img src={p.url} alt={p.caption||'Saved vehicle photo'} loading="lazy"/></a>:<p className="g-inline-help">Photo saved. Preview unavailable.</p>}
       <button type="button" className="g-text-button" disabled={busy||vehicle.hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'desktop'},'Desktop cover saved.')}>{vehicle.hero_photo_id===p.id?'✓ DESKTOP COVER':'USE AS DESKTOP COVER'}</button>
       <button type="button" className="g-text-button" disabled={busy||vehicle.mobile_hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'mobile'},'Phone cover saved.')}>{vehicle.mobile_hero_photo_id===p.id?'✓ PHONE COVER':'USE AS PHONE COVER'}</button>
-      <button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm('Delete this photo for good? It will be removed from the client\'s Garage.'))action({action:'delete_photo',photo_id:p.id},'Photo deleted.')}}>DELETE PHOTO</button>
+      <button type="button" className="g-text-button" disabled={busy||!p.url} onClick={()=>setCropping(p)}>{p.crop?'✎ EDIT CROP':'CROP PHOTO'}</button><button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm('Delete this photo for good? It will be removed from the client\'s Garage.'))action({action:'delete_photo',photo_id:p.id},'Photo deleted.')}}>DELETE PHOTO</button>
       <label className="g-check admin-show-toggle"><input type="checkbox" checked={visible(id)} disabled={busy} onChange={e=>setShow({...show,[id]:e.target.checked})}/> Show on My Garage</label>
       <div className="admin-move"><button type="button" className="g-text-button" disabled={busy||i===0} aria-label="Move photo up" onClick={()=>move(i,-1)}>▲ UP</button><button type="button" className="g-text-button" disabled={busy||i===ids.length-1} aria-label="Move photo down" onClick={()=>move(i,1)}>▼ DOWN</button></div>
     </div>;})}</div>
     <div className="admin-status-actions"><button type="button" className="g-button" disabled={busy||!dirty} onClick={()=>onSave(ids,show)}>{dirty?'SAVE PHOTO ORDER':'PHOTOS SAVED'}</button></div>
+    {cropping&&<CropDialog photo={cropping} busy={busy} onClose={()=>setCropping(null)} onAction={(body,msg)=>action(body,msg).then(d=>{if(d)setCropping(null)})}/>}
   </div>;
 }
 
