@@ -66,8 +66,10 @@ function Health({ vehicle }) {
 const GOOGLE_REVIEW_URL='https://g.page/r/CUdllaKYonfeEBM/review';
 function ReviewPrompt() {
   return <div className="room-review">
-    <p><strong>Loved the detail?</strong> Leave us a review with your favorite images please!</p>
-    <a className="room-primary" href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener noreferrer">LEAVE A GOOGLE REVIEW</a>
+    <span className="room-review-stars" aria-hidden="true">★★★★★</span>
+    <h2 className="room-review-title">LOVED THE <em>DETAIL</em>?</h2>
+    <p>Leave us a review with your <b>favorite images</b> please!</p>
+    <a className="room-review-btn" href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener noreferrer">LEAVE A GOOGLE REVIEW</a>
   </div>;
 }
 
