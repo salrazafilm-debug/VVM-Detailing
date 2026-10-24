@@ -72,6 +72,8 @@ alter table public.garage_vehicles add column if not exists custom_price_cents i
 alter table public.garage_profiles add column if not exists location text;
 alter table public.garage_vehicles add column if not exists plate_phone_x integer, add column if not exists plate_phone_y integer, add column if not exists plate_desktop_x integer, add column if not exists plate_desktop_y integer;
 alter table public.garage_vehicles add column if not exists show_vehicle_name boolean not null default true;
+alter table public.garage_profiles add column if not exists loyal boolean not null default false;
+alter table public.garage_vehicles add column if not exists share_style jsonb;
 create index if not exists garage_vehicles_customer_idx on public.garage_vehicles(customer_id);
 
 create table if not exists public.garage_services (

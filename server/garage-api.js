@@ -36,7 +36,7 @@ exports.customerGet = async req => {
     ]);
     if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
     const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
-    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', location: p.location || '', logo_url: logo } : p;
+    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', location: p.location || '', loyal: p.loyal === true, logo_url: logo } : p;
     const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
@@ -180,6 +180,19 @@ exports.adminPost = async req => {
         patch[k] = c;
       }
       if ('paint_offer' in b) patch.paint_offer = b.paint_offer === true;
+      if ('share_style' in b) {
+        // Share card: the owner picks the look. Only these fields are saved.
+        const st = b.share_style && typeof b.share_style === 'object' ? b.share_style : {};
+        const accents = ['gold', 'ice', 'rose', 'midnight'];
+        patch.share_style = {
+          nickname: clean(st.nickname, 24),
+          note: clean(st.note, 40),
+          accent: accents.includes(st.accent) ? st.accent : 'gold',
+          show_years: st.show_years !== false,
+          show_health: st.show_health !== false,
+          show_membership: st.show_membership !== false,
+        };
+      }
       // Vehicle box position (% from left and top of the screen); null puts it back to the default place
       for (const k of ['plate_phone_x', 'plate_phone_y', 'plate_desktop_x', 'plate_desktop_y']) if (k in b) {
         const n = b[k] === '' || b[k] == null ? null : Math.round(Number(b[k]));
@@ -292,7 +305,9 @@ exports.adminPost = async req => {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
       if (phone && phone.length !== 10) throw Object.assign(new Error('Enter a 10-digit phone number.'), { status: 400 });
       const location = clean(b.location, 200);
-      const { error } = await ctx.admin.from('garage_profiles').update({ phone: phone || null, location: location || null }).eq('user_id', customer_id);
+      const patch = { phone: phone || null, location: location || null };
+      if ('loyal' in b) patch.loyal = b.loyal === true;
+      const { error } = await ctx.admin.from('garage_profiles').update(patch).eq('user_id', customer_id);
       if (error) throw Object.assign(new Error('Could not save the phone number. Run the client phone update in Supabase first.'), { status: 503 });
       return json({ ok: true, message: 'Phone number saved.' });
     }

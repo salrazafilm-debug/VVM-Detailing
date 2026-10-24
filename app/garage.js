@@ -17,7 +17,7 @@ const daysUntil = day => Math.max(0,Math.ceil(dayNum(day)-dayNum(todayET())));
 const plusMonths = (day,n) => {const d=new Date(`${day}T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+n);return d};
 const sizeName = s => ({coupe:'Coupe',sedan:'Sedan',suv:'SUV',truck:'Truck',minivan:'Mini-van'})[s] || '';
 const money = cents => (cents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
-const membershipActive = v => !!v?.cycle && todayET() <= v.cycle.offer_expires_at;
+const membershipActive = v => (!!v?.cycle && todayET() <= v.cycle.offer_expires_at) || (v?.protection_type==='coating' && !!protectionOf(v)?.ok);
 const Mark = ({ ok, bad }) => <span className={`room-mark ${ok?'is-yes':bad?'is-bad':'is-no'}`}><GarageIcon name={ok?'check':'x'}/></span>;
 
 // The one protection the owner chose in admin: ceramic sealant (3 months) or ceramic coating (years set in admin).
@@ -32,7 +32,7 @@ function protectionOf(v) {
   const end=type==='sealant'&&v.cycle?v.cycle.sealant_expires_at:(()=>{const d=new Date(`${start}T12:00:00Z`);type==='coating'?d.setUTCFullYear(d.getUTCFullYear()+(v.ceramic_years||5)):d.setUTCMonth(d.getUTCMonth()+3);return d.toISOString().slice(0,10)})();
   const left=daysUntil(end),total=Math.max(1,dayNum(end)-dayNum(start));
   const note=left<=0?'Expired · Book your renewal':type==='coating'&&left>=365?`${Math.floor(left/365)} ${Math.floor(left/365)===1?'year':'years'} left`:`${left} days left`;
-  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note};
+  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note,years:type==='coating'?Math.max(0,Math.floor(left/365)):null};
 }
 
 // Health rows: an X until it is checked off in admin. The owner decides which rows each client sees.
@@ -41,7 +41,7 @@ function healthRows(v) {
   if(v?.show_headlights!==false)rows.push({key:'headlights',label:'Headlights',ok:!!v?.headlights_done,note:v?.headlights_done?'Healthy':'Not done'});
   if(v?.show_paint!==false)rows.push({key:'paint',label:'Paint condition',ok:!!v?.paint_correction,note:v?.paint_correction?'Paint correction complete':v?.recommend_paint_correction?'Paint correction recommended':'Not done'});
   const prot=protectionOf(v);
-  if(prot&&v?.show_protection!==false)rows.push({key:'protection',label:prot.label,ok:prot.ok,note:prot.note,pct:prot.pct,bar:true});
+  if(prot&&v?.show_protection!==false)rows.push({key:'protection',label:prot.label,ok:prot.ok,note:prot.note,pct:prot.pct,bar:true,fancy:prot.type==='coating',years:prot.years});
   if(v?.recommend_ceramic&&v?.show_ceramic_rec!==false&&v?.protection_type!=='coating')rows.push({key:'ceramic',label:'Ceramic Coating',ok:false,note:'Recommended'});
   return rows;
 }
@@ -50,13 +50,76 @@ function HealthCard({ row }) {
   return <div className={`room-sealant room-health-card${row.ok?' is-on':' is-bad'}`}><div><span className="room-label">{row.bar?'PROTECTION':'HEALTH'}</span><strong>{row.label}</strong><em>{row.note}</em></div><Mark ok={row.ok} bad/>{row.bar&&<div className="room-progress" role="progressbar" aria-label={`${row.label} time left`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><span style={{width:`${row.pct}%`}}/></div>}</div>;
 }
 
+// Ceramic coating card: holographic name that shines every 5 seconds, years left as a big number, and the bar.
+function CoatingCard({ row }) {
+  return <div className={`coat-card${row.ok?'':' is-off'}`}>
+    <p className="coat-title"><span>CERAMIC COATING</span></p>
+    <p className="coat-years">{row.ok?row.years:0}<small>{row.years===1?'YEAR':'YEARS'}</small></p>
+    <div className="coat-bar" role="progressbar" aria-label="Ceramic coating time left" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><i style={{width:`${row.pct}%`}}/></div>
+    <p className="coat-foot">{row.ok?'Protected':'Expired · Book your renewal'}</p>
+  </div>;
+}
+
+const ACCENTS={gold:{a:'#ffd86b',b:'#f0b429',ink:'#2a1a00'},ice:{a:'#9ad8ff',b:'#4f8ff0',ink:'#0b2a4a'},rose:{a:'#ffb3d9',b:'#e4572e',ink:'#3a0a1c'},midnight:{a:'#2a2046',b:'#0c0a18',ink:'#fff'}};
+
+// Share card (trading-card style, 9:16). The owner sets the look in admin.
+function ShareCard({ vehicle, profile, id }) {
+  const st=vehicle.share_style||{},acc=ACCENTS[st.accent||'gold'],prot=protectionOf(vehicle);
+  const rows=healthRows(vehicle),good=rows.every(r=>r.ok),perfect=good&&prot?.type==='coating'&&prot.ok&&!!vehicle.paint_correction;
+  const health=perfect?'PERFECT':good?'HEALTHY':'CHECK';
+  const yrs=prot?.type==='coating'?prot.years:null;
+  const memberOn=membershipActive(vehicle);
+  return <div id={id} className="share-card" style={{'--acc1':acc.a,'--acc2':acc.b,'--accink':acc.ink}}>
+    <div className="share-frame">
+      <div className="share-top"><span>VVM DETAILS</span>{profile?.loyal&&<span className="share-loyal">LOYAL</span>}</div>
+      <div className="share-photo">{vehicle.photos?.find(p=>p.id===vehicle.hero_photo_id)?.url||vehicle.photos?.[0]?.url?<img crossOrigin="anonymous" src={(vehicle.photos.find(p=>p.id===vehicle.hero_photo_id)||vehicle.photos[0]).url} alt=""/>:<span className="share-nophoto">VVM</span>}</div>
+      <div className="share-meta">
+        <p className="share-name">{st.nickname||vehicleLabel(vehicle)}</p>
+        {prot?.type==='coating'&&<p className="share-sub">Ceramic Coating</p>}
+        {st.note&&<p className="share-note">{st.note}</p>}
+        <div className="share-stats">
+          {st.show_years!==false&&<div><b>{yrs??'—'}</b><span>{yrs===1?'YEAR':'YEARS'}</span></div>}
+          {st.show_health!==false&&<div><b>{health}</b><span>HEALTH</span></div>}
+          {st.show_membership!==false&&<div><b>{memberOn?'ACTIVE':'OFF'}</b><span>MEMBERSHIP</span></div>}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+// Saves the card as a picture. html2canvas is loaded only when this is used.
+function loadScript(src){return new Promise((res,rej)=>{if(window.html2canvas)return res();const sc=document.createElement('script');sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error('load'));document.head.appendChild(sc)})}
+async function saveCardImage(el){
+  try{
+    await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    const canvas=await window.html2canvas(el,{useCORS:true,scale:2,backgroundColor:null});
+    const a=document.createElement('a');a.download='vvm-card.png';a.href=canvas.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove();
+    return '';
+  }catch{return 'Could not save the picture. Take a screenshot of the card instead.'}
+}
+
+function ShareCardButton({ vehicle, profile }) {
+  const [open,setOpen]=useState(false),[msg,setMsg]=useState('');
+  return <>
+    <button type="button" className="room-gold share-open" onClick={()=>{setMsg('');setOpen(true)}}>SHARE MY CARD</button>
+    {open&&<div className="share-modal" role="dialog" aria-modal="true" aria-label="Share my card">
+      <div className="share-modal-inner">
+        <ShareCard vehicle={vehicle} profile={profile} id="share-card-art"/>
+        {msg&&<p className="room-err" role="alert">{msg}</p>}
+        <button type="button" className="room-gold" onClick={async()=>setMsg(await saveCardImage(document.getElementById('share-card-art')))}>SAVE AS IMAGE</button>
+        <button type="button" className="room-link" onClick={()=>setOpen(false)}>Close</button>
+      </div>
+    </div>}
+  </>;
+}
+
 function Health({ vehicle }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="health"/><h3>Your space is ready.</h3><p>Your vehicle’s health will show up here.</p></div>;
-  const rows=healthRows(vehicle),services=vehicle.services||[],good=rows.every(r=>r.ok);
+  const rows=healthRows(vehicle),services=vehicle.services||[],good=rows.every(r=>r.ok),coat=protectionOf(vehicle),perfect=good&&coat?.type==='coating'&&coat.ok&&!!vehicle.paint_correction;
   return <>
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
-    {rows.length>0&&<p className={`room-health-title${good?'':' is-warn'}`}><GarageIcon name="medic"/>{good?'Your vehicle is healthy!':'Needs attention'}</p>}
-    <div className="room-health-list">{rows.map(r=><HealthCard key={r.key} row={r}/>)}</div>
+    {rows.length>0&&<p className={`room-health-title${good?'':' is-warn'}`}><GarageIcon name="medic"/>{perfect?'Your vehicle health is PERFECT!':good?'Your vehicle is healthy!':'Needs attention'}</p>}
+    <div className="room-health-list">{rows.map(r=>r.fancy?<CoatingCard key={r.key} row={r}/>:<HealthCard key={r.key} row={r}/>)}</div>
         <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{services[0]?<><strong>{services[0].title}</strong><time>{date(services[0].service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
     <section className="room-done-box"><span className="room-label">COMPLETED SERVICES</span>{services.length?<ul>{services.map(s=><li key={s.id}><time>{date(s.service_date)}</time><strong>{s.title}</strong>{s.description&&<p>{s.description}</p>}</li>)}</ul>:<p className="room-muted">Your completed details will show up here after each visit.</p>}</section>
   </>;
@@ -73,11 +136,13 @@ function ReviewPrompt() {
   </div>;
 }
 
-function VehicleDetails({ vehicle, onPhoto }) {
+function VehicleDetails({ vehicle, onPhoto, profile }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="garage"/><h3>Your space is ready.</h3><p>We’ll add your vehicle and care history here.</p></div>;
   const photos=(vehicle.photos||[]).filter(p=>p.url&&p.show_on_garage!==false).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   return <>
+    {profile?.loyal&&<span className="room-loyal room-loyal-mine">LOYAL</span>}
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
+    <ShareCardButton vehicle={vehicle} profile={profile}/>
     {photos.length>0&&<div className="room-showcase">{photos.map(p=><button type="button" key={p.id} onClick={()=>onPhoto(p)} aria-label={`Open ${p.caption||'vehicle photo'}`}><img src={p.url} alt={p.caption||'Your vehicle'} loading="lazy"/></button>)}</div>}
   </>;
 }
@@ -224,7 +289,7 @@ export default function Garage() {
   return <main className={`garage-shell client-showroom${(hero?.url&&!imageFailed&&!(hero.is_cutout||legacyCutout))?"":" is-black"}`}>
     {showIntro&&<GarageIntro/>}
     {(()=>{const scene=hero?.url&&!imageFailed&&!(hero.is_cutout||legacyCutout);return scene?<img className="showroom-room is-scene" style={place} src={hero.url} alt={`${vehicleLabel(vehicle)} in ${firstName?`${firstName}’s`:"your"} Garage`} fetchPriority="high" onLoad={()=>setCoverLoaded(hero.url)} onError={()=>setImageFailed(true)}/>:<div className="showroom-room is-black" role="img" aria-label="Black showroom"/>})()}
-    <header className="room-header"><a className="room-banner" href="/" aria-label="VVM Details website"><img src="/assets/garage/vvm-badge.webp" alt="" width="400" height="400"/><span><small>{data?.preview?'CLIENT PREVIEW':'VVM DETAILS'}</small><strong>{firstName?`${firstName.toUpperCase()}’S`:'YOUR'} GARAGE</strong></span></a>{data?.preview&&<a className="room-preview-back" href="/garage-admin">Back to admin</a>}</header>
+    <header className="room-header"><a className="room-banner" href="/" aria-label="VVM Details website"><img src="/assets/garage/vvm-badge.webp" alt="" width="400" height="400"/><span><small>{data?.preview?'CLIENT PREVIEW':'VVM DETAILS'}</small><strong>{firstName?`${firstName.toUpperCase()}’S`:'YOUR'} GARAGE</strong></span></a>{data?.profile?.loyal&&<span className="room-loyal room-loyal-top">LOYAL</span>}{data?.preview&&<a className="room-preview-back" href="/garage-admin">Back to admin</a>}</header>
     {data&&(()=>{const on=membershipActive(vehicle);return <button className={`room-membership${on?'':' is-off'}`} type="button" onClick={()=>navigate('bookings')}><Mark ok={on}/><span><small>MAINTENANCE MEMBERSHIP</small><strong><b className="room-pill-short">MEMBERSHIP </b>{on?'ACTIVE':vehicle?.cycle?'EXPIRED':'NOT ACTIVE'}</strong></span></button>})()}
     {loading?<p className="room-loading" role="status">Opening your Garage…</p>:!data?<section className="room-auth-error"><h1>Your Garage awaits.</h1><p role="alert">{error||'Please sign in to open your Garage.'}</p><a className="room-primary" href="/client-login">ENTER MY GARAGE <GarageIcon name="arrow"/></a></section>:<>
       {error&&<p className="room-refresh-error" role="status">Couldn’t refresh your Garage. {error}</p>}
@@ -235,7 +300,7 @@ export default function Garage() {
       {view!=='home'&&<section className="client-sheet" aria-labelledby="room-panel-title"><div className="room-sheet-head"><h1 id="room-panel-title" tabIndex="-1" ref={heading} className={view==='garage'&&logo?'has-logo':''}>{view==='garage'&&logo?<img className="room-garage-logo" src={logo} alt={`${firstName?`${firstName}’s `:''}Garage`}/>:title}</h1><button className="room-close" onClick={()=>navigate('home')} aria-label="Return to showroom"><GarageIcon name="close"/></button></div>
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
         {view==='health'&&<Health vehicle={vehicle}/>}
-        {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto}/>}
+        {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto} profile={data.profile}/>}
         {view==='garage'&&<ReviewPrompt/>}
         {view==='bookings'&&(booking&&(vehicle?.offer?.variation_id||vehicle?.paint_offer)?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
       </section>}
