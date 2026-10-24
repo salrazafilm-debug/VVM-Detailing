@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+const { cloudinaryUrl, cloudinaryConfigured, cloudinaryUpload } = await import('../server/cloudinary.js');
+const env = { CLOUDINARY_CLOUD_NAME: 'demo', CLOUDINARY_API_KEY: 'k', CLOUDINARY_API_SECRET: 's' };
+assert.equal(cloudinaryUrl('vvm/a', { width: 800, env }), 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_800/vvm/a');
+assert.equal(cloudinaryConfigured({}), false);
+await assert.rejects(() => cloudinaryUpload(Buffer.from('x'), 'a', {}), /not set up/);
+let seen;
+const out = await cloudinaryUpload(Buffer.from('x'), 'vvm/a', env, async (u, o) => { seen = { u, o }; return { ok: true, json: async () => ({ public_id: 'vvm/a' }) }; });
+assert.equal(out.public_id, 'vvm/a');
+assert.match(seen.u, /demo\/image\/upload$/);
+assert.ok(seen.o.body.get('signature'));
+console.log('cloudinary tests passed');
