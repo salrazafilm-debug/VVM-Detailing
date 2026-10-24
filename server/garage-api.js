@@ -180,6 +180,12 @@ exports.adminPost = async req => {
         patch[k] = c;
       }
       if ('paint_offer' in b) patch.paint_offer = b.paint_offer === true;
+      // Vehicle box position (% from left and top of the screen); null puts it back to the default place
+      for (const k of ['plate_phone_x', 'plate_phone_y', 'plate_desktop_x', 'plate_desktop_y']) if (k in b) {
+        const n = b[k] === '' || b[k] == null ? null : Math.round(Number(b[k]));
+        if (n !== null && (!Number.isFinite(n) || n < 0 || n > 100)) throw Object.assign(new Error('Vehicle box position is out of range.'), { status: 400 });
+        patch[k] = n;
+      }
       if ('vehicle_size' in b) {
         if (b.vehicle_size !== null && !['coupe','sedan','suv','truck','minivan'].includes(b.vehicle_size)) throw Object.assign(new Error('Choose a vehicle size.'), { status: 400 });
         patch.vehicle_size = b.vehicle_size || null;

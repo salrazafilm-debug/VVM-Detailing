@@ -211,20 +211,24 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
   const init=p=>({scale:vehicle[`${p}_scale`]??100,x:vehicle[`${p}_x`]??50,y:vehicle[`${p}_y`]??58});
   const [sizing,setSizing]=useState(()=>({phone:init('phone'),desktop:init('desktop')}));
   // Adjust mode: the drag layer is only on while adjusting, so the rest of the admin page works normally.
-  const [adjusting,setAdjusting]=useState(false),baseline=useRef(null);
-  function startAdjust(){baseline.current=sizing;setAdjusting(true)}
+  const [adjusting,setAdjusting]=useState(false),baseline=useRef(null),[target,setTarget]=useState('photo');
+  // Vehicle box position per device (% of the screen). Null = the default place on the client's screen.
+  const plateInit=p=>vehicle[`plate_${p}_x`]!=null&&vehicle[`plate_${p}_y`]!=null?{x:vehicle[`plate_${p}_x`],y:vehicle[`plate_${p}_y`]}:null;
+  const [plate,setPlate]=useState(()=>({phone:plateInit('phone'),desktop:plateInit('desktop')}));
+  function startAdjust(){baseline.current={sizing,plate};setAdjusting(true);setTarget('photo')}
   function confirmAdjust(){baseline.current=null;setAdjusting(false)}
-  function cancelAdjust(){if(baseline.current)setSizing(baseline.current);baseline.current=null;setAdjusting(false)}
+  function cancelAdjust(){if(baseline.current){setSizing(baseline.current.sizing);setPlate(baseline.current.plate)}baseline.current=null;setAdjusting(false)}
+  const movePlate=dev=>m=>{if(m.zoom)return;setPlate(z=>{const c=z[dev]||{x:50,y:84};return {...z,[dev]:{x:clampTo(c.x+(m.dx||0),0,100),y:clampTo(c.y+(m.dy||0),0,100)}}})};
   // Move the photo in the preview as soon as a slider moves; nothing is saved until SAVE SHOWROOM SIZE
-  useEffect(()=>{document.querySelectorAll('.admin-preview iframe').forEach(f=>f.contentWindow?.postMessage({type:'vvm-showroom-size',sizes:sizing},location.origin))},[sizing,nonce]);
+  useEffect(()=>{document.querySelectorAll('.admin-preview iframe').forEach(f=>f.contentWindow?.postMessage({type:'vvm-showroom-size',sizes:sizing,plate},location.origin))},[sizing,plate,nonce]);
   useEffect(()=>{const t=setTimeout(()=>setNonce(n=>n+1),400);return()=>clearTimeout(t)},[sig]);
   const src=`/garage?client=${encodeURIComponent(clientId)}&vehicle=${encodeURIComponent(vehicleId)}&view=${view}&r=${nonce}`;
   const pick=(items,value,set)=><div className="admin-segment" role="group">{items.map(([id,label])=><button key={id} type="button" className={value===id?'is-active':''} aria-pressed={value===id} onClick={()=>set(id)}>{label}</button>)}</div>;
   return <div className="admin-preview">
     <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button>{!adjusting?<button type="button" className="g-button" onClick={startAdjust}>ADJUST PHOTO</button>:<><button type="button" className="g-button" onClick={confirmAdjust}>CONFIRM POSITION</button><button type="button" className="g-text-button" onClick={cancelAdjust}>CANCEL</button></>}</div>
-    {adjusting&&<p className="g-inline-help admin-adjust-note">Drag the photo on the preview to move it. Scroll over it to zoom. Press CONFIRM POSITION when it looks right, then SAVE SHOWROOM SIZE to keep it.</p>}
-    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE" onMove={adjusting?m=>setSizing(z=>({...z,phone:nudge(z.phone,m)})):null}/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP" onMove={adjusting?m=>setSizing(z=>({...z,desktop:nudge(z.desktop,m)})):null}/>}</div>
-    <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={onSaveSizing} value={sizing} onChange={setSizing}/></details>
+    {adjusting&&<div className="admin-adjust-bar"><div className="admin-segment" role="group" aria-label="What to drag">{[['photo','Move photo'],['plate','Move vehicle box']].map(([id,l])=><button key={id} type="button" className={target===id?'is-active':''} aria-pressed={target===id} onClick={()=>setTarget(id)}>{l}</button>)}</div><p className="g-inline-help admin-adjust-note">{target==='photo'?'Drag the photo to move it. Scroll over it to zoom.':'Drag the vehicle box to where you want it.'} Press CONFIRM POSITION, then SAVE SHOWROOM SIZE to keep it.</p></div>}
+    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE" onMove={adjusting?(target==='plate'?movePlate('phone'):m=>setSizing(z=>({...z,phone:nudge(z.phone,m)}))):null}/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP" onMove={adjusting?(target==='plate'?movePlate('desktop'):m=>setSizing(z=>({...z,desktop:nudge(z.desktop,m)}))):null}/>}</div>
+    <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={d=>onSaveSizing({...d,plate_phone_x:plate.phone?.x??null,plate_phone_y:plate.phone?.y??null,plate_desktop_x:plate.desktop?.x??null,plate_desktop_y:plate.desktop?.y??null})} value={sizing} onChange={setSizing}/></details>
   </div>;
 }
 

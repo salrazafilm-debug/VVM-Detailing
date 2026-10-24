@@ -70,6 +70,7 @@ alter table public.garage_photos add column if not exists crop jsonb;
 alter table public.garage_vehicles add column if not exists recommend_paint_correction boolean not null default false;
 alter table public.garage_vehicles add column if not exists custom_price_cents integer check (custom_price_cents is null or custom_price_cents >= 0), add column if not exists paint_offer boolean not null default false, add column if not exists paint_price_cents integer check (paint_price_cents is null or paint_price_cents >= 0), add column if not exists bundle_price_cents integer check (bundle_price_cents is null or bundle_price_cents >= 0);
 alter table public.garage_profiles add column if not exists location text;
+alter table public.garage_vehicles add column if not exists plate_phone_x integer, add column if not exists plate_phone_y integer, add column if not exists plate_desktop_x integer, add column if not exists plate_desktop_y integer;
 create index if not exists garage_vehicles_customer_idx on public.garage_vehicles(customer_id);
 
 create table if not exists public.garage_services (
