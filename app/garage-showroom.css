@@ -304,3 +304,4 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .room-review-btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;margin-top:6px;padding:15px 28px;border-radius:99px;background:linear-gradient(110deg,#f0d63c,#ffe891,#f0d63c);background-size:200% 100%;color:#1a1214!important;text-decoration:none;font:900 .8rem var(--gbody);letter-spacing:.07em;box-shadow:0 8px 24px #f0d63c66;transition:transform .2s,box-shadow .2s}
 .room-review-btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px #f0d63c88}
 @media(prefers-reduced-motion:reduce){.room-review::before{animation:none}}
+.room-name-only{padding:12px 22px;min-width:0}.room-name-only strong{font:800 clamp(1rem,1.6vw,1.3rem) var(--gbody)}.room-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}

@@ -171,7 +171,7 @@ exports.adminPost = async req => {
       const vehicle_id = clean(b.vehicle_id, 80);
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
       const patch = {};
-      for (const k of ['paint_correction','headlights_done','recommend_ceramic','recommend_paint_correction','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
+      for (const k of ['paint_correction','headlights_done','recommend_ceramic','recommend_paint_correction','show_headlights','show_paint','show_protection','show_ceramic_rec','show_vehicle_name']) if (k in b) patch[k] = b[k] === true;
       // Custom reset price and paint correction (amounts typed in dollars in admin)
       // The admin page already sends cents (dollars x 100), so save them as they are.
       for (const k of ['custom_price_cents', 'paint_price_cents', 'bundle_price_cents']) if (k in b) {
