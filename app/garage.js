@@ -62,6 +62,15 @@ function Health({ vehicle }) {
   </>;
 }
 
+// Shown at the end of My Garage for every client
+const GOOGLE_REVIEW_URL='https://g.page/r/CUdllaKYonfeEBM/review';
+function ReviewPrompt() {
+  return <div className="room-review">
+    <p><strong>Loved the detail?</strong> Leave us a review with your favorite images please!</p>
+    <a className="room-primary" href={GOOGLE_REVIEW_URL} target="_blank" rel="noopener noreferrer">LEAVE A GOOGLE REVIEW</a>
+  </div>;
+}
+
 function VehicleDetails({ vehicle, onPhoto }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="garage"/><h3>Your space is ready.</h3><p>We’ll add your vehicle and care history here.</p></div>;
   const photos=(vehicle.photos||[]).filter(p=>p.url&&p.show_on_garage!==false).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
@@ -225,6 +234,7 @@ export default function Garage() {
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
         {view==='health'&&<Health vehicle={vehicle}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto}/>}
+        {view==='garage'&&<ReviewPrompt/>}
         {view==='bookings'&&(booking&&(vehicle?.offer?.variation_id||vehicle?.paint_offer)?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
       </section>}
     </>}
