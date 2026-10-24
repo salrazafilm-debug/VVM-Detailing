@@ -78,6 +78,7 @@ function combineJob(services) {
     durationMin: services.reduce((n, s) => n + s.durationMin, 0),
     transitionMin: Math.max(0, ...services.map(s => s.transitionMin || 0)),
     priceCents: services.reduce((n, s) => n + (s.priceCents || 0), 0),
+    latestStart: services.some(s => s.latestStart != null) ? Math.min(...services.filter(s => s.latestStart != null).map(s => s.latestStart)) : undefined,
   };
 }
 
@@ -129,9 +130,11 @@ function slotsForJobs(dateStr, dayBlocks, jobs, now, cfg = CFG) {
   if (kinds.length > cap) return [];
 
   const length = jobs.reduce((n, j) => n + j.durationMin + (j.transitionMin || 0), 0);
+  // Some jobs must start early (paint correction is morning only, the bundle must start 7-8 AM)
+  const lastStart = Math.min(cfg.lastStart, ...jobs.map(j => j.latestStart ?? Infinity));
   const earliest = now.getTime() + cfg.minNoticeHours * 3600000;
   const out = [];
-  for (let s = cfg.firstStart; s <= cfg.lastStart; s += cfg.step) {
+  for (let s = cfg.firstStart; s <= lastStart; s += cfg.step) {
     if (localToUtc(dateStr, s).getTime() < earliest) continue;
     const e = s + length;
     if (dayBlocks.some(b => s < b.end && e > b.start)) continue;

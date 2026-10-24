@@ -8,7 +8,7 @@ exports.handler = async () => {
     const cat = await loadCatalog();
     const groups = {};
     for (const v of Object.values(cat)) {
-      if (!isPublic(v) || !v.bookable || !v.durationMin) continue;
+      if (!isPublic(v) || v.hidden || !v.bookable || !v.durationMin) continue;
       const g = (groups[v.item] = groups[v.item] || { name: v.item, kind: v.kind, variations: [] });
       g.variations.push({ id: v.id, label: v.label, priceCents: v.priceCents, minutes: v.durationMin });
     }

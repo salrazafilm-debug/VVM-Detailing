@@ -172,6 +172,14 @@ exports.adminPost = async req => {
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
       const patch = {};
       for (const k of ['paint_correction','headlights_done','recommend_ceramic','recommend_paint_correction','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
+      // Custom reset price and paint correction (amounts typed in dollars in admin)
+      const cents = v => (v === '' || v === null || v === undefined ? null : Math.round(Number(v) * 100));
+      for (const k of ['custom_price_cents', 'paint_price_cents', 'bundle_price_cents']) if (k in b) {
+        const c = b[k] === '' || b[k] == null ? null : cents(b[k]);
+        if (c !== null && (!Number.isFinite(c) || c < 0 || c > 10000000)) throw Object.assign(new Error('Enter a price in dollars.'), { status: 400 });
+        patch[k] = c;
+      }
+      if ('paint_offer' in b) patch.paint_offer = b.paint_offer === true;
       if ('vehicle_size' in b) {
         if (b.vehicle_size !== null && !['coupe','sedan','suv','truck','minivan'].includes(b.vehicle_size)) throw Object.assign(new Error('Choose a vehicle size.'), { status: 400 });
         patch.vehicle_size = b.vehicle_size || null;

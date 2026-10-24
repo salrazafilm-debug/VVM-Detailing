@@ -277,3 +277,4 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .room-membership-note p{margin:8px 0 0;font-size:.9rem;color:#5a403c;line-height:1.6}
 .room-download{margin-top:14px;width:auto;padding:12px 26px}
 .room-download{margin-top:14px;width:auto;padding:12px 26px}
+.room-plain-card{background:linear-gradient(135deg,#fff8f1,#fff2cf)!important;color:#191617}.room-plain-card h3,.room-plain-card strong{color:#191617}.room-plain-card .room-reset-size{color:#6b524c}.room-plain-card .room-reset-prices strong{color:#9a6b00}.room-options{display:grid;gap:10px;margin:0 0 14px}.room-option{display:grid;gap:3px;padding:14px 16px;border-radius:18px;border:2px solid #e4cfc7;background:#fff;text-align:left;cursor:pointer;font:800 .95rem var(--gbody);color:#191617}.room-option[aria-checked=true]{border-color:#f0d63c;background:#fffbe8}.room-option strong{font:italic 900 1.2rem var(--gdisplay)}.room-option-title{font-weight:900}

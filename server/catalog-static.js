@@ -23,8 +23,19 @@ const ROWS = [
   ['6OMJPB4L2PZON4ELQM6OJKP2', 'Paint Enhancement + 5 yr Ceramic coating', 'SUV', 95000, 390, 0],
 ];
 
-const STATIC_CATALOG = Object.fromEntries(ROWS.map(([id, item, label, priceCents, durationMin, transitionMin]) => [id, {
-  id, item, label, kind: kindOf(item), priceCents, durationMin, transitionMin, version: 1, bookable: true, teamMemberId: 'TMxa3fFm7Kfql50I',
-}]));
+// Paint correction for members. Prices come from the vehicle in admin, so these carry no price here.
+// Hidden: never listed on the website. Standalone starts 7-11 AM; the bundle with the reset must start 7-8 AM.
+const PAINT_ROWS = [
+  ['PAINT-ALONE', 'Paint correction', 'Morning 7-11 AM', 360, 11 * 60],
+  ['PAINT-BUNDLE', 'Paint correction (with reset)', 'Start 7-8 AM', 360, 8 * 60],
+];
+const STATIC_CATALOG = {
+  ...Object.fromEntries(ROWS.map(([id, item, label, priceCents, durationMin, transitionMin]) => [id, {
+    id, item, label, kind: kindOf(item), priceCents, durationMin, transitionMin, version: 1, bookable: true, teamMemberId: 'TMxa3fFm7Kfql50I',
+  }])),
+  ...Object.fromEntries(PAINT_ROWS.map(([id, item, label, durationMin, latestStart]) => [id, {
+    id, item, label, kind: 'full', priceCents: 0, durationMin, transitionMin: 0, latestStart, hidden: true, version: 1, bookable: true, teamMemberId: 'TMxa3fFm7Kfql50I',
+  }])),
+};
 
 module.exports = { STATIC_CATALOG };
