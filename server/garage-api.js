@@ -36,7 +36,7 @@ exports.customerGet = async req => {
     ]);
     if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
     const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
-    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', logo_url: logo } : p;
+    const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', location: p.location || '', logo_url: logo } : p;
     const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
@@ -285,7 +285,8 @@ exports.adminPost = async req => {
       const customer_id = clean(b.customer_id, 80), phone = String(b.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
       if (phone && phone.length !== 10) throw Object.assign(new Error('Enter a 10-digit phone number.'), { status: 400 });
-      const { error } = await ctx.admin.from('garage_profiles').update({ phone: phone || null }).eq('user_id', customer_id);
+      const location = clean(b.location, 200);
+      const { error } = await ctx.admin.from('garage_profiles').update({ phone: phone || null, location: location || null }).eq('user_id', customer_id);
       if (error) throw Object.assign(new Error('Could not save the phone number. Run the client phone update in Supabase first.'), { status: 503 });
       return json({ ok: true, message: 'Phone number saved.' });
     }

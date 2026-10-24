@@ -9,7 +9,8 @@ async function emailRequest(b) {
   const name = clean(b.name, 80), email = clean(b.email, 120), notes = clean(b.notes, 1000);
   const digits = String(b.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
   if (name.length < 2) throw httpError(400, 'Please enter your name.');
-  if (digits.length !== 10) throw httpError(400, 'Please enter a 10-digit phone number.');
+  if (digits && digits.length !== 10) throw httpError(400, 'Please enter a 10-digit phone number.');
+  const location = clean(b.location, 200);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw httpError(400, 'Please enter a valid email.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '') || !/^\d{2}:\d{2}$/.test(b.time || '')) throw httpError(400, 'Please choose a day and time.');
   const vehicles = (Array.isArray(b.vehicles) ? b.vehicles : []).map(v => clean(v, 120)).filter(Boolean);
@@ -20,7 +21,7 @@ async function emailRequest(b) {
       subject: `New booking request: ${b.date} ${b.time} - ${name}`,
       replyTo: email,
       lines: [
-        `Name: ${name}`, `Phone: ${b.phone}`, `Email: ${email}`,
+        `Name: ${name}`, `Phone: ${digits ? b.phone : 'Not on file'}`, `Email: ${email}`, `Location: ${location || 'Not given'}`,
         `Day: ${b.date}`, `Time: ${b.time}`,
         `Vehicle${two ? 's' : ''}: ${two ? vehicles.map((v, i) => `${i + 1}) ${v}`).join(' | ') : vehicles[0] || 'Not given'}`,
         `Services: ${services}`,

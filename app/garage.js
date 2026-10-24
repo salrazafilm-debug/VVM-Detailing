@@ -82,12 +82,12 @@ function ResetBooking({ vehicle, profile, onBack }) {
   const thisMonth=todayET().slice(0,7);
   // The options this client sees: the reset (member), paint correction and the bundle (only when enabled in admin)
   const opts=[];
-  if(offer?.variation_id)opts.push({id:'reset',title:'Full Factory Reset',sub:sizeName(offer.size),plan:`${offer.variation_id}`,cents:vehicle.custom_price_cents??offer.price_cents,was:offer.normal_cents,member:true});
+  if(offer?.variation_id)opts.push({id:'reset',title:'Full Factory Reset',sub:sizeName(offer.size),plan:`${offer.variation_id}`,cents:vehicle.custom_price_cents??offer.price_cents,was:offer.normal_cents,member:true,custom:vehicle.custom_price_cents!=null});
   if(vehicle.paint_offer&&vehicle.paint_price_cents!=null)opts.push({id:'paint',title:'Paint correction',sub:'Morning only · 7–11 AM · about 6 hours',plan:'PAINT-ALONE',cents:vehicle.paint_price_cents});
   if(vehicle.paint_offer&&vehicle.bundle_price_cents!=null&&offer?.variation_id)opts.push({id:'bundle',title:'Bundle & save',sub:'Reset + paint correction. Must start 7–8 AM to complete all services',plan:`${offer.variation_id}.PAINT-BUNDLE`,cents:vehicle.bundle_price_cents});
   const [choice,setChoice]=useState(opts[0]?.id||''),current=opts.find(o=>o.id===choice)||opts[0];
   const [month,setMonth]=useState(thisMonth),[days,setDays]=useState(null),[loadErr,setLoadErr]=useState(''),[day,setDay]=useState(''),[time,setTime]=useState('');
-  const [name,setName]=useState(profile?.display_name||''),[phone,setPhone]=useState(profile?.phone||''),[email,setEmail]=useState(profile?.email||''),[notes,setNotes]=useState('');
+  const [name,setName]=useState(profile?.display_name||''),[phone,setPhone]=useState(profile?.phone||''),[email,setEmail]=useState(profile?.email||''),[notes,setNotes]=useState(''),[loc,setLoc]=useState(profile?.location||''),[editLoc,setEditLoc]=useState(!profile?.location);
   const [busy,setBusy]=useState(false),[err,setErr]=useState(''),[done,setDone]=useState(null);
   useEffect(()=>{let live=true;setDays(null);setLoadErr('');setDay('');setTime('');if(!offer?.variation_id)return;
     if(!current)return;
@@ -100,12 +100,12 @@ function ResetBooking({ vehicle, profile, onBack }) {
     setErr('');
     if(!day||!time||!current)return setErr('Choose a day and time.');
     if(name.trim().length<2)return setErr('Enter your name.');
-    if(phone.replace(/\D/g,'').length!==10)return setErr('Enter a 10-digit phone number.');
+    if(profile?.phone&&phone.replace(/\D/g,'').length!==10)return setErr('Enter a 10-digit phone number.');
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
     setBusy(true);
     try{
       const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',
-        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. TOTAL ${money(current.cents)}${current.was?` (membership discount; normal ${money(current.was)})`:''}.`})});
+        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}TOTAL ${money(current.cents)}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
       setDone({day,time});
@@ -138,7 +138,8 @@ function ResetBooking({ vehicle, profile, onBack }) {
     {time&&<section className="room-section"><div className="room-section-heading"><h3>Your details</h3></div>
       <div className="room-form">
         <label>Name<input value={name} onChange={e=>setName(e.target.value)} autoComplete="name"/></label>
-        <label>Phone<input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel"/></label>
+        {profile?.phone&&<label>Phone<input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="tel"/></label>}
+        <div className="room-location">{!editLoc&&profile?.location?<><span className="room-label">LOCATION</span><span>{loc}</span><button type="button" className="room-link" onClick={()=>setEditLoc(true)}>New location? Update here</button></>:<label>Location <span className="room-muted">Where should we come?</span><input value={loc} onChange={e=>setLoc(e.target.value)} autoComplete="street-address"/></label>}</div>
         <label>Email<input value={email} onChange={e=>setEmail(e.target.value)} inputMode="email" autoComplete="email"/></label>
         <label>Notes <span className="room-muted">Optional</span><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}/></label>
       </div>
