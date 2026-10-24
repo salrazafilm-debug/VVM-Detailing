@@ -141,11 +141,20 @@ function PhotoLayout({ vehicle, busy, action, onSave }) {
   </div>;
 }
 
+// Applies a drag (dx/dy in % of the screen) or a zoom step to one size setting, kept inside the slider limits
+const clampTo=(v,min,max)=>Math.max(min,Math.min(max,Math.round(v)));
+function nudge(v,{dx=0,dy=0,zoom=0}){return {scale:clampTo(v.scale+zoom,10,300),x:clampTo(v.x+dx,-50,150),y:clampTo(v.y+dy,-50,150)}}
+
 // Scaled iframe so a phone or desktop screen fits the admin page
-function PreviewFrame({ src, w, h, label }) {
-  const box=useRef(null),[scale,setScale]=useState(1);
+function PreviewFrame({ src, w, h, label, onMove }) {
+  const box=useRef(null),[scale,setScale]=useState(1),drag=useRef(null);
+  // Drag on the preview to move the photo; scroll or pinch to zoom. Moves feed the same sliders, so the photo changes live.
+  const down=e=>{if(!onMove)return;drag.current={x:e.clientX,y:e.clientY};e.currentTarget.setPointerCapture(e.pointerId)};
+  const move=e=>{if(!drag.current||!onMove)return;const dx=e.clientX-drag.current.x,dy=e.clientY-drag.current.y;drag.current={x:e.clientX,y:e.clientY};onMove({dx:dx/(w*scale)*100,dy:dy/(h*scale)*100})};
+  const up=()=>{drag.current=null};
+  const wheel=e=>{if(!onMove)return;e.preventDefault();onMove({zoom:e.deltaY<0?5:-5})};
   useEffect(()=>{const el=box.current;if(!el)return;const fit=()=>setScale(Math.min(1,el.clientWidth/w));fit();const ro=new ResizeObserver(fit);ro.observe(el);return()=>ro.disconnect()},[w]);
-  return <div className="admin-preview-frame" ref={box}><p className="g-eyebrow">{label}</p><div className="admin-preview-screen" style={{width:w*scale,height:h*scale}}><iframe title={label} src={src} style={{width:w,height:h,transform:`scale(${scale})`}}/></div></div>;
+  return <div className="admin-preview-frame" ref={box}><p className="g-eyebrow">{label}</p><div className="admin-preview-screen" style={{width:w*scale,height:h*scale}}><iframe title={label} src={src} style={{width:w,height:h,transform:`scale(${scale})`}}/>{onMove&&<div className="admin-preview-drag" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onWheel={wheel} role="application" aria-label="Drag to move the photo. Scroll to zoom."><span>Drag to move · scroll to zoom</span></div>}</div></div>;
 }
 
 // Phone and desktop size and position for the showroom cover
@@ -167,7 +176,7 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
   const pick=(items,value,set)=><div className="admin-segment" role="group">{items.map(([id,label])=><button key={id} type="button" className={value===id?'is-active':''} aria-pressed={value===id} onClick={()=>set(id)}>{label}</button>)}</div>;
   return <div className="admin-preview">
     <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button></div>
-    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE"/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP"/>}</div>
+    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE" onMove={m=>setSizing(z=>({...z,phone:nudge(z.phone,m)}))}/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP" onMove={m=>setSizing(z=>({...z,desktop:nudge(z.desktop,m)}))}/>}</div>
     <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={onSaveSizing} value={sizing} onChange={setSizing}/></details>
   </div>;
 }
