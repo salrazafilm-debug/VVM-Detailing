@@ -149,9 +149,8 @@ function PreviewFrame({ src, w, h, label }) {
 }
 
 // Phone and desktop size and position for the showroom cover
-function ShowroomSizer({ vehicle, busy, onSave }) {
-  const init=p=>({scale:vehicle[`${p}_scale`]??100,x:vehicle[`${p}_x`]??50,y:vehicle[`${p}_y`]??58});
-  const [f,setF]=useState(()=>({phone:init('phone'),desktop:init('desktop')}));
+function ShowroomSizer({ vehicle, busy, onSave, value, onChange }) {
+  const f=value;const setF=onChange;
   const slider=(dev,key,label,min,max)=><label>{label} <b>{f[dev][key]}</b><input type="range" min={min} max={max} value={f[dev][key]} disabled={busy} onChange={e=>setF({...f,[dev]:{...f[dev],[key]:Number(e.target.value)}})}/></label>;
   const block=(dev,title)=><fieldset className="admin-status-group"><legend>{title}</legend>{slider(dev,'scale','Size',10,300)}{slider(dev,'x','Left / right',-50,150)}{slider(dev,'y','Up / down',-50,150)}</fieldset>;
   return <form className="g-form admin-status" onSubmit={e=>{e.preventDefault();onSave({phone_scale:f.phone.scale,phone_x:f.phone.x,phone_y:f.phone.y,desktop_scale:f.desktop.scale,desktop_x:f.desktop.x,desktop_y:f.desktop.y})}}>{block('phone','Phone showroom')}{block('desktop','Desktop showroom')}<div className="admin-status-actions"><button className="g-button" disabled={busy}>SAVE SHOWROOM SIZE</button></div></form>;
@@ -159,13 +158,17 @@ function ShowroomSizer({ vehicle, busy, onSave }) {
 
 function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }) {
   const [device,setDevice]=useState('both'),[view,setView]=useState('home'),[nonce,setNonce]=useState(0);
+  const init=p=>({scale:vehicle[`${p}_scale`]??100,x:vehicle[`${p}_x`]??50,y:vehicle[`${p}_y`]??58});
+  const [sizing,setSizing]=useState(()=>({phone:init('phone'),desktop:init('desktop')}));
+  // Move the photo in the preview as soon as a slider moves; nothing is saved until SAVE SHOWROOM SIZE
+  useEffect(()=>{document.querySelectorAll('.admin-preview iframe').forEach(f=>f.contentWindow?.postMessage({type:'vvm-showroom-size',sizes:sizing},location.origin))},[sizing,nonce]);
   useEffect(()=>{const t=setTimeout(()=>setNonce(n=>n+1),400);return()=>clearTimeout(t)},[sig]);
   const src=`/garage?client=${encodeURIComponent(clientId)}&vehicle=${encodeURIComponent(vehicleId)}&view=${view}&r=${nonce}`;
   const pick=(items,value,set)=><div className="admin-segment" role="group">{items.map(([id,label])=><button key={id} type="button" className={value===id?'is-active':''} aria-pressed={value===id} onClick={()=>set(id)}>{label}</button>)}</div>;
   return <div className="admin-preview">
     <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button></div>
     <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE"/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP"/>}</div>
-    <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={onSaveSizing}/></details>
+    <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={onSaveSizing} value={sizing} onChange={setSizing}/></details>
   </div>;
 }
 

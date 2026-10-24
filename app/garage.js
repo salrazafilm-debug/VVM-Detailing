@@ -141,6 +141,20 @@ function ResetBooking({ vehicle, profile, onBack }) {
   </>;
 }
 
+// Saves the photo to the phone or computer. Falls back to opening it if the browser will not download it directly.
+async function downloadPhoto(photo) {
+  try {
+    const r = await fetch(photo.url);
+    if (!r.ok) throw new Error('download');
+    const blob = await r.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `vvm-${photo.id}.${(blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')}`;
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+  } catch { window.open(photo.url, '_blank', 'noopener'); }
+}
+
 function Bookings({ vehicle, preview, onBook }) {
   const c=vehicle?.cycle,active=membershipActive(vehicle);
   return <>
@@ -154,7 +168,7 @@ function Bookings({ vehicle, preview, onBook }) {
 }
 
 export default function Garage() {
-  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
+  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[sizeOverride,setSizeOverride]=useState(null),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
   const heading=useRef(null),dialog=useRef(null),previousFocus=useRef(null);
   useEffect(()=>{
     let active=true;
@@ -165,6 +179,8 @@ export default function Garage() {
     load();const timer=setInterval(load,10*60*1000),clock=setInterval(()=>refreshClock(n=>n+1),60000);const visible=()=>{if(document.visibilityState==='visible')load()};document.addEventListener('visibilitychange',visible);
     return()=>{active=false;clearInterval(timer);clearInterval(clock);document.removeEventListener('visibilitychange',visible)};
   },[]);
+  // Admin preview only: size and position from the admin sliders, shown before they are saved
+  useEffect(()=>{if(!data?.preview)return;const h=e=>{if(e.origin!==location.origin||e.data?.type!=='vvm-showroom-size')return;setSizeOverride(e.data.sizes)};window.addEventListener('message',h);return()=>window.removeEventListener('message',h)},[data?.preview]);
   useEffect(()=>{const t=setTimeout(()=>setIntroDone(true),5000),w=setTimeout(()=>setCoverWaitDone(true),12000);return()=>{clearTimeout(t);clearTimeout(w)}},[]);
   useEffect(()=>{if(view!=='home')heading.current?.focus({preventScroll:true})},[view]);
   // Safari colours its bottom bar from theme-color. Black here, so the bar matches the photo instead of showing pink.
@@ -174,7 +190,7 @@ export default function Garage() {
   useEffect(()=>{if(photo){previousFocus.current=document.activeElement;dialog.current?.showModal()}else if(dialog.current?.open){dialog.current.close();previousFocus.current?.focus()}},[photo]);
   const vehicle=useMemo(()=>data?.vehicles.find(v=>v.id===selected),[data,selected]);
   const coverId=isPhone&&vehicle?.mobile_hero_photo_id?vehicle.mobile_hero_photo_id:vehicle?.hero_photo_id;
-  const dev=isPhone?'phone':'desktop',place={'--ss':(vehicle?.[`${dev}_scale`]??100)/100,'--sx':`${(vehicle?.[`${dev}_x`]??50)-50}%`,'--sy':`${(vehicle?.[`${dev}_y`]??58)-58}%`};
+  const dev=isPhone?'phone':'desktop',live=sizeOverride?.[dev],sc=live?.scale??vehicle?.[`${dev}_scale`]??100,sx=live?.x??vehicle?.[`${dev}_x`]??50,sy=live?.y??vehicle?.[`${dev}_y`]??58,place={'--ss':sc/100,'--sx':`${sx-50}%`,'--sy':`${sy-58}%`};
   const hero=vehicle?.photos.find(p=>p.id===coverId) || vehicle?.photos.find(p=>p.id===vehicle.hero_photo_id) || vehicle?.photos.find(p=>p.photo_kind==='hero') || vehicle?.photos.find(p=>p.photo_kind==='after');
   const firstName=(data?.profile?.display_name||'').trim().split(/\s+/)[0];
   function navigate(next){setView(next);setPhoto(null);setBooking(false)}
@@ -201,6 +217,6 @@ export default function Garage() {
       </section>}
     </>}
     {data&&<nav className="room-nav" aria-label="Garage navigation">{tabs.map(([id,label])=><button key={id} type="button" className={view===id?'is-active':''} aria-pressed={view===id} onClick={()=>navigate(id)}><GarageIcon name={id}/><span>{label}</span></button>)}</nav>}
-    <dialog className="room-photo-dialog" ref={dialog} onCancel={e=>{e.preventDefault();setPhoto(null)}} onClick={e=>{if(e.target===e.currentTarget)setPhoto(null)}} aria-label="Vehicle photo">{photo&&<><button className="room-close" onClick={()=>setPhoto(null)} aria-label="Close photo"><GarageIcon name="close"/></button><img src={photo.url} alt={photo.caption||'Your vehicle'}/><p>{photo.caption||photo.photo_kind}</p></>}</dialog>
+    <dialog className="room-photo-dialog" ref={dialog} onCancel={e=>{e.preventDefault();setPhoto(null)}} onClick={e=>{if(e.target===e.currentTarget)setPhoto(null)}} aria-label="Vehicle photo">{photo&&<><button className="room-close" onClick={()=>setPhoto(null)} aria-label="Close photo"><GarageIcon name="close"/></button><img src={photo.url} alt={photo.caption||'Your vehicle'}/><button type="button" className="room-gold room-download" onClick={()=>downloadPhoto(photo)}>DOWNLOAD PHOTO</button></>}</dialog>
   </main>;
 }
