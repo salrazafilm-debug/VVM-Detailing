@@ -39,7 +39,7 @@ function protectionOf(v) {
 function healthRows(v) {
   const rows=[];
   if(v?.show_headlights!==false)rows.push({key:'headlights',label:'Headlights',ok:!!v?.headlights_done,note:v?.headlights_done?'Healthy':'Not done'});
-  if(v?.show_paint!==false)rows.push({key:'paint',label:'Paint condition',ok:!!v?.paint_correction,note:v?.paint_correction?'Paint correction complete':v?.recommend_paint_correction?'Recommended':'Not done'});
+  if(v?.show_paint!==false)rows.push({key:'paint',label:'Paint condition',ok:!!v?.paint_correction,note:v?.paint_correction?'Paint correction complete':v?.recommend_paint_correction?'Paint correction recommended':'Not done'});
   const prot=protectionOf(v);
   if(prot&&v?.show_protection!==false)rows.push({key:'protection',label:prot.label,ok:prot.ok,note:prot.note,pct:prot.pct,bar:true});
   if(v?.recommend_ceramic&&v?.show_ceramic_rec!==false&&v?.protection_type!=='coating')rows.push({key:'ceramic',label:'Ceramic Coating',ok:false,note:'Recommended'});
@@ -50,15 +50,14 @@ function HealthCard({ row }) {
   return <div className={`room-sealant room-health-card${row.ok?' is-on':' is-bad'}`}><div><span className="room-label">{row.bar?'PROTECTION':'HEALTH'}</span><strong>{row.label}</strong><em>{row.note}</em></div><Mark ok={row.ok} bad/>{row.bar&&<div className="room-progress" role="progressbar" aria-label={`${row.label} time left`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><span style={{width:`${row.pct}%`}}/></div>}</div>;
 }
 
-function Health({ vehicle, onBook }) {
+function Health({ vehicle }) {
   if(!vehicle)return <div className="room-empty"><GarageIcon name="health"/><h3>Your space is ready.</h3><p>Your vehicle’s health will show up here.</p></div>;
   const rows=healthRows(vehicle),services=vehicle.services||[],good=rows.every(r=>r.ok);
   return <>
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
     {rows.length>0&&<p className={`room-health-title${good?'':' is-warn'}`}><GarageIcon name="medic"/>{good?'Your vehicle is healthy!':'Needs attention'}</p>}
     <div className="room-health-list">{rows.map(r=><HealthCard key={r.key} row={r}/>)}</div>
-    {rows.some(r=>!r.ok)&&<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button>}
-    <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{services[0]?<><strong>{services[0].title}</strong><time>{date(services[0].service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
+        <div className="room-last-card"><span className="room-label">LAST DETAIL</span>{services[0]?<><strong>{services[0].title}</strong><time>{date(services[0].service_date)}</time></>:<em>Your first detail will show up here.</em>}</div>
     <section className="room-done-box"><span className="room-label">COMPLETED SERVICES</span>{services.length?<ul>{services.map(s=><li key={s.id}><time>{date(s.service_date)}</time><strong>{s.title}</strong>{s.description&&<p>{s.description}</p>}</li>)}</ul>:<p className="room-muted">Your completed details will show up here after each visit.</p>}</section>
   </>;
 }
@@ -211,7 +210,7 @@ export default function Garage() {
       </section>}
       {view!=='home'&&<section className="client-sheet" aria-labelledby="room-panel-title"><div className="room-sheet-head"><h1 id="room-panel-title" tabIndex="-1" ref={heading} className={view==='garage'&&logo?'has-logo':''}>{view==='garage'&&logo?<img className="room-garage-logo" src={logo} alt={`${firstName?`${firstName}’s `:''}Garage`}/>:title}</h1><button className="room-close" onClick={()=>navigate('home')} aria-label="Return to showroom"><GarageIcon name="close"/></button></div>
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
-        {view==='health'&&<Health vehicle={vehicle} onBook={()=>{navigate('bookings');setBooking(!!vehicle?.offer?.variation_id)}}/>}
+        {view==='health'&&<Health vehicle={vehicle}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto}/>}
         {view==='bookings'&&(booking&&vehicle?.offer?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
       </section>}
