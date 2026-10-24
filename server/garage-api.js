@@ -173,9 +173,9 @@ exports.adminPost = async req => {
       const patch = {};
       for (const k of ['paint_correction','headlights_done','recommend_ceramic','recommend_paint_correction','show_headlights','show_paint','show_protection','show_ceramic_rec']) if (k in b) patch[k] = b[k] === true;
       // Custom reset price and paint correction (amounts typed in dollars in admin)
-      const cents = v => (v === '' || v === null || v === undefined ? null : Math.round(Number(v) * 100));
+      // The admin page already sends cents (dollars x 100), so save them as they are.
       for (const k of ['custom_price_cents', 'paint_price_cents', 'bundle_price_cents']) if (k in b) {
-        const c = b[k] === '' || b[k] == null ? null : cents(b[k]);
+        const c = b[k] === '' || b[k] == null ? null : Math.round(Number(b[k]));
         if (c !== null && (!Number.isFinite(c) || c < 0 || c > 10000000)) throw Object.assign(new Error('Enter a price in dollars.'), { status: 400 });
         patch[k] = c;
       }
