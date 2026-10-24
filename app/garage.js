@@ -193,6 +193,8 @@ export default function Garage() {
   useEffect(()=>{if(!data?.preview)return;const h=e=>{if(e.origin!==location.origin||e.data?.type!=='vvm-showroom-size')return;setSizeOverride(e.data.sizes)};window.addEventListener('message',h);return()=>window.removeEventListener('message',h)},[data?.preview]);
   useEffect(()=>{const t=setTimeout(()=>setIntroDone(true),5000),w=setTimeout(()=>setCoverWaitDone(true),12000);return()=>{clearTimeout(t);clearTimeout(w)}},[]);
   useEffect(()=>{if(view!=='home')heading.current?.focus({preventScroll:true})},[view]);
+  // Each tab starts at the top of its panel (the panel is scrollable and is reused between tabs)
+  useEffect(()=>{document.querySelector('.client-sheet')?.scrollTo?.(0,0)},[view]);
   // Safari colours its bottom bar from theme-color. Black here, so the bar matches the photo instead of showing pink.
   useEffect(()=>{let meta=document.querySelector('meta[name="theme-color"]');const made=!meta;if(made){meta=document.createElement('meta');meta.name='theme-color';document.head.appendChild(meta)}const was=meta.content;meta.content='#000000';return()=>{if(made)meta.remove();else meta.content=was}},[]);
   useEffect(()=>{const mq=matchMedia('(max-width:800px)');setIsPhone(mq.matches);const change=()=>setIsPhone(mq.matches);mq.addEventListener('change',change);return()=>mq.removeEventListener('change',change)},[]);
