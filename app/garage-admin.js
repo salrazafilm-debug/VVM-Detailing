@@ -169,14 +169,20 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
   const [device,setDevice]=useState('both'),[view,setView]=useState('home'),[nonce,setNonce]=useState(0);
   const init=p=>({scale:vehicle[`${p}_scale`]??100,x:vehicle[`${p}_x`]??50,y:vehicle[`${p}_y`]??58});
   const [sizing,setSizing]=useState(()=>({phone:init('phone'),desktop:init('desktop')}));
+  // Adjust mode: the drag layer is only on while adjusting, so the rest of the admin page works normally.
+  const [adjusting,setAdjusting]=useState(false),baseline=useRef(null);
+  function startAdjust(){baseline.current=sizing;setAdjusting(true)}
+  function confirmAdjust(){baseline.current=null;setAdjusting(false)}
+  function cancelAdjust(){if(baseline.current)setSizing(baseline.current);baseline.current=null;setAdjusting(false)}
   // Move the photo in the preview as soon as a slider moves; nothing is saved until SAVE SHOWROOM SIZE
   useEffect(()=>{document.querySelectorAll('.admin-preview iframe').forEach(f=>f.contentWindow?.postMessage({type:'vvm-showroom-size',sizes:sizing},location.origin))},[sizing,nonce]);
   useEffect(()=>{const t=setTimeout(()=>setNonce(n=>n+1),400);return()=>clearTimeout(t)},[sig]);
   const src=`/garage?client=${encodeURIComponent(clientId)}&vehicle=${encodeURIComponent(vehicleId)}&view=${view}&r=${nonce}`;
   const pick=(items,value,set)=><div className="admin-segment" role="group">{items.map(([id,label])=><button key={id} type="button" className={value===id?'is-active':''} aria-pressed={value===id} onClick={()=>set(id)}>{label}</button>)}</div>;
   return <div className="admin-preview">
-    <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button></div>
-    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE" onMove={m=>setSizing(z=>({...z,phone:nudge(z.phone,m)}))}/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP" onMove={m=>setSizing(z=>({...z,desktop:nudge(z.desktop,m)}))}/>}</div>
+    <div className="admin-preview-controls">{pick([['home','Showroom'],['garage','My Garage'],['health','Health'],['bookings','Bookings']],view,setView)}{pick([['phone','Phone'],['desktop','Desktop'],['both','Both']],device,setDevice)}<button type="button" className="g-text-button" onClick={()=>setNonce(n=>n+1)}>REFRESH</button>{!adjusting?<button type="button" className="g-button" onClick={startAdjust}>ADJUST PHOTO</button>:<><button type="button" className="g-button" onClick={confirmAdjust}>CONFIRM POSITION</button><button type="button" className="g-text-button" onClick={cancelAdjust}>CANCEL</button></>}</div>
+    {adjusting&&<p className="g-inline-help admin-adjust-note">Drag the photo on the preview to move it. Scroll over it to zoom. Press CONFIRM POSITION when it looks right, then SAVE SHOWROOM SIZE to keep it.</p>}
+    <div className={`admin-preview-grid is-${device}`}>{device!=='desktop'&&<PreviewFrame key={`p${src}`} src={src} w={390} h={780} label="PHONE" onMove={adjusting?m=>setSizing(z=>({...z,phone:nudge(z.phone,m)})):null}/>}{device!=='phone'&&<PreviewFrame key={`d${src}`} src={src} w={1280} h={760} label="DESKTOP" onMove={adjusting?m=>setSizing(z=>({...z,desktop:nudge(z.desktop,m)})):null}/>}</div>
     <details className="g-panel admin-disclosure" open><summary><span>Showroom size<small>Size and position for phone and desktop, shown above</small></span><b aria-hidden="true">+</b></summary><ShowroomSizer key={vehicleId} vehicle={vehicle} busy={busy} onSave={onSaveSizing} value={sizing} onChange={setSizing}/></details>
   </div>;
 }

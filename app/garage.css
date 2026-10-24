@@ -116,3 +116,4 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .admin-preview-drag{position:absolute;inset:0;cursor:grab;touch-action:none;display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;background:transparent}
 .admin-preview-drag:active{cursor:grabbing}
 .admin-preview-drag span{font:800 .66rem var(--gbody);letter-spacing:.06em;color:#fff;background:#1a1214aa;padding:6px 10px;border-radius:999px;pointer-events:none}
+.admin-adjust-note{margin:0;font-weight:700;color:#5a403c}
