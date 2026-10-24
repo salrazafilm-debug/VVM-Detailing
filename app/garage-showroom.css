@@ -277,7 +277,20 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .room-membership-note p{margin:8px 0 0;font-size:.9rem;color:#5a403c;line-height:1.6}
 .room-download{margin-top:14px;width:auto;padding:12px 26px}
 .room-download{margin-top:14px;width:auto;padding:12px 26px}
-.room-plain-card{background:linear-gradient(135deg,#fff8f1,#fff2cf)!important;color:#191617}.room-plain-card h3,.room-plain-card strong{color:#191617}.room-plain-card .room-reset-size{color:#6b524c}.room-plain-card .room-reset-prices strong{color:#9a6b00}.room-options{display:grid;gap:10px;margin:0 0 14px}.room-option{display:grid;gap:3px;padding:14px 16px;border-radius:18px;border:2px solid #e4cfc7;background:#fff;text-align:left;cursor:pointer;font:800 .95rem var(--gbody);color:#191617}.room-option[aria-checked=true]{border-color:#f0d63c;background:#fffbe8}.room-option strong{font:italic 900 1.2rem var(--gdisplay)}.room-option-title{font-weight:900}
+/* Paint, bundle and other bookings: each has its own dark card (readable white text, colored glow) */
+.room-plain-card{background:radial-gradient(ellipse at 100% 0,#4f8ff040,transparent 60%),#1a1214!important;color:#fff7ed;border:1px solid #f0d63c66;box-shadow:0 0 34px #f0d63c26,0 12px 30px #1a121459}
+.room-plain-card h3,.room-plain-card strong{color:#fff}
+.room-plain-card .room-label{color:#f0d63c}
+.room-plain-card .room-reset-size{color:#f5dcd7}
+.room-plain-card .room-reset-prices strong{color:#f0d63c;text-shadow:0 0 18px #f0d63c80}
+.room-plain-card.is-paint{background:radial-gradient(ellipse at 0 0,#e4572e99,transparent 60%),linear-gradient(135deg,#2a0d0a,#7a2412)!important;border-color:#e4572e99;box-shadow:0 0 36px #e4572e4d,0 12px 30px #2a0d0a66}
+.room-plain-card.is-paint .room-label{color:#ffd2c2}
+.room-plain-card.is-bundle{background:linear-gradient(135deg,#0b2a4a,#1d4f86 55%,#3a2c06)!important;border:0;box-shadow:0 0 0 2px #f0d63c,0 0 42px #f0d63c59}
+.room-options{display:grid;gap:10px;margin:0 0 14px}
+.room-option{display:grid;gap:3px;padding:14px 16px;border-radius:18px;border:2px solid #4a3a3e;background:#1a1214;text-align:left;cursor:pointer;font:800 .95rem var(--gbody);color:#fff7ed}
+.room-option .room-muted{color:#d9bfb9}
+.room-option[aria-checked=true]{border-color:#f0d63c;background:#2b1d21;box-shadow:0 0 22px #f0d63c55}
+.room-option strong{font:italic 900 1.2rem var(--gdisplay);color:#f0d63c}.room-option-title{font-weight:900}
 .room-location{display:grid;gap:6px;margin:4px 0 10px;font:700 .9rem var(--gbody)}.room-location>span:not(.room-label){color:#191617}.room-location label{display:grid;gap:5px;font:800 .75rem var(--gbody);color:#5a403c}.room-location input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #d4bcb5;background:#fff;font:700 .95rem var(--gbody);color:#191617}
 
 .room-review{position:relative;isolation:isolate;overflow:hidden;margin:30px 0 4px;padding:30px 22px 28px;border-radius:26px;text-align:center;display:grid;justify-items:center;gap:12px;color:#fff7ed;background:radial-gradient(ellipse at 100% 0,#4f8ff03d,transparent 60%),radial-gradient(ellipse at 0 100%,#e4572e33,transparent 55%),#1a1214;border:1px solid #f0d63c66;box-shadow:0 0 0 6px #ffffff14,0 0 42px #f0d63c40,0 20px 50px #1a121466}
