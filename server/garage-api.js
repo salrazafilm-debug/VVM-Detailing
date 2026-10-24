@@ -202,6 +202,18 @@ exports.adminPost = async req => {
       if (error) throw Object.assign(new Error('Could not update this photo. Run the Garage visibility update in Supabase first.'), { status: 503 });
       return json({ ok: true, message: b.show === true ? 'Shown on My Garage.' : 'Hidden from My Garage.' });
     }
+    if (action === 'save_photo_layout') {
+      // One save for the photo order and Show on My Garage. Nothing changes until the admin presses Save.
+      const vehicle_id = clean(b.vehicle_id, 80);
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const ids = Array.isArray(b.photo_ids) ? b.photo_ids.slice(0, 300) : [];
+      const show = b.show && typeof b.show === 'object' ? b.show : {};
+      if (!uuid.test(vehicle_id) || !ids.every(id => uuid.test(id))) throw Object.assign(new Error('Could not save the photo layout.'), { status: 400 });
+      const writes = ids.map((id, i) => ctx.admin.from('garage_photos').update({ sort_order: i, ...(id in show ? { show_on_garage: show[id] === true } : {}) }).eq('id', id).eq('vehicle_id', vehicle_id));
+      const results = await Promise.all(writes);
+      if (results.some(r => r.error)) throw Object.assign(new Error('Could not save the photo layout. Try again.'), { status: 503 });
+      return json({ ok: true, message: 'Photo order and visibility saved.' });
+    }
     if (action === 'reorder_photos') {
       const vehicle_id = clean(b.vehicle_id, 80);
       const ids = Array.isArray(b.photo_ids) ? b.photo_ids.slice(0, 200) : [];

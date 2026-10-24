@@ -625,21 +625,3 @@ async function applyCoupon(code, msg, chosenId) {
   };
   setTimeout(check, 200);
 })();
-
-// Phones: only the Full Factory Reset is shown in full. Every other service shows its name and a "More info" button.
-document.querySelectorAll('#services .card:not(.gold):not(#pe-back)').forEach(card => {
-  const title = card.querySelector('h3');
-  if (!title) return;
-  card.classList.add('collapsible');
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'more-info';
-  btn.setAttribute('aria-expanded', 'false');
-  btn.textContent = 'More info';
-  btn.addEventListener('click', () => {
-    const open = card.classList.toggle('open');
-    btn.setAttribute('aria-expanded', String(open));
-    btn.textContent = open ? 'Less info' : 'More info';
-  });
-  title.insertAdjacentElement('afterend', btn);
-});

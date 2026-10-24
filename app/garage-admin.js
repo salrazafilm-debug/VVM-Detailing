@@ -117,6 +117,30 @@ function ClientLogo({ client, busy, onChanged, onError, onNotice }) {
   </div>;
 }
 
+
+// Saved photos: arrange and show/hide locally, then press Save once. Covers still change right away when you pick one.
+function PhotoLayout({ vehicle, busy, action, onSave }) {
+  const photos=vehicle.garage_photos||[];
+  const saved=[...photos].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(p=>p.id);
+  const [ids,setIds]=useState(saved),[show,setShow]=useState({});
+  useEffect(()=>{setIds([...photos].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map(p=>p.id));setShow({})},[vehicle.id,photos.map(p=>p.id+':'+p.sort_order+':'+p.show_on_garage).join('|')]);
+  const byId=Object.fromEntries(photos.map(p=>[p.id,p]));
+  const visible=id=>id in show?show[id]:byId[id]?.show_on_garage!==false;
+  const dirty=ids.join()!==saved.join()||Object.keys(show).some(id=>show[id]!==(byId[id]?.show_on_garage!==false));
+  function move(i,d){const next=[...ids];[next[i+d],next[i]]=[next[i],next[i+d]];setIds(next)}
+  return <div className="admin-saved-photos"><h3>Saved photos <span>({photos.length})</span></h3>
+    <p className="g-inline-help">Arrange the photos, tick the ones to show on My Garage, then press Save. Nothing changes for the client until you save.</p>
+    <div className="dash-photos">{ids.map((id,i)=>{const p=byId[id];if(!p)return null;return <div key={id} className="admin-saved-photo">{p.url?<a href={p.url} target="_blank" rel="noopener noreferrer"><img src={p.url} alt={p.caption||'Saved vehicle photo'} loading="lazy"/></a>:<p className="g-inline-help">Photo saved. Preview unavailable.</p>}
+      <button type="button" className="g-text-button" disabled={busy||vehicle.hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'desktop'},'Desktop cover saved.')}>{vehicle.hero_photo_id===p.id?'✓ DESKTOP COVER':'USE AS DESKTOP COVER'}</button>
+      <button type="button" className="g-text-button" disabled={busy||vehicle.mobile_hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'mobile'},'Phone cover saved.')}>{vehicle.mobile_hero_photo_id===p.id?'✓ PHONE COVER':'USE AS PHONE COVER'}</button>
+      <button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm('Delete this photo for good? It will be removed from the client\'s Garage.'))action({action:'delete_photo',photo_id:p.id},'Photo deleted.')}}>DELETE PHOTO</button>
+      <label className="g-check admin-show-toggle"><input type="checkbox" checked={visible(id)} disabled={busy} onChange={e=>setShow({...show,[id]:e.target.checked})}/> Show on My Garage</label>
+      <div className="admin-move"><button type="button" className="g-text-button" disabled={busy||i===0} aria-label="Move photo up" onClick={()=>move(i,-1)}>▲ UP</button><button type="button" className="g-text-button" disabled={busy||i===ids.length-1} aria-label="Move photo down" onClick={()=>move(i,1)}>▼ DOWN</button></div>
+    </div>;})}</div>
+    <div className="admin-status-actions"><button type="button" className="g-button" disabled={busy||!dirty} onClick={()=>onSave(ids,show)}>{dirty?'SAVE PHOTO ORDER':'PHOTOS SAVED'}</button></div>
+  </div>;
+}
+
 // Scaled iframe so a phone or desktop screen fits the admin page
 function PreviewFrame({ src, w, h, label }) {
   const box=useRef(null),[scale,setScale]=useState(1);
@@ -151,7 +175,7 @@ export default function GarageAdmin() {
   const [customer,setCustomer]=useState(''),[year,setYear]=useState(''),[make,setMake]=useState(''),[model,setModel]=useState(''),[color,setColor]=useState('');
   const [vehicle,setVehicle]=useState(''),[serviceDate,setServiceDate]=useState(today()),[title,setTitle]=useState('Full Factory Reset'),[description,setDescription]=useState('');
   const [sealant,setSealant]=useState(false),[coating,setCoating]=useState(false),[leather,setLeather]=useState(false),[fabric,setFabric]=useState(false);
-  const [photo,setPhoto]=useState(null),[photoKind,setPhotoKind]=useState('hero'),[caption,setCaption]=useState(''),[isHero,setIsHero]=useState(true),[coverFor,setCoverFor]=useState('desktop'),[preview,setPreview]=useState('');
+  const [photo,setPhoto]=useState(null),[photoKind,setPhotoKind]=useState('hero'),[caption,setCaption]=useState(''),[isHero,setIsHero]=useState(false),[coverFor,setCoverFor]=useState('desktop'),[preview,setPreview]=useState('');
   const [apptDate,setApptDate]=useState(''),[apptTime,setApptTime]=useState(''),[apptService,setApptService]=useState('Full Factory Reset'),[apptStatus,setApptStatus]=useState('confirmed');
   const [query,setQuery]=useState(''),[creatingClient,setCreatingClient]=useState(false),[creatingVehicle,setCreatingVehicle]=useState(false);
   const fileInput=useRef(null),actionLock=useRef(false),pendingUpload=useRef(null);
@@ -168,7 +192,7 @@ export default function GarageAdmin() {
   useEffect(()=>{if(!busy&&!photo)return;const warn=e=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[busy,photo]);
   useEffect(()=>{if(!photo){setPreview('');return}const url=URL.createObjectURL(photo);setPreview(url);return()=>URL.revokeObjectURL(url)},[photo]);
   function clearVehicleDrafts(){
-    setPhoto(null);setPhotoStatus('idle');pendingUpload.current=null;setCaption('');setPhotoKind('hero');setIsHero(true);if(fileInput.current)fileInput.current.value='';
+    setPhoto(null);setPhotoStatus('idle');pendingUpload.current=null;setCaption('');setPhotoKind('hero');setIsHero(false);if(fileInput.current)fileInput.current.value='';
     setDescription('');setServiceDate(today());setTitle('Full Factory Reset');setSealant(false);setCoating(false);setLeather(false);setFabric(false);
     setApptDate('');setApptTime('');setApptService('Full Factory Reset');setApptStatus('confirmed');
   }
@@ -207,6 +231,30 @@ export default function GarageAdmin() {
     catch(err){setPhotoStatus('error');setNotice('');setError(`Photo not saved. ${err.message}${pendingUpload.current?' Tap RETRY SAVE below.':''}`);if(!pendingUpload.current&&fileInput.current)fileInput.current.value=''}
     finally{actionLock.current=false;setBusy(false)}
   }
+  // Many photos at once. Each is saved in turn; the cover only changes if "Use as their Garage cover" is ticked.
+  async function chooseMany(files){
+    if(actionLock.current||!files.length||!selectedVehicle)return;
+    actionLock.current=true;setBusy(true);setError('');setPhoto(null);pendingUpload.current=null;setPhotoStatus('saving');
+    let saved=0,failed=0;
+    try{
+      for(let i=0;i<files.length;i++){
+        setNotice(`Saving photo ${i+1} of ${files.length}…`);
+        try{
+          const blob=await prepareGaragePhoto(files[i]);
+          const file=new File([blob],files[i].name.replace(/\.[^.]+$/,'')+(blob.type==='image/webp'?'.webp':'.jpg'),{type:blob.type});
+          const form=new FormData();form.append('vehicle_id',vehicle);form.append('upload_id',crypto.randomUUID());form.append('kind',photoKind);form.append('caption',caption);form.append('is_hero',String(isHero));form.append('cover_for',coverFor);form.append('showroom','false');form.append('file',file,file.name);
+          const result=await garageRequest('/api/garage/photo',{method:'POST',body:form});
+          setCustomers(list=>mergeSavedPhoto(list,result));saved++;
+        }catch{failed++}
+      }
+    }finally{
+      setNotice(`Saved ${saved} photo${saved===1?'':'s'}${failed?`. ${failed} could not be saved, so please choose those again`:''}.`);
+      if(failed)setError(`${failed} photo${failed===1?'':'s'} could not be saved.`);
+      setPhotoStatus(failed?'error':'saved');
+      if(fileInput.current)fileInput.current.value='';
+      actionLock.current=false;setBusy(false);await load();
+    }
+  }
   async function upload(e){
     e.preventDefault();if(actionLock.current||!pendingUpload.current)return;actionLock.current=true;setBusy(true);setError('');
     try{await savePreparedPhoto(pendingUpload.current)}catch(err){setPhotoStatus('error');setNotice('');setError(`Photo not saved. ${err.message} Tap RETRY SAVE below.`)}finally{actionLock.current=false;setBusy(false)}
@@ -236,8 +284,8 @@ export default function GarageAdmin() {
       </section>
       <section id="admin-upload" className={`g-panel admin-step${!selectedVehicle?' admin-locked':''}`} aria-labelledby="photo-step">
         <p className="g-eyebrow">03 / MAKE IT THEIRS</p><h2 id="photo-step">Bring on the photos.</h2>
-        {!selectedVehicle?<p className="g-muted">Choose a vehicle above to add its photos.</p>:<><p className="admin-context">{client.display_name||client.email}<span aria-hidden="true"> / </span><strong>{vehicleLabel(selectedVehicle)}</strong></p><form className="g-form admin-photo-form" onSubmit={upload}><p className="g-inline-help">Choose a photo and we save it immediately to this vehicle. Resizing, WebP conversion and location-data removal happen automatically.</p><details className="admin-photo-options"><summary>Photo options <span className="admin-optional">Optional · choose before uploading</span></summary><fieldset disabled={!!photo} className="admin-photo-options-fields"><div className="g-form-row"><label>Photo type<select value={photoKind} onChange={e=>setPhotoKind(e.target.value)}><option value="hero">Cover</option><option value="before">Before</option><option value="after">After</option><option value="gallery">Gallery</option></select></label><label>Caption <span className="admin-optional">Optional</span><input value={caption} onChange={e=>setCaption(e.target.value)} maxLength={160} placeholder="Fresh from a little VVM love"/></label></div><label className="g-check"><input type="checkbox" checked={isHero} onChange={e=>setIsHero(e.target.checked)}/> Use as their Garage cover</label>{isHero&&<label>Show this cover on<select value={coverFor} onChange={e=>setCoverFor(e.target.value)}><option value="desktop">Desktop (computer and tablet)</option><option value="mobile">Phone only</option></select></label>}</fieldset></details><label className="admin-dropzone">{preview?<img className="admin-photo-preview" src={preview} alt="Selected upload preview"/>:<span className="admin-upload-icon" aria-hidden="true">+</span>}<strong>{photo?photo.name:'Choose photo · saves automatically'}</strong><span>JPEG, PNG, WebP or HEIC · up to 20 MB</span><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e=>choosePhoto(e.target.files?.[0]||null)}/></label><p className={`admin-upload-status is-${photoStatus}`} role="status">{photoStatus==='preparing'?'Preparing photo…':photoStatus==='saving'?'Saving to this vehicle… Please keep this page open.':photoStatus==='saved'?'✓ Saved to this vehicle. You can choose another photo.':photoStatus==='error'?'Photo not saved. Retry below or choose another photo.':'Ready. Your next photo saves automatically as the Garage cover.'}</p>{photo&&photoStatus==='error'&&<button className="g-button admin-save" disabled={busy}>RETRY SAVE</button>}</form>
-        {!!selectedVehicle.garage_photos?.length&&<div className="admin-saved-photos"><h3>Saved photos <span>({selectedVehicle.garage_photos.length})</span></h3><div className="dash-photos">{[...selectedVehicle.garage_photos].sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).map((p,i,all)=><div key={p.id} className="admin-saved-photo">{p.url?<a href={p.url} target="_blank" rel="noopener noreferrer"><img src={p.url} alt={p.caption||'Saved vehicle photo'} loading="lazy"/></a>:<p className="g-inline-help">Photo saved. Preview unavailable.</p>}<button type="button" className="g-text-button" disabled={busy||selectedVehicle.hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'desktop'},'Desktop cover saved.')}>{selectedVehicle.hero_photo_id===p.id?'✓ DESKTOP COVER':'USE AS DESKTOP COVER'}</button><button type="button" className="g-text-button" disabled={busy||selectedVehicle.mobile_hero_photo_id===p.id} onClick={()=>action({action:'set_hero',photo_id:p.id,cover:'mobile'},'Phone cover saved.')}>{selectedVehicle.mobile_hero_photo_id===p.id?'✓ PHONE COVER':'USE AS PHONE COVER'}</button><button type="button" className="g-text-button admin-delete" disabled={busy} onClick={()=>{if(confirm('Delete this photo for good? It will be removed from the client\'s Garage.'))action({action:'delete_photo',photo_id:p.id},'Photo deleted.')}}>DELETE PHOTO</button><label className="g-check admin-show-toggle"><input type="checkbox" checked={p.show_on_garage!==false} disabled={busy} onChange={e=>action({action:'set_photo_visibility',photo_id:p.id,show:e.target.checked},e.target.checked?'Shown on My Garage.':'Hidden from My Garage.')}/> Show on My Garage</label><div className="admin-move"><button type="button" className="g-text-button" disabled={busy||i===0} aria-label="Move photo up" onClick={()=>{const ids=all.map(x=>x.id);[ids[i-1],ids[i]]=[ids[i],ids[i-1]];action({action:'reorder_photos',vehicle_id:vehicle,photo_ids:ids})}}>▲ UP</button><button type="button" className="g-text-button" disabled={busy||i===all.length-1} aria-label="Move photo down" onClick={()=>{const ids=all.map(x=>x.id);[ids[i+1],ids[i]]=[ids[i],ids[i+1]];action({action:'reorder_photos',vehicle_id:vehicle,photo_ids:ids})}}>▼ DOWN</button></div></div>)}</div></div>}
+        {!selectedVehicle?<p className="g-muted">Choose a vehicle above to add its photos.</p>:<><p className="admin-context">{client.display_name||client.email}<span aria-hidden="true"> / </span><strong>{vehicleLabel(selectedVehicle)}</strong></p><form className="g-form admin-photo-form" onSubmit={upload}><p className="g-inline-help">Choose a photo and we save it immediately to this vehicle. Resizing, WebP conversion and location-data removal happen automatically.</p><details className="admin-photo-options"><summary>Photo options <span className="admin-optional">Optional · choose before uploading</span></summary><fieldset disabled={!!photo} className="admin-photo-options-fields"><div className="g-form-row"><label>Photo type<select value={photoKind} onChange={e=>setPhotoKind(e.target.value)}><option value="hero">Cover</option><option value="before">Before</option><option value="after">After</option><option value="gallery">Gallery</option></select></label><label>Caption <span className="admin-optional">Optional</span><input value={caption} onChange={e=>setCaption(e.target.value)} maxLength={160} placeholder="Fresh from a little VVM love"/></label></div><label className="g-check"><input type="checkbox" checked={isHero} onChange={e=>setIsHero(e.target.checked)}/> Use as their Garage cover</label>{isHero&&<label>Show this cover on<select value={coverFor} onChange={e=>setCoverFor(e.target.value)}><option value="desktop">Desktop (computer and tablet)</option><option value="mobile">Phone only</option></select></label>}</fieldset></details><label className="admin-dropzone">{preview?<img className="admin-photo-preview" src={preview} alt="Selected upload preview"/>:<span className="admin-upload-icon" aria-hidden="true">+</span>}<strong>{photo?photo.name:'Choose photo · saves automatically'}</strong><span>JPEG, PNG, WebP or HEIC · up to 20 MB</span><input ref={fileInput} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e=>chooseMany(Array.from(e.target.files||[]))}/></label><p className={`admin-upload-status is-${photoStatus}`} role="status">{photoStatus==='preparing'?'Preparing photo…':photoStatus==='saving'?'Saving to this vehicle… Please keep this page open.':photoStatus==='saved'?'✓ Saved to this vehicle. You can choose another photo.':photoStatus==='error'?'Photo not saved. Retry below or choose another photo.':'Ready. Your next photo saves automatically as the Garage cover.'}</p>{photo&&photoStatus==='error'&&<button className="g-button admin-save" disabled={busy}>RETRY SAVE</button>}</form>
+        {!!selectedVehicle.garage_photos?.length&&<PhotoLayout vehicle={selectedVehicle} busy={busy} action={action} onSave={(ids,show)=>action({action:'save_photo_layout',vehicle_id:vehicle,photo_ids:ids,show},'Photo order and visibility saved.')}/>}
         </>}
       </section>
       <section className={`g-panel admin-step${!selectedVehicle?' admin-locked':''}`} aria-labelledby="preview-step"><p className="g-eyebrow">PREVIEW</p><h2 id="preview-step">See what they see.</h2>{!selectedVehicle?<p className="g-muted">Choose a vehicle above to preview its Garage.</p>:<ClientPreview clientId={customer} vehicleId={vehicle} vehicle={selectedVehicle} busy={busy} onSaveSizing={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f},'Showroom size saved.')} sig={JSON.stringify([selectedVehicle.desktop_scale,selectedVehicle.desktop_x,selectedVehicle.desktop_y,selectedVehicle.phone_scale,selectedVehicle.phone_x,selectedVehicle.phone_y,selectedVehicle.mobile_hero_photo_id,selectedVehicle.protection_type,selectedVehicle.headlights_done,selectedVehicle.paint_correction,selectedVehicle.recommend_ceramic,selectedVehicle.show_headlights,selectedVehicle.show_paint,selectedVehicle.show_protection,selectedVehicle.show_ceramic_rec,selectedVehicle.ceramic_years,selectedVehicle.hero_photo_id,selectedVehicle.garage_photos?.length,selectedVehicle.garage_services?.length,client?.has_logo])}/>}</section>

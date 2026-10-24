@@ -1530,17 +1530,3 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   .card.feature.gold h3{font-size:min(calc((100vw - 72px) / 11.8),2.3rem)}
   .card.feature.gold .info{text-align:center;align-items:center}
 }
-
-/* Services: More info buttons (phones show one service in full at a time) */
-.more-info{display:none}
-@media (max-width:600px){
-  .more-info{display:inline-block;margin:10px 0 4px;padding:11px 20px;border-radius:999px;background:var(--ink);color:#fff;font:800 .8rem var(--display);text-transform:uppercase;letter-spacing:.12em;border:0;cursor:pointer}
-  .card.collapsible:not(.open) > .photo,
-  .card.collapsible:not(.open) > .card-foot,
-  .card.collapsible:not(.open) > span.ribbon,
-  .card.collapsible:not(.open) > i.sp,
-  .card.collapsible:not(.open) > svg.gemicon,
-  .card.collapsible:not(.open) .info > :not(h3):not(.more-info):not(.kicker){display:none}
-  .card.collapsible:not(.open) .info{padding-bottom:18px}
-  .card.collapsible.open .more-info{margin-top:14px}
-}
