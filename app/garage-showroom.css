@@ -305,3 +305,8 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .room-review-btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px #f0d63c88}
 @media(prefers-reduced-motion:reduce){.room-review::before{animation:none}}
 .room-name-only{padding:12px 22px;min-width:0}.room-name-only strong{font:800 clamp(1rem,1.6vw,1.3rem) var(--gbody)}.room-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* Vehicle name on Home: just the words, no box */
+.room-vehicle-plate.room-name-only,.client-showroom.is-black .room-vehicle-plate.room-name-only{background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;min-width:0;max-width:calc(100% - 40px);text-align:center}
+.room-name-only strong,.client-showroom.is-black .room-name-only strong{color:#fff;font:800 clamp(1.05rem,2.2vw,1.5rem)/1.2 var(--gbody);text-shadow:0 2px 14px rgba(0,0,0,.65),0 0 2px rgba(0,0,0,.4)}
+.room-name-only label{color:#fff}
+.room-name-only select{background:transparent;border:0;color:#fff;font:800 1rem var(--gbody);text-shadow:0 2px 12px rgba(0,0,0,.7)}
