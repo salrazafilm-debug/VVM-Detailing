@@ -5,7 +5,7 @@ function persistenceFixture() {
   let serial=0;
   const db={from(table){
     let operation='select',payload,columns='*',filters=[];
-    const q={select(value='*'){columns=value;return q},order(){return q},eq(key,value){filters.push(row=>row[key]===value);return q},in(key,values){filters.push(row=>values.includes(row[key]));return q},gte(){return q},lte(){return q},insert(value){operation='insert';payload=value;return q},update(value){operation='update';payload=value;return q},single(){return execute(true)},maybeSingle(){return execute(true)},then(resolve,reject){return execute(false).then(resolve,reject)}};
+    const q={select(value='*'){columns=value;return q},order(){return q},eq(key,value){filters.push(row=>row[key]===value);return q},in(key,values){filters.push(row=>values.includes(row[key]));return q},not(key,op,value){filters.push(row=>op==='is'&&value===null?row[key]!=null:row[key]!==value);return q},gte(){return q},lte(){return q},insert(value){operation='insert';payload=value;return q},update(value){operation='update';payload=value;return q},single(){return execute(true)},maybeSingle(){return execute(true)},then(resolve,reject){return execute(false).then(resolve,reject)}};
     async function execute(single){
       // Reproduce the actual dual-FK schema, rather than accepting ambiguous joins.
       if(table==='garage_vehicles'&&columns.includes('garage_photos('))return {data:null,error:{code:'PGRST201',message:'More than one relationship was found'}};

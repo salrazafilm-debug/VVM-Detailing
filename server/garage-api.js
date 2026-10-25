@@ -57,6 +57,12 @@ exports.customerGet = async req => {
         return Object.values(await loadCatalog()).filter(x => x.item === 'Full Factory Reset');
       } catch { return []; }
     })();
+    // Gift: a free Full Factory Reset the owner sent. It is kept apart from the membership offer.
+    const priceFor = v => {
+      const { sizeMatches } = require('./coupon-db');
+      const match = v.vehicle_size ? reset.find(x => sizeMatches(x.label, v.vehicle_size)) : null;
+      return { size: v.vehicle_size || null, variation_id: match?.id || null, normal_cents: match?.priceCents ?? null };
+    };
     const payload = vehicles.map(v => ({
       ...v,
       services: sv.data.filter(x => x.vehicle_id === v.id),
@@ -72,10 +78,14 @@ exports.customerGet = async req => {
         const cycle = cy.data.find(x => x.vehicle_id === v.id) || null;
         const coated = sv.data.filter(x => x.vehicle_id === v.id && x.ceramic_coating).map(x => String(x.service_date)).sort().pop();
         const end = [cycle?.offer_expires_at, coated ? addMonths(coated, 3) : null].filter(Boolean).sort().pop() || null;
-        const o = offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null;
+        const o = offers.data.find(x => x.vehicle_id === v.id && x.status === 'available' && !x.gift_from) || null;
         if (o) return { ...o, ...prices, expires_at: end && end > o.expires_at ? end : o.expires_at };
         if (end && end >= easternToday()) return { coupon_code: null, status: 'available', expires_at: end, from_membership: true, ...prices };
         return null;
+      })(),
+      gift: (() => {
+        const g = offers.data.find(x => x.vehicle_id === v.id && x.gift_from && x.status === 'available');
+        return g ? { id: g.id, from: g.gift_from, expires_at: g.expires_at, coupon_code: g.coupon_code, claimed: !!g.claimed_at, ...priceFor(v), price_cents: 0 } : null;
       })(),
     }));
     return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
@@ -110,7 +120,9 @@ exports.adminGet = async req => {
     const originals={};
     if(photos.data?.length){try{const {data:orig}=await ctx.admin.storage.from('garage-photos').createSignedUrls(photos.data.map(p=>p.storage_path),900);(orig||[]).forEach(s=>{if(s.signedUrl)originals[s.path]=s.signedUrl})}catch{}}
     const safePhotos=(photos.data||[]).map(({storage_path,display_path,...p})=>({...p,is_cutout:/\/cutout-/.test(storage_path),url:urls[display_path||storage_path]||null,original_url:originals[storage_path]||null}));
-    const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id)}));
+    // The gift waiting for each vehicle (if any), so admin can see it was opened or claimed.
+    const {data:gifts}=ids.length&&!vehicleError?await ctx.admin.from('garage_offers').select('id,vehicle_id,gift_from,claimed_at,expires_at').in('vehicle_id',ids).eq('status','available').not('gift_from','is',null):{data:[]};
+    const rows=(vehicles||[]).map(v=>({...v,garage_services:(services.data||[]).filter(s=>s.vehicle_id===v.id),garage_photos:safePhotos.filter(p=>p.vehicle_id===v.id),gift:(gifts||[]).find(g=>g.vehicle_id===v.id)||null}));
     const logoUrls={};
     await Promise.all((profiles||[]).filter(p=>p.logo_path).map(async p=>{try{logoUrls[p.user_id]=(await ctx.admin.storage.from('garage-photos').createSignedUrl(p.logo_path,900)).data?.signedUrl||null}catch{}}));
     const data=(profiles||[]).map(({logo_path,...profile})=>({...profile,has_logo:!!logo_path,logo_url:logoUrls[profile.user_id]||null,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
@@ -401,7 +413,39 @@ exports.adminPost = async req => {
       if (error) throw Object.assign(new Error('Could not save appointment.'), { status: 400 });
       return json({ ok: true, appointment: data });
     }
+    if (action === 'gift_send' || action === 'gift_remove') {
+      const vehicle_id = clean(b.vehicle_id, 80);
+      if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
+      // One gift at a time per vehicle: sending a new one replaces the waiting one.
+      const { error: oldErr } = await ctx.admin.from('garage_offers').update({ status: 'invalidated' }).eq('vehicle_id', vehicle_id).eq('status', 'available').not('gift_from', 'is', null);
+      if (oldErr) throw Object.assign(new Error('Could not update the gift.'), { status: 503 });
+      if (action === 'gift_remove') return json({ ok: true });
+      const from_name = clean(b.from_name, 40) || 'VVM Details';
+      const { addMonths } = require('./garage-dates');
+      const today = easternToday();
+      const { data, error } = await ctx.admin.from('garage_offers').insert({ vehicle_id, cycle_id: null, title: 'Full Factory Reset', gift_from: from_name, discount_percent: 100, stated_savings_cents: 0, starts_on: today, expires_at: addMonths(today, 12), status: 'available' }).select().single();
+      if (error) throw Object.assign(new Error('Could not send the gift.'), { status: 400 });
+      return json({ ok: true, gift: data });
+    }
     throw Object.assign(new Error('Unknown admin action.'), { status: 400 });
+  } catch (e) { return responseError(e); }
+};
+
+// Client side: "Claim and save for later" on a gift. Only the owner of the vehicle can claim it.
+exports.customerPost = async req => {
+  try {
+    const ctx = await customerContext(req);
+    const b = await req.json();
+    if (clean(b.action, 40) !== 'claim_gift') throw Object.assign(new Error('Unknown action.'), { status: 400 });
+    const offer_id = clean(b.offer_id, 80);
+    const { data: mine, error: vErr } = await ctx.admin.from('garage_vehicles').select('id').eq('customer_id', ctx.user.id);
+    if (vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
+    const ids = (mine || []).map(v => v.id);
+    const { data: gift } = await ctx.admin.from('garage_offers').select('id,vehicle_id').eq('id', offer_id).eq('status', 'available').not('gift_from', 'is', null).maybeSingle();
+    if (!gift || !ids.includes(gift.vehicle_id)) throw Object.assign(new Error('Gift not found.'), { status: 404 });
+    const { error } = await ctx.admin.from('garage_offers').update({ claimed_at: new Date().toISOString() }).eq('id', gift.id);
+    if (error) throw Object.assign(new Error('Could not save your gift. Please try again.'), { status: 503 });
+    return json({ ok: true });
   } catch (e) { return responseError(e); }
 };
 

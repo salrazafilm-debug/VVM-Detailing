@@ -1532,18 +1532,21 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 }
 
 /* Homepage: Enter your Garage button (holographic) */
-.holo-btn{position:relative;isolation:isolate;color:#1a1214;background:linear-gradient(100deg,#fff1b8,#ffd6ec,#c9f2ff,#fff1b8);background-size:260% 100%;animation:holoBtn 6s ease-in-out infinite;box-shadow:0 10px 30px rgba(120,60,90,.35);border:2px solid #fff}
-@keyframes holoBtn{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.holo-btn{position:relative;isolation:isolate;color:#fff;background:#1a1214;box-shadow:0 10px 30px rgba(26,18,20,.35);border:2px solid #1a1214}
+/* Homepage hero: big gold Book my day that glows */
+.hero-book{display:inline-block;font:900 1.15rem var(--display);letter-spacing:.14em;text-transform:uppercase;padding:22px 46px;border-radius:999px;color:#2a1a00;background:linear-gradient(135deg,#ffe27a,#f0b429);transition:.3s var(--ease);animation:heroBookGlow 2.2s ease-in-out infinite}
+.hero-book:hover{transform:translateY(-3px) scale(1.04)}
+@keyframes heroBookGlow{0%,100%{box-shadow:0 0 14px rgba(255,214,90,.55),0 8px 24px rgba(247,200,60,.35)}50%{box-shadow:0 0 40px rgba(255,214,90,.95),0 0 70px rgba(247,180,40,.55),0 8px 24px rgba(247,200,60,.5)}}
 
 /* Clients-only Garage section: bold holographic card */
 .garage-promo .gp-card{position:relative;isolation:isolate;background:#0d0a14;border:4px solid transparent;border-image:linear-gradient(120deg,#ff7ab6,#ffd86b,#7af0d6,#7aa9ff,#c58bff,#ff7ab6) 1;box-shadow:0 0 28px rgba(255,160,220,.45),0 24px 60px rgba(40,10,40,.5)}
 .garage-promo .gp-card:before{content:none}
 @keyframes gpSpin{to{transform:rotate(360deg)}}
-.garage-promo .gp-card:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 40%,rgba(255,255,255,.22) 50%,transparent 60%);background-size:250% 100%;animation:gpShine 5s ease-in-out infinite;pointer-events:none;z-index:1}
-@keyframes gpShine{0%{background-position:150% 0}50%,100%{background-position:-150% 0}}
-.garage-promo .gp-title{background:linear-gradient(100deg,#fff 0%,#fff 40%,#ffd86b 46%,#9ad8ff 50%,#ff9ad5 54%,#fff 60%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gpHolo 5s ease-in-out infinite}
-@keyframes gpHolo{0%,70%{background-position:100% 0}100%{background-position:-100% 0}}
+.garage-promo .gp-card:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 0 20%,rgba(255,255,255,.22) 25%,transparent 30% 70%,rgba(255,255,255,.22) 75%,transparent 80%);background-size:200% 100%;animation:gpShine 6s linear infinite;pointer-events:none;z-index:1}
+@keyframes gpShine{from{background-position:0% 0}to{background-position:200% 0}}
+.garage-promo .gp-title{background:linear-gradient(100deg,#fff 0%,#fff 20%,#ffd86b 23%,#9ad8ff 25%,#ff9ad5 27%,#fff 30%,#fff 70%,#ffd86b 73%,#9ad8ff 75%,#ff9ad5 77%,#fff 80%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gpHolo 6s linear infinite}
+@keyframes gpHolo{from{background-position:0% 0}to{background-position:200% 0}}
 .garage-promo .gp-badge{background:linear-gradient(90deg,#fff1b8,#ffd86b,#9ad8ff,#ff9ad5,#fff1b8);background-size:300% 100%;animation:gpBadge 4s linear infinite;box-shadow:0 0 18px rgba(255,216,107,.8)}
 @keyframes gpBadge{to{background-position:300% 0}}
 .garage-promo .gp-btn{background:linear-gradient(100deg,#fff1b8,#ffd86b,#9ad8ff,#ff9ad5,#fff1b8);background-size:300% 100%;animation:gpBadge 5s linear infinite;box-shadow:0 0 24px rgba(255,216,107,.7)}
-@media (prefers-reduced-motion:reduce){.holo-btn,.garage-promo .gp-card:before,.garage-promo .gp-card:after,.garage-promo .gp-title,.garage-promo .gp-badge,.garage-promo .gp-btn{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.hero-book,.garage-promo .gp-card:before,.garage-promo .gp-card:after,.garage-promo .gp-title,.garage-promo .gp-badge,.garage-promo .gp-btn{animation:none!important}}

@@ -54,14 +54,15 @@ function HealthCard({ row }) {
   return <div className={`room-sealant room-health-card${row.ok?' is-on':' is-bad'}`}><div><span className="room-label">{row.bar?'PROTECTION':'HEALTH'}</span><strong>{row.label}</strong><em>{row.note}</em></div><Mark ok={row.ok} bad/>{row.bar&&<div className="room-progress" role="progressbar" aria-label={`${row.label} time left`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><span style={{width:`${row.pct}%`}}/></div>}</div>;
 }
 
-// Ceramic coating card: holographic name that shines every 5 seconds, years left as a big number, and the bar.
+// Ceramic coating card: same layout as the homepage Full Factory Reset card. Photo on top, holographic GIF over the
+// whole card, title, PROTECTION / HEALTH / MEMBERSHIP words, years left and ONE bar.
 function CoatingCard({ row }) {
   return <div className={`coat2${row.ok?'':' is-off'}`}>
-    <img className="coat2-art" src="/assets/garage/coating-art.webp" alt="" aria-hidden="true"/>
+    <div className="coat2-top"><img className="coat2-art" src="/assets/garage/coating-art.webp" alt="" aria-hidden="true"/></div>
     <div className="coat2-body">
-      <p className="coat2-title">CERAMIC<br/>COATING<span className="coat2-spark" aria-hidden="true">✦</span></p>
-      <p className="coat2-years"><b>{row.ok?row.years:0}</b>{row.years===1?'YEAR':'YEARS'}</p>
-      <p className="coat2-pill"><span className="coat2-check" aria-hidden="true">✓</span><i aria-hidden="true"/>{row.ok?'Protected':'Expired · Book your renewal'}</p>
+      <p className="coat2-title">CERAMIC COATING<span className="coat2-spark" aria-hidden="true">✦</span></p>
+      <p className="coat2-chips" aria-hidden="true"><span>PROTECTION</span><span>HEALTH</span><span>MEMBERSHIP</span></p>
+      <p className="coat2-years"><b>{row.ok?row.years:0}</b>{row.years===1?'YEAR':'YEARS'} <span className="coat2-status">{row.ok?'✓ Protected':'Expired · Book your renewal'}</span></p>
       <div className="coat2-bar" role="progressbar" aria-label="Ceramic coating time left" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><i style={{width:`${row.pct}%`}}/></div>
     </div>
   </div>;
@@ -160,14 +161,16 @@ const monthLabel = ym => new Date(`${ym}-01T12:00:00Z`).toLocaleDateString('en-U
 const dayLabel = k => new Date(`${k}T12:00:00Z`).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'});
 
 // Full Factory Reset booking for an active membership. Calendar and times come from the website's availability; Book sends the request by email.
-function ResetBooking({ vehicle, profile, onBack }) {
-  const offer=vehicle.offer;
+function ResetBooking({ vehicle, profile, onBack, gift }) {
+  // A gift is booked as its own free reset: same calendar and request, coupon = the gift's code.
+  const offer=gift||vehicle.offer;
   const thisMonth=todayET().slice(0,7);
   // The options this client sees: the reset (member), paint correction and the bundle (only when enabled in admin)
   const opts=[];
-  if(offer?.variation_id)opts.push({id:'reset',title:'Full Factory Reset',sub:sizeName(offer.size),plan:`${offer.variation_id}`,cents:vehicle.custom_price_cents??offer.price_cents,was:offer.normal_cents,member:true,custom:vehicle.custom_price_cents!=null});
-  if(vehicle.paint_offer&&vehicle.paint_price_cents!=null)opts.push({id:'paint',title:'Paint correction',sub:'Morning only · 7–11 AM · about 6 hours',plan:'PAINT-ALONE',cents:vehicle.paint_price_cents});
-  if(vehicle.paint_offer&&vehicle.bundle_price_cents!=null&&offer?.variation_id)opts.push({id:'bundle',title:'Bundle & save',sub:'Reset + paint correction. Must start 7–8 AM to complete all services',plan:`${offer.variation_id}.PAINT-BUNDLE`,cents:vehicle.bundle_price_cents});
+  if(gift&&offer?.variation_id)opts.push({id:'gift',title:'Free Full Factory Reset',sub:sizeName(offer.size),plan:`${offer.variation_id}`,cents:0,was:offer.normal_cents,member:true,gift:true});
+  else if(offer?.variation_id)opts.push({id:'reset',title:'Full Factory Reset',sub:sizeName(offer.size),plan:`${offer.variation_id}`,cents:vehicle.custom_price_cents??offer.price_cents,was:offer.normal_cents,member:true,custom:vehicle.custom_price_cents!=null});
+  if(!gift&&vehicle.paint_offer&&vehicle.paint_price_cents!=null)opts.push({id:'paint',title:'Paint correction',sub:'Morning only · 7–11 AM · about 6 hours',plan:'PAINT-ALONE',cents:vehicle.paint_price_cents});
+  if(!gift&&vehicle.paint_offer&&vehicle.bundle_price_cents!=null&&offer?.variation_id)opts.push({id:'bundle',title:'Bundle & save',sub:'Reset + paint correction. Must start 7–8 AM to complete all services',plan:`${offer.variation_id}.PAINT-BUNDLE`,cents:vehicle.bundle_price_cents});
   const [choice,setChoice]=useState(opts[0]?.id||''),current=opts.find(o=>o.id===choice)||opts[0];
   const [month,setMonth]=useState(thisMonth),[days,setDays]=useState(null),[loadErr,setLoadErr]=useState(''),[day,setDay]=useState(''),[time,setTime]=useState('');
   const [name,setName]=useState(profile?.display_name||''),[phone,setPhone]=useState(profile?.phone||''),[email,setEmail]=useState(profile?.email||''),[notes,setNotes]=useState(''),[loc,setLoc]=useState(profile?.location||''),[editLoc,setEditLoc]=useState(!profile?.location);
@@ -188,7 +191,7 @@ function ResetBooking({ vehicle, profile, onBack }) {
     setBusy(true);
     try{
       const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',
-        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}TOTAL ${money(current.cents)}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
+        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(current.cents)}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
       setDone({day,time});
@@ -247,9 +250,34 @@ async function downloadPhoto(photo) {
   } catch { window.open(photo.url, '_blank', 'noopener'); }
 }
 
+// Gift a detail: "Gift waiting for you!" opens a card with Book my day, or Claim and save for later (it stays here until booked).
+function GiftSection({ gift, onBook }) {
+  const [open,setOpen]=useState(false),[claimed,setClaimed]=useState(!!gift?.claimed),[busy,setBusy]=useState(false),[err,setErr]=useState('');
+  if(!gift)return null;
+  async function claim(){
+    setBusy(true);setErr('');
+    try{const r=await fetch('/api/garage/gift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'claim_gift',offer_id:gift.id})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Could not save your gift. Please try again.');setClaimed(true);setOpen(false)}
+    catch(e){setErr(e.message)}finally{setBusy(false)}
+  }
+  if(!open&&!claimed)return <button type="button" className="gift-banner" onClick={()=>setOpen(true)}><span className="gift-box" aria-hidden="true"/><span><strong>Gift waiting for you!</strong><small>Tap to open</small></span></button>;
+  return <section className="gift-card" aria-label="Your gift">
+    <span className="gift-label">A GIFT FOR YOU</span>
+    <h3>{gift.from} has gifted a Free Full Factory Reset - Interior &amp; Exterior!</h3>
+    {gift.size&&<p className="room-reset-size">{sizeName(gift.size)}</p>}
+    <p className="room-small">Valid until {date(gift.expires_at)}</p>
+    <div className="gift-actions">
+      {gift.variation_id?<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button>:<p className="room-small">Text us to pick your day.</p>}
+      {!claimed&&<button type="button" className="room-link" disabled={busy} onClick={claim}>{busy?'Saving…':'CLAIM & SAVE FOR LATER'}</button>}
+    </div>
+    {claimed&&<p className="room-small">Saved to your Garage. It waits here until you book.</p>}
+    {err&&<p className="room-small" role="alert">{err}</p>}
+  </section>;
+}
+
 function Bookings({ vehicle, preview, onBook }) {
   const c=vehicle?.cycle,active=membershipActive(vehicle),endDay=membershipEnd(vehicle);
   return <>
+    <GiftSection gift={vehicle?.gift} onBook={()=>onBook('gift')}/>
     <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<>{c&&<p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p>}<p className="room-member-note">Membership expires {date(endDay)}.</p></>:<p>Book a detail with sealant or ceramic coating to start your membership.</p>}</section>
     {vehicle?.appointments?.length?<ul className="room-bookings">{vehicle.appointments.map(a=><li key={a.id}><GarageIcon name="bookings"/><div><span className="room-badge">{a.status==='requested'?'REQUESTED':'CONFIRMED'}</span><h3>{a.service_label}</h3><strong>{date(a.starts_at)}</strong><p>{time(a.starts_at)}</p></div></li>)}</ul>:null}
     {vehicle?.paint_offer&&!(active&&vehicle?.offer?.variation_id)&&<section className="room-reset-card room-plain-card is-paint"><span className="room-label">PAINT CORRECTION</span><h3>Book paint correction</h3><p className="room-reset-size">Morning only · 7–11 AM · about 6 hours</p>{vehicle.paint_price_cents!=null&&<p className="room-reset-prices"><strong>{money(vehicle.paint_price_cents)}</strong></p>}<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>}
@@ -261,7 +289,7 @@ function Bookings({ vehicle, preview, onBook }) {
 }
 
 export default function Garage() {
-  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[sizeOverride,setSizeOverride]=useState(null),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
+  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[giftBooking,setGiftBooking]=useState(false),[sizeOverride,setSizeOverride]=useState(null),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
   const heading=useRef(null),dialog=useRef(null),previousFocus=useRef(null);
   useEffect(()=>{
     let active=true;
@@ -309,7 +337,7 @@ export default function Garage() {
         {view==='health'&&<Health vehicle={vehicle}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto} profile={data.profile}/>}
         {view==='garage'&&<ReviewPrompt/>}
-        {view==='bookings'&&(booking&&(vehicle?.offer?.variation_id||vehicle?.paint_offer)?<ResetBooking vehicle={vehicle} profile={data.profile} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={()=>setBooking(true)}/>)}
+        {view==='bookings'&&(booking&&(giftBooking?vehicle?.gift?.variation_id:(vehicle?.offer?.variation_id||vehicle?.paint_offer))?<ResetBooking vehicle={vehicle} profile={data.profile} gift={giftBooking?vehicle.gift:null} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={kind=>{setGiftBooking(kind==='gift');setBooking(true)}}/>)}
       </section>}
     </>}
     {data&&<nav className="room-nav" aria-label="Garage navigation">{tabs.map(([id,label])=><button key={id} type="button" className={view===id?'is-active':''} aria-pressed={view===id} onClick={()=>navigate(id)}><GarageIcon name={id}/><span>{label}</span></button>)}</nav>}

@@ -105,11 +105,13 @@ create unique index if not exists garage_one_active_cycle_per_vehicle on public.
 
 create table if not exists public.garage_offers (
   id uuid primary key default gen_random_uuid(),
-  cycle_id uuid not null unique references public.garage_maintenance_cycles(id) on delete cascade,
+  cycle_id uuid unique references public.garage_maintenance_cycles(id) on delete cascade,
   vehicle_id uuid not null references public.garage_vehicles(id) on delete cascade,
   title text not null default 'Full Factory Reset',
   coupon_code text not null unique default ('VVM' || upper(replace(gen_random_uuid()::text,'-',''))),
-  discount_percent integer not null default 50 check (discount_percent = 50),
+  discount_percent integer not null default 50 check (discount_percent in (50,100)),
+  gift_from text,
+  claimed_at timestamptz,
   stated_savings_cents integer not null default 14500,
   starts_on date not null,
   expires_at date not null,

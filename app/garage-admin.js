@@ -50,6 +50,22 @@ function ClientDashboard({ customers, onAddPhoto, busy, vehiclesLoaded }) {
 
 
 // Health + protection settings: what the client sees on their Health tab and My Garage
+// Gift a detail: sends the client a free Full Factory Reset. They see "Gift waiting for you!" on their Bookings tab.
+function GiftPanel({ vehicle, busy, onAction }) {
+  const g=vehicle.gift;
+  const [from,setFrom]=useState(g?.gift_from||'VVM Details');
+  const status=!g?'No gift sent':g.claimed_at?'Claimed and saved by the client':'Waiting for the client to open it';
+  return <div className="admin-gift">
+    <p className="g-inline-help">{status}{g?` · valid until ${g.expires_at}`:''}. A gift is a free Full Factory Reset (interior and exterior) for this vehicle.</p>
+    <label>Gift from (shown on their card)<input value={from} maxLength={40} onChange={e=>setFrom(e.target.value)} placeholder="VVM Details"/></label>
+    <div className="admin-status-actions">
+      <button type="button" className="g-button" disabled={busy||!vehicle.vehicle_size} onClick={()=>onAction({action:'gift_send',vehicle_id:vehicle.id,from_name:from.trim()},'Gift sent. It waits on their Bookings tab.')}>{g?'Send a new gift':'Send gift'}</button>
+      {g&&<button type="button" className="g-button" disabled={busy} onClick={()=>onAction({action:'gift_remove',vehicle_id:vehicle.id},'Gift removed.')}>Remove gift</button>}
+    </div>
+    {!vehicle.vehicle_size&&<p className="g-inline-help">Set the reset size above first, so the gift is for the right size.</p>}
+  </div>;
+}
+
 function VehicleStatus({ vehicle, busy, onSave }) {
   const dollars=c=>c==null?'':String(c/100);
   const sh=vehicle.share_style||{};
@@ -363,7 +379,7 @@ export default function GarageAdmin() {
       <section className="g-panel admin-speed" aria-labelledby="speed-step"><p className="g-eyebrow">FASTER LOADING</p><h2 id="speed-step">Speed up older photos.</h2><p className="g-muted">Makes a smaller copy of every photo saved before this update, so clients’ Garages load faster. Run it once. New photos are already fast.</p><SpeedUp onNotice={setNotice} onError={setError} onDone={load}/></section>
       <section className="admin-extras" aria-labelledby="optional-step"><p className="g-eyebrow">04 / WHEN YOU NEED IT</p><h2 id="optional-step">The extra details.</h2><p className="g-muted">All optional. Add what matters, whenever you’re ready.</p>
         {!selectedVehicle?<p className="g-inline-help">Choose a vehicle to add service history, appointments or a showroom cover.</p>:<div key={vehicle} className="admin-details-list">
-          <details className="g-panel admin-disclosure" open><summary><span>Garage health<small>Protection, done ticks and what the client sees</small></span><b aria-hidden="true">+</b></summary><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>
+          <details className="g-panel admin-disclosure" open><summary><span>Garage health<small>Protection, done ticks and what the client sees</small></span><b aria-hidden="true">+</b></summary><GiftPanel vehicle={selectedVehicle} busy={busy} onAction={action} /><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Client phone and location<small>Filled in for them when they book</small></span><b aria-hidden="true">+</b></summary><ClientContact client={client} busy={busy} onSave={(phone,location,loyal)=>action({action:'set_contact',customer_id:customer,phone,location,loyal},'Client details saved.')}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Client logo<small>Shown top center in their My Garage</small></span><b aria-hidden="true">+</b></summary><ClientLogo client={client} busy={busy} onChanged={load} onError={setError} onNotice={setNotice}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Completed detail & protection<small>Service history, notes and protection applied</small></span><b aria-hidden="true">+</b></summary><div className="admin-service-list">{!!selectedVehicle.garage_services?.length&&<><h3>Completed services</h3>{[...selectedVehicle.garage_services].sort((a,b)=>b.service_date.localeCompare(a.service_date)).map(sv=><div key={sv.id} className="admin-vehicle-row"><span><strong>{sv.title}</strong> · {fmtDate(sv.service_date)}</span><button type="button" className="g-button admin-delete-btn" disabled={busy} onClick={()=>{if(confirm(`Delete "${sv.title}" from ${fmtDate(sv.service_date)}?`))action({action:'delete_service',service_id:sv.id},'Service deleted.')}}>DELETE</button></div>)}</>}</div><form className="g-form" onSubmit={addService}><p className="admin-context">For {vehicleLabel(selectedVehicle)}</p><div className="g-form-row"><label>Completed on<input type="date" max={today()} value={serviceDate} onChange={e=>setServiceDate(e.target.value)} required/></label><label>Service name<input value={title} onChange={e=>setTitle(e.target.value)} required maxLength={140}/></label></div><label>Notes <span className="admin-optional">Optional</span><textarea value={description} onChange={e=>setDescription(e.target.value)} rows="3" maxLength={1500}/></label><div className="g-check-grid"><label><input type="checkbox" checked={sealant} onChange={e=>setSealant(e.target.checked)}/> Paint Ceramic Sealant Applied</label><label><input type="checkbox" checked={coating} onChange={e=>setCoating(e.target.checked)}/> True Ceramic Coating Applied</label><label><input type="checkbox" checked={leather} onChange={e=>setLeather(e.target.checked)}/> Leather Protection Applied</label><label><input type="checkbox" checked={fabric} onChange={e=>setFabric(e.target.checked)}/> Fabric Protection Applied</label></div>{sealant&&<p className="g-inline-help">Starts a new 3-month maintenance cycle, replaces the previous offer and schedules maintenance reminders.</p>}<button className="g-button">SAVE COMPLETED DETAIL</button></form></details>
