@@ -240,14 +240,14 @@ exports.adminPost = async req => {
       }
       if (!Object.keys(patch).length) return json({ ok: true, message: 'Nothing to save.' });
       const { error } = await ctx.admin.from('garage_vehicles').update(patch).eq('id', vehicle_id);
-      if (error) throw Object.assign(new Error('Could not save. Run the Garage visibility update in Supabase first.'), { status: 503 });
+      if (error) throw Object.assign(new Error(`Could not save. Run the Garage visibility update in Supabase first. Supabase said: ${error.message}`), { status: 503 });
       return json({ ok: true, message: 'Garage saved.' });
     }
     if (action === 'set_photo_visibility') {
       const photo_id = clean(b.photo_id, 80);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(photo_id)) throw Object.assign(new Error('Choose a photo.'), { status: 400 });
       const { error } = await ctx.admin.from('garage_photos').update({ show_on_garage: b.show === true }).eq('id', photo_id);
-      if (error) throw Object.assign(new Error('Could not update this photo. Run the Garage visibility update in Supabase first.'), { status: 503 });
+      if (error) throw Object.assign(new Error(`Could not update this photo. Run the Garage visibility update in Supabase first. Supabase said: ${error.message}`), { status: 503 });
       return json({ ok: true, message: b.show === true ? 'Shown on My Garage.' : 'Hidden from My Garage.' });
     }
     if (action === 'crop_photo' || action === 'reset_crop') {
