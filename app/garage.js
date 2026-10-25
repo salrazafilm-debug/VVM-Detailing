@@ -17,6 +17,7 @@ const daysUntil = day => Math.max(0,Math.ceil(dayNum(day)-dayNum(todayET())));
 const plusMonths = (day,n) => {const d=new Date(`${day}T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+n);return d};
 const sizeName = s => ({coupe:'Coupe',sedan:'Sedan',suv:'SUV',truck:'Truck',minivan:'Mini-van'})[s] || '';
 const money = cents => (cents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+const membershipEnd = v => v?.cycle?.offer_expires_at || (v?.protection_type==='coating' ? protectionOf(v)?.end : null);
 const membershipActive = v => (!!v?.cycle && todayET() <= v.cycle.offer_expires_at) || (v?.protection_type==='coating' && !!protectionOf(v)?.ok);
 const Mark = ({ ok, bad }) => <span className={`room-mark ${ok?'is-yes':bad?'is-bad':'is-no'}`}><GarageIcon name={ok?'check':'x'}/></span>;
 
@@ -32,7 +33,8 @@ function protectionOf(v) {
   const end=type==='sealant'&&v.cycle?v.cycle.sealant_expires_at:(()=>{const d=new Date(`${start}T12:00:00Z`);type==='coating'?d.setUTCFullYear(d.getUTCFullYear()+(v.ceramic_years||5)):d.setUTCMonth(d.getUTCMonth()+3);return d.toISOString().slice(0,10)})();
   const left=daysUntil(end),total=Math.max(1,dayNum(end)-dayNum(start));
   const note=left<=0?'Expired · Book your renewal':type==='coating'&&left>=365?`${Math.floor(left/365)} ${Math.floor(left/365)===1?'year':'years'} left`:`${left} days left`;
-  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note,years:type==='coating'?Math.max(0,Math.floor(left/365)):null};
+  // Years shown count down only when a full year ends: 5 years for the first 12 months, then 4, and so on.
+  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note,end,years:type==='coating'?Math.max(0,Math.ceil(left/365)):null};
 }
 
 // Health rows: an X until it is checked off in admin. The owner decides which rows each client sees.
@@ -241,13 +243,13 @@ async function downloadPhoto(photo) {
 }
 
 function Bookings({ vehicle, preview, onBook }) {
-  const c=vehicle?.cycle,active=membershipActive(vehicle);
+  const c=vehicle?.cycle,active=membershipActive(vehicle),endDay=membershipEnd(vehicle);
   return <>
-    <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<><p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p><p className="room-member-note">Membership expires {date(c.offer_expires_at)}.</p></>:<p>Book a detail with sealant to start your membership.</p>}</section>
+    <section className={`room-member-card${active?'':' is-off'}`}><span className="room-member-mark"><Mark ok={active}/></span><span className="room-label">VVM MAINTENANCE MEMBERSHIP</span><h3>{active?'ACTIVE':c?'EXPIRED':'NOT ACTIVE'}</h3>{active?<>{c&&<p>Maintenance recommended on <strong>{date(plusMonths(c.applied_on,1))}</strong></p>}<p className="room-member-note">Membership expires {date(endDay)}.</p></>:<p>Book a detail with sealant or ceramic coating to start your membership.</p>}</section>
     {vehicle?.appointments?.length?<ul className="room-bookings">{vehicle.appointments.map(a=><li key={a.id}><GarageIcon name="bookings"/><div><span className="room-badge">{a.status==='requested'?'REQUESTED':'CONFIRMED'}</span><h3>{a.service_label}</h3><strong>{date(a.starts_at)}</strong><p>{time(a.starts_at)}</p></div></li>)}</ul>:null}
     {vehicle?.paint_offer&&!(active&&vehicle?.offer?.variation_id)&&<section className="room-reset-card room-plain-card is-paint"><span className="room-label">PAINT CORRECTION</span><h3>Book paint correction</h3><p className="room-reset-size">Morning only · 7–11 AM · about 6 hours</p>{vehicle.paint_price_cents!=null&&<p className="room-reset-prices"><strong>{money(vehicle.paint_price_cents)}</strong></p>}<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>}
     {active&&vehicle?.offer?.variation_id?<section className="room-reset-card"><span className="room-label">MEMBERSHIP RESET · BIG DISCOUNT</span><h3>Full Factory Reset</h3><p className="room-reset-size">{sizeName(vehicle.offer.size)}</p><p className="room-reset-prices">{vehicle.offer.normal_cents?<s>{money(vehicle.offer.normal_cents)}</s>:null} <strong>{money(vehicle.custom_price_cents??vehicle.offer.price_cents)}</strong></p><p className="room-small">Open until {date(vehicle.offer.expires_at)}</p><button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button></section>
-    :active&&vehicle?<section className="room-membership-note"><span className="room-label">YOUR MEMBERSHIP IS ACTIVE</span><p>You're receiving a <strong>big discount</strong> on your next detail. Expires in <strong>{daysUntil(vehicle.cycle.offer_expires_at)} days</strong> ({date(vehicle.cycle.offer_expires_at)}).</p>{!vehicle.vehicle_size&&<p className="room-small">Your reset size is being set up. Text us and we'll book it.</p>}</section>:null}
+    :active&&vehicle?<section className="room-membership-note"><span className="room-label">YOUR MEMBERSHIP IS ACTIVE</span><p>You're receiving a <strong>big discount</strong> on your next detail. Expires in <strong>{daysUntil(endDay)} days</strong> ({date(endDay)}).</p>{!vehicle.vehicle_size&&<p className="room-small">Your reset size is being set up. Text us and we'll book it.</p>}</section>:null}
 
     <p className="room-small">Need to change a visit? <a href="sms:+12406019451">Text us</a>{!preview&&<> · <a href="/reset-password">Change password</a> · <button type="button" className="room-link" onClick={signOut}>Sign out</button></>}</p>
   </>;

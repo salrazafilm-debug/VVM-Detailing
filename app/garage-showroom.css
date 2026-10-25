@@ -315,13 +315,13 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .coat-card{position:relative;isolation:isolate;overflow:hidden;border-radius:26px;padding:24px 22px;margin:4px 0 14px;color:#fff;background:linear-gradient(115deg,#1b1530 0%,#2a1c46 40%,#0f1b33 100%);box-shadow:0 18px 40px rgba(20,12,40,.35)}
 .coat-card:before{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,#ff7ab6,#ffd86b,#7af0d6,#7aa9ff,#c58bff,#ff7ab6);opacity:.28;animation:coatSpin 10s linear infinite;z-index:-1;filter:blur(18px)}
 .coat-card.is-off:before{opacity:.06;animation:none}
-.coat-title{margin:0;font:italic 900 clamp(1.7rem,6vw,2.4rem)/1 var(--gdisplay);letter-spacing:-.02em;background:linear-gradient(100deg,#fff 0%,#fff 40%,#ffd86b 46%,#9ad8ff 50%,#ff9ad5 54%,#fff 60%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:coatHolo 5s ease-in-out infinite}
+.coat-title{margin:0;font:italic 900 clamp(1.7rem,6vw,2.4rem)/1 var(--gdisplay);letter-spacing:-.02em;background:linear-gradient(100deg,#fff 0%,#fff 38%,#ffe9a8 44%,#c9ecff 48%,#ffc2e6 52%,#fff 58%,#fff 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:coatHolo 7s cubic-bezier(.45,0,.25,1) infinite}
 .coat-years{margin:18px 0 0;font:italic 900 clamp(2.6rem,9vw,3.6rem)/1 var(--gdisplay);color:#fff}
 .coat-years small{font:800 .95rem var(--gbody);letter-spacing:.08em;margin-left:8px;opacity:.85}
 .coat-bar{height:12px;border-radius:99px;background:rgba(255,255,255,.22);margin-top:16px;overflow:hidden}
 .coat-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#ffd86b,#fff6b0,#9ad8ff,#ff9ad5,#ffd86b);background-size:200% 100%;animation:coatFlow 6s linear infinite}
 .coat-foot{margin:10px 0 0;font:800 .8rem var(--gbody);letter-spacing:.04em;opacity:.9}
-@keyframes coatHolo{0%{background-position:100% 0}16%{background-position:-100% 0}100%{background-position:-100% 0}}
+@keyframes coatHolo{0%{background-position:100% 0}45%{background-position:-100% 0}100%{background-position:-100% 0}}
 @keyframes coatFlow{to{background-position:200% 0}}
 @keyframes coatSpin{to{transform:rotate(360deg)}}
 /* ---- Loyal badge ---- */
