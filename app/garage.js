@@ -17,8 +17,10 @@ const daysUntil = day => Math.max(0,Math.ceil(dayNum(day)-dayNum(todayET())));
 const plusMonths = (day,n) => {const d=new Date(`${day}T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+n);return d};
 const sizeName = s => ({coupe:'Coupe',sedan:'Sedan',suv:'SUV',truck:'Truck',minivan:'Mini-van'})[s] || '';
 const money = cents => (cents/100).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
-const membershipEnd = v => v?.cycle?.offer_expires_at || (v?.protection_type==='coating' ? protectionOf(v)?.end : null);
-const membershipActive = v => (!!v?.cycle && todayET() <= v.cycle.offer_expires_at) || (v?.protection_type==='coating' && !!protectionOf(v)?.ok);
+// Membership (half-off reset): 2 months after a sealant detail, 3 months after a ceramic coating.
+const coatingDay = v => (v?.services||[]).filter(x=>x.ceramic_coating).map(x=>String(x.service_date)).sort().pop()||null;
+const membershipEnd = v => { const c=coatingDay(v); return [v?.cycle?.offer_expires_at, c?plusMonths(c,3).toISOString().slice(0,10):null].filter(Boolean).sort().pop()||null; };
+const membershipActive = v => { const e=membershipEnd(v); return !!e && todayET() <= e; };
 const Mark = ({ ok, bad }) => <span className={`room-mark ${ok?'is-yes':bad?'is-bad':'is-no'}`}><GarageIcon name={ok?'check':'x'}/></span>;
 
 // The one protection the owner chose in admin: ceramic sealant (3 months) or ceramic coating (years set in admin).
@@ -32,9 +34,9 @@ function protectionOf(v) {
   if(!start)return {type,label,ok:false,pct:0,note:'Not applied yet'};
   const end=type==='sealant'&&v.cycle?v.cycle.sealant_expires_at:(()=>{const d=new Date(`${start}T12:00:00Z`);type==='coating'?d.setUTCFullYear(d.getUTCFullYear()+(v.ceramic_years||5)):d.setUTCMonth(d.getUTCMonth()+3);return d.toISOString().slice(0,10)})();
   const left=daysUntil(end),total=Math.max(1,dayNum(end)-dayNum(start));
-  const note=left<=0?'Expired · Book your renewal':type==='coating'&&left>=365?`${Math.floor(left/365)} ${Math.floor(left/365)===1?'year':'years'} left`:`${left} days left`;
+  const note=left<=0?'Expired · Book your renewal':type==='coating'&&left>=365?`${Math.min(v.ceramic_years||5,Math.ceil(left/365))} ${Math.min(v.ceramic_years||5,Math.ceil(left/365))===1?'year':'years'} left`:`${left} days left`;
   // Years shown count down only when a full year ends: 5 years for the first 12 months, then 4, and so on.
-  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note,end,years:type==='coating'?Math.max(0,Math.ceil(left/365)):null};
+  return {type,label,ok:left>0,pct:Math.max(0,Math.min(100,left/total*100)),note,end,years:type==='coating'?Math.max(0,Math.min(v.ceramic_years||5,Math.ceil(left/365))):null};
 }
 
 // Health rows: an X until it is checked off in admin. The owner decides which rows each client sees.
@@ -54,11 +56,14 @@ function HealthCard({ row }) {
 
 // Ceramic coating card: holographic name that shines every 5 seconds, years left as a big number, and the bar.
 function CoatingCard({ row }) {
-  return <div className={`coat-card${row.ok?'':' is-off'}`}>
-    <p className="coat-title"><span>CERAMIC COATING</span></p>
-    <p className="coat-years">{row.ok?row.years:0}<small>{row.years===1?'YEAR':'YEARS'}</small></p>
-    <div className="coat-bar" role="progressbar" aria-label="Ceramic coating time left" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><i style={{width:`${row.pct}%`}}/></div>
-    <p className="coat-foot">{row.ok?'Protected':'Expired · Book your renewal'}</p>
+  return <div className={`coat2${row.ok?'':' is-off'}`}>
+    <img className="coat2-art" src="/assets/garage/coating-art.webp" alt="" aria-hidden="true"/>
+    <div className="coat2-body">
+      <p className="coat2-title">CERAMIC<br/>COATING<span className="coat2-spark" aria-hidden="true">✦</span></p>
+      <p className="coat2-years"><b>{row.ok?row.years:0}</b>{row.years===1?'YEAR':'YEARS'}</p>
+      <p className="coat2-pill"><span className="coat2-check" aria-hidden="true">✓</span><i aria-hidden="true"/>{row.ok?'Protected':'Expired · Book your renewal'}</p>
+      <div className="coat2-bar" role="progressbar" aria-label="Ceramic coating time left" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><i style={{width:`${row.pct}%`}}/></div>
+    </div>
   </div>;
 }
 

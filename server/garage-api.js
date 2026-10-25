@@ -64,11 +64,18 @@ exports.customerGet = async req => {
       appointments: ap.data.filter(x => x.vehicle_id === v.id),
       cycle: cy.data.find(x => x.vehicle_id === v.id) || null,
       offer: (() => {
-        const o = offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null;
-        if (!o) return null;
         const { sizeMatches } = require('./coupon-db');
+        const { addMonths } = require('./garage-dates');
         const match = v.vehicle_size ? reset.find(x => sizeMatches(x.label, v.vehicle_size)) : null;
-        return { ...o, size: v.vehicle_size || null, variation_id: match?.id || null, normal_cents: match?.priceCents ?? null, price_cents: match ? Math.ceil(match.priceCents / 2) : null };
+        const prices = { size: v.vehicle_size || null, variation_id: match?.id || null, normal_cents: match?.priceCents ?? null, price_cents: match ? Math.ceil(match.priceCents / 2) : null };
+        // Membership window: 2 months after a sealant detail, 3 months after a ceramic coating. Booking is open the whole time.
+        const cycle = cy.data.find(x => x.vehicle_id === v.id) || null;
+        const coated = sv.data.filter(x => x.vehicle_id === v.id && x.ceramic_coating).map(x => String(x.service_date)).sort().pop();
+        const end = [cycle?.offer_expires_at, coated ? addMonths(coated, 3) : null].filter(Boolean).sort().pop() || null;
+        const o = offers.data.find(x => x.vehicle_id === v.id && x.status === 'available') || null;
+        if (o) return { ...o, ...prices, expires_at: end && end > o.expires_at ? end : o.expires_at };
+        if (end && end >= easternToday()) return { coupon_code: null, status: 'available', expires_at: end, from_membership: true, ...prices };
+        return null;
       })(),
     }));
     return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
