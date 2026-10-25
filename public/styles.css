@@ -1542,8 +1542,8 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .garage-promo .gp-card{position:relative;isolation:isolate;background:#0d0a14;border:4px solid transparent;border-image:linear-gradient(120deg,#ff7ab6,#ffd86b,#7af0d6,#7aa9ff,#c58bff,#ff7ab6) 1;box-shadow:0 0 28px rgba(255,160,220,.45),0 24px 60px rgba(40,10,40,.5)}
 .garage-promo .gp-card:before{content:none}
 @keyframes gpSpin{to{transform:rotate(360deg)}}
-.garage-promo .gp-card:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 0 20%,rgba(255,255,255,.22) 25%,transparent 30% 70%,rgba(255,255,255,.22) 75%,transparent 80%);background-size:200% 100%;animation:gpShine 6s linear infinite;pointer-events:none;z-index:1}
-@keyframes gpShine{from{background-position:0% 0}to{background-position:200% 0}}
+.garage-promo .gp-card:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 0 20%,rgba(255,255,255,.22) 25%,transparent 30% 70%,rgba(255,255,255,.22) 75%,transparent 80%);background-size:200% 100%;animation:gpShine 5s ease-in-out infinite;pointer-events:none;z-index:1}
+@keyframes gpShine{0%{background-position:0% 0}40%,100%{background-position:100% 0}}
 .garage-promo .gp-title{background:linear-gradient(100deg,#fff 0%,#fff 20%,#ffd86b 23%,#9ad8ff 25%,#ff9ad5 27%,#fff 30%,#fff 70%,#ffd86b 73%,#9ad8ff 75%,#ff9ad5 77%,#fff 80%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:gpHolo 6s linear infinite}
 @keyframes gpHolo{from{background-position:0% 0}to{background-position:200% 0}}
 .garage-promo .gp-badge{background:linear-gradient(90deg,#fff1b8,#ffd86b,#9ad8ff,#ff9ad5,#fff1b8);background-size:300% 100%;animation:gpBadge 4s linear infinite;box-shadow:0 0 18px rgba(255,216,107,.8)}
