@@ -144,7 +144,7 @@ function VehicleDetails({ vehicle, onPhoto, profile }) {
   return <>
     {profile?.loyal&&<span className="room-loyal room-loyal-mine">LOYAL</span>}
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}{vehicle.color&&<small>{vehicle.color}</small>}</p>
-    <ShareCardButton vehicle={vehicle} profile={profile}/>
+    {/* Share my card (Pokémon-style) is switched off for now. The owner will make this on their own. */}
     {photos.length>0&&<div className="room-showcase">{photos.map(p=><button type="button" key={p.id} onClick={()=>onPhoto(p)} aria-label={`Open ${p.caption||'vehicle photo'}`}><img src={p.url} alt={p.caption||'Your vehicle'} loading="lazy"/></button>)}</div>}
   </>;
 }
