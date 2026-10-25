@@ -54,15 +54,14 @@ function HealthCard({ row }) {
   return <div className={`room-sealant room-health-card${row.ok?' is-on':' is-bad'}`}><div><span className="room-label">{row.bar?'PROTECTION':'HEALTH'}</span><strong>{row.label}</strong><em>{row.note}</em></div><Mark ok={row.ok} bad/>{row.bar&&<div className="room-progress" role="progressbar" aria-label={`${row.label} time left`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><span style={{width:`${row.pct}%`}}/></div>}</div>;
 }
 
-// Ceramic coating card: same layout as the homepage Full Factory Reset card. Photo on top, holographic GIF over the
-// whole card, title, PROTECTION / HEALTH / MEMBERSHIP words, years left and ONE bar.
+// Ceramic coating card: holographic name that shines every 5 seconds, years left as a big number, and the bar.
 function CoatingCard({ row }) {
   return <div className={`coat2${row.ok?'':' is-off'}`}>
-    <div className="coat2-top"><img className="coat2-art" src="/assets/garage/coating-art.webp" alt="" aria-hidden="true"/></div>
+    <img className="coat2-art" src="/assets/garage/coating-art.webp" alt="" aria-hidden="true"/>
     <div className="coat2-body">
-      <p className="coat2-title">CERAMIC COATING<span className="coat2-spark" aria-hidden="true">✦</span></p>
-      <p className="coat2-chips" aria-hidden="true"><span>PROTECTION</span><span>HEALTH</span><span>MEMBERSHIP</span></p>
-      <p className="coat2-years"><b>{row.ok?row.years:0}</b>{row.years===1?'YEAR':'YEARS'} <span className="coat2-status">{row.ok?'✓ Protected':'Expired · Book your renewal'}</span></p>
+      <p className="coat2-title">CERAMIC<br/>COATING<span className="coat2-spark" aria-hidden="true">✦</span></p>
+      <p className="coat2-years"><b>{row.ok?row.years:0}</b>{row.years===1?'YEAR':'YEARS'}</p>
+      <p className="coat2-pill"><span className="coat2-check" aria-hidden="true">✓</span><i aria-hidden="true"/>{row.ok?'Protected':'Expired · Book your renewal'}</p>
       <div className="coat2-bar" role="progressbar" aria-label="Ceramic coating time left" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(row.pct)}><i style={{width:`${row.pct}%`}}/></div>
     </div>
   </div>;
