@@ -353,29 +353,14 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 
 /* ---- Ceramic coating card (owner's design): shield art, moving holographic colour ---- */
 /* Holographic colours loop seamlessly: a 200% tile of two identical cycles moved 0% -> 200%. */
-.coat2{--holo:linear-gradient(90deg,#fff 0%,#c9e6ff 12%,#e6c9ff 25%,#ffd6ec 37%,#fff1b8 50%,#fff 50%,#c9e6ff 62%,#e6c9ff 75%,#ffd6ec 87%,#fff1b8 100%);
-  position:relative;overflow:hidden;isolation:isolate;margin:4px 0 14px;border-radius:24px;min-height:200px;color:#fff;
-  border:1.5px solid transparent;background:linear-gradient(#090b14,#0d1020) padding-box,linear-gradient(90deg,#7aa9ff,#c58bff,#ff9ad5,#ffd86b,#7aa9ff,#c58bff,#ff9ad5,#ffd86b,#7aa9ff) border-box;background-size:auto,200% 100%;animation:coat2Edge 12s linear infinite;
-  box-shadow:0 0 22px rgba(140,160,255,.25),0 20px 44px rgba(5,8,20,.5)}
-@keyframes coat2Edge{from{background-position:0 0,0% 0}to{background-position:0 0,200% 0}}
-.coat2-art{position:absolute;right:0;top:0;height:100%;width:62%;object-fit:cover;object-position:70% 50%;z-index:0;-webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 45%);mask-image:linear-gradient(90deg,transparent 0%,#000 45%);opacity:.95}
-.coat2:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.10) 50%,transparent 60%);background-size:300% 100%;animation:coat2Sweep 9s ease-in-out infinite}
-@keyframes coat2Sweep{0%{background-position:120% 0}50%,100%{background-position:-60% 0}}
-.coat2-body{position:relative;z-index:2;padding:22px 20px 20px;max-width:72%}
-.coat2-title{position:relative;margin:0;font:italic 900 clamp(2rem,8.4vw,2.9rem)/.92 var(--gdisplay);letter-spacing:-.03em;background:var(--holo);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:coat2Holo 9s linear infinite;filter:drop-shadow(0 0 10px rgba(200,180,255,.35))}
-@keyframes coat2Holo{from{background-position:0% 0}to{background-position:200% 0}}
-.coat2-spark{position:absolute;margin-left:4px;top:-.15em;font-size:.55em;color:#fff;-webkit-text-fill-color:#fff;text-shadow:0 0 10px #fff,0 0 22px #c9e6ff;animation:coat2Twinkle 3.2s ease-in-out infinite}
-@keyframes coat2Twinkle{0%,100%{opacity:.55;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-.coat2-years{margin:14px 0 0;display:flex;align-items:baseline;gap:10px;font:600 1rem var(--gbody);letter-spacing:.28em}
-.coat2-years b{font:italic 900 clamp(2.6rem,10vw,3.4rem)/1 var(--gdisplay);letter-spacing:0}
-.coat2-pill{display:inline-flex;align-items:center;gap:12px;margin:14px 0 0;padding:8px 18px 8px 8px;border-radius:999px;font:700 1rem var(--gbody);border:1.5px solid rgba(201,184,255,.55);background:rgba(13,16,32,.8)}
-.coat2-pill i{width:1px;height:20px;background:rgba(255,255,255,.4)}
-.coat2-check{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;font:900 1rem var(--gbody);border:1.5px solid #c9b8ff;box-shadow:0 0 10px rgba(201,184,255,.6)}
-.coat2-bar{margin-top:16px;height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-.coat2-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#fff1b8,#ffd6ec,#e6c9ff,#c9e6ff,#fff1b8,#ffd6ec,#e6c9ff,#c9e6ff,#fff1b8);background-size:200% 100%;animation:coat2Holo 8s linear infinite}
+.coat2{position:relative;isolation:isolate;aspect-ratio:1659/948;border-radius:22px;overflow:hidden}
+.coat2-art{display:block;width:100%;height:100%;object-fit:cover}
+/* live progress bar sits over the bottom of the card picture */
+.coat2-bar{position:absolute;left:7%;width:46%;bottom:9%;height:12px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+.coat2-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#fff1b8,#ffd6ec,#c9f2ff,#e6c9ff,#fff1b8);box-shadow:0 0 12px rgba(255,214,236,.6)}
 .coat2.is-off{filter:saturate(.35)}
-@media(min-width:801px){.coat2-body{max-width:60%}}
-@media(prefers-reduced-motion:reduce){.coat2,.coat2:after,.coat2-title,.coat2-spark,.coat2-pill,.coat2-bar i{animation:none!important}}
+@media(max-width:600px){.coat2-bar{left:8%;width:84%;bottom:11%;height:10px}}
+@media(prefers-reduced-motion:reduce){.coat2{animation:none!important}}
 
 /* Gift a detail: "Gift waiting for you!" banner and the gift card (holographic border, ribbon box) */
 .gift-banner{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 16px;padding:16px 18px;border-radius:20px;border:1.5px solid #ffd86b;background:linear-gradient(135deg,#2a1a00,#0d0a14);color:#fff;text-align:left;cursor:pointer;animation:giftPulse 2.4s ease-in-out infinite}
