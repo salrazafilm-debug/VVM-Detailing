@@ -353,14 +353,18 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 
 /* ---- Ceramic coating card (owner's design): shield art, moving holographic colour ---- */
 /* Holographic colours loop seamlessly: a 200% tile of two identical cycles moved 0% -> 200%. */
-.coat2{position:relative;isolation:isolate;aspect-ratio:1659/948;border-radius:22px;overflow:hidden}
+.coat2{position:relative;isolation:isolate;aspect-ratio:1659/948;border-radius:22px;overflow:hidden;border:2px solid transparent;background:linear-gradient(#0b0d18,#0b0d18) padding-box,linear-gradient(90deg,#7aa9ff,#c58bff,#ff9ad5,#ffd86b,#7aa9ff,#c58bff,#ff9ad5,#ffd86b,#7aa9ff) border-box;background-size:auto,200% 100%;animation:coat2Edge 12s linear infinite}
+@keyframes coat2Edge{from{background-position:0 0,0% 0}to{background-position:0 0,200% 0}}
+/* holographic colour sweeping over the whole card picture (screen blend: dark parts stay dark) */
+.coat2:after{content:"";position:absolute;top:0;bottom:0;left:0;width:200%;z-index:1;pointer-events:none;background:linear-gradient(115deg,#000 0%,#7aa9ff 12%,#c58bff 25%,#ff9ad5 37%,#ffd86b 46%,#000 50%,#7aa9ff 62%,#c58bff 75%,#ff9ad5 87%,#ffd86b 96%,#000 100%);mix-blend-mode:screen;opacity:.3;animation:coat2Holo 8s linear infinite}
+@keyframes coat2Holo{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .coat2-art{display:block;width:100%;height:100%;object-fit:cover}
 /* live progress bar sits over the bottom of the card picture */
-.coat2-bar{position:absolute;left:7%;width:46%;bottom:9%;height:12px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+.coat2-bar{position:absolute;z-index:2;left:7%;width:46%;bottom:9%;height:12px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
 .coat2-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#fff1b8,#ffd6ec,#c9f2ff,#e6c9ff,#fff1b8);box-shadow:0 0 12px rgba(255,214,236,.6)}
 .coat2.is-off{filter:saturate(.35)}
 @media(max-width:600px){.coat2-bar{left:8%;width:84%;bottom:11%;height:10px}}
-@media(prefers-reduced-motion:reduce){.coat2{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.coat2,.coat2:after{animation:none!important}}
 
 /* Gift a detail: "Gift waiting for you!" banner and the gift card (holographic border, ribbon box) */
 .gift-banner{display:flex;align-items:center;gap:14px;width:100%;margin:0 0 16px;padding:16px 18px;border-radius:20px;border:1.5px solid #ffd86b;background:linear-gradient(135deg,#2a1a00,#0d0a14);color:#fff;text-align:left;cursor:pointer;animation:giftPulse 2.4s ease-in-out infinite}
