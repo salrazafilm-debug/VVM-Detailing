@@ -250,7 +250,7 @@ function GiftSection({ gift, onBook }) {
   if(!gift)return null;
   async function claim(){
     setBusy(true);setErr('');
-    try{const r=await fetch('/api/garage/gift',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'claim_gift',offer_id:gift.id})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Could not save your gift. Please try again.');setClaimed(true);setOpen(false)}
+    try{await garageRequest('/api/garage/gift',{method:'POST',body:JSON.stringify({action:'claim_gift',offer_id:gift.id})});setClaimed(true);setOpen(false)}
     catch(e){setErr(e.message)}finally{setBusy(false)}
   }
   if(!open&&!claimed)return <button type="button" className="gift-banner" onClick={()=>setOpen(true)}><span className="gift-box" aria-hidden="true"/><span><strong>Gift waiting for you!</strong><small>Tap to open</small></span></button>;
