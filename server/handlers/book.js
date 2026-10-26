@@ -16,11 +16,14 @@ async function emailRequest(b) {
   const vehicles = (Array.isArray(b.vehicles) ? b.vehicles : []).map(v => clean(v, 120)).filter(Boolean);
   const two = vehicles.length > 1;
   const services = clean(b.summary, 1500) || 'Not listed';
+  // A gifted detail (free): the email says so at the top, so it is not mistaken for a paid booking.
+  const gift = b.gift === true;
   try {
     await sendBookingEmail({
-      subject: `New booking request: ${b.date} ${b.time} - ${name}`,
+      subject: `${gift ? 'GIFTED DETAIL (FREE) - ' : ''}New booking request: ${b.date} ${b.time} - ${name}`,
       replyTo: email,
       lines: [
+        ...(gift ? [`GIFTED DETAIL (FREE): from ${clean(b.gift_from, 40) || 'VVM Details'}. Charge: $0.`] : []),
         `Name: ${name}`, `Phone: ${digits ? b.phone : 'Not on file'}`, `Email: ${email}`, `Location: ${location || 'Not given'}`,
         `Day: ${b.date}`, `Time: ${b.time}`,
         `Vehicle${two ? 's' : ''}: ${two ? vehicles.map((v, i) => `${i + 1}) ${v}`).join(' | ') : vehicles[0] || 'Not given'}`,

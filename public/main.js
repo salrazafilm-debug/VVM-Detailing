@@ -111,12 +111,63 @@ function stepper() {
 }
 const back = to => `<button type="button" class="link" data-act="back" data-to="${to}">← Back</button>`;
 
+// Every car make (sold in the US now, or sold here in the past). Used for the car picker and the typo fix.
+const MAKES = ['Acura','Alfa Romeo','Alpine','Aston Martin','Audi','Bentley','BMW','Bugatti','Buick','BYD','Cadillac','Chevrolet','Chrysler','Daewoo','Dodge','Eagle','Ferrari','Fiat','Fisker','Ford','Genesis','Geo','GMC','Honda','Hummer','Hyundai','Infiniti','Ineos','Isuzu','Jaguar','Jeep','Karma','Kia','Koenigsegg','Lamborghini','Lancia','Land Rover','Lexus','Lincoln','Lordstown','Lotus','Lucid','Lynk & Co','Maserati','Maybach','Mazda','McLaren','Mercedes-Benz','Mercury','Mini','Mitsubishi','MG','Morgan','Nikola','Nissan','NIO','Oldsmobile','Pagani','Plymouth','Polestar','Pontiac','Porsche','Ram','Rimac','Rivian','Rolls-Royce','Saab','Saturn','Scion','Scout','Smart','Subaru','Suzuki','Tesla','Toyota','Triumph','VinFast','Volkswagen','Volvo','Xpeng','Yugo','Zeekr'];
+const makeKeys = MAKES.map(name => ({ name, key: name.toLowerCase().replace(/[^a-z0-9]/g, '') }));
+function editDistance(a, b) {
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    row = next;
+  }
+  return row[b.length];
+}
+// The make a typed word is close to (1 letter off for short makes, 2 for longer ones), or null.
+function closeMake(word) {
+  const w = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (w.length < 4) return null;
+  let best = null, bestD = Infinity;
+  for (const m of makeKeys) { const d = editDistance(w, m.key); if (d < bestD) { bestD = d; best = m; } }
+  return best && bestD <= (best.key.length >= 7 ? 2 : 1) ? best.name : null;
+}
+// Fix the make in "year make model": "2022 Mitsibishi Outlander" becomes "2022 Mitsubishi Outlander".
+function fixMake(text) {
+  const words = text.split(' '), start = /^\d{4}$/.test(words[0]) ? 1 : 0;
+  for (const span of [2, 1]) {
+    const phrase = words.slice(start, start + span).join(' ');
+    if (phrase.split(' ').length !== span || phrase.length < 2) continue;
+    const exact = makeKeys.find(m => m.key === phrase.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const hit = exact?.name || closeMake(phrase);
+    if (hit) return [...words.slice(0, start), hit, ...words.slice(start + span)].join(' ');
+  }
+  return text;
+}
+// While typing the make: suggest matching makes to tap (also when the spelling is slightly off).
+function makeSuggestions(text) {
+  const words = text.split(' ');
+  const start = /^\d{4}$/.test(words[0]) ? 1 : 0;
+  if (words.length !== start + 1) return [];
+  const p = (words[start] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!p) return [];
+  const starts = makeKeys.filter(m => m.key.startsWith(p)).map(m => m.name);
+  if (starts.length) return starts.slice(0, 6);
+  const close = closeMake(p);
+  return close ? [close] : [];
+}
+function renderMakeSuggestions() {
+  const box = document.getElementById('makeSug'), input = document.getElementById('f-vinfo');
+  if (!box || !input) return;
+  box.innerHTML = makeSuggestions(input.value).map(name => `<button type="button" class="mini alt" data-make="${esc(name)}">${esc(name)}</button>`).join('');
+}
+
 // First row for each vehicle: year, make and model. Confirm locks it in; Edit unlocks it.
 function vehicleRow() {
   const i = S.active, n = S.count === 2 ? `Vehicle ${i + 1}` : 'Your vehicle';
   if (S.locked[i]) return `<div class="vrow locked"><span class="v-k">${n}</span><b class="v-t">${esc(vname(i))}</b><span class="v-ok">✓ Locked in</span><button type="button" class="link" data-act="vedit">Edit</button></div>`;
   return `<form id="vform" class="vrow" novalidate><label for="f-vinfo">${n}: year, make &amp; model</label>
     <div class="v-in"><input id="f-vinfo" name="vinfo" value="${esc(S.vehicles[i])}" placeholder="e.g. 2022 Lexus IS 350" autocomplete="off" enterkeyhint="done"><button class="mini" type="submit">Confirm</button></div>
+    <div class="make-sug" id="makeSug"></div>
     ${S.vError ? `<p class="err" role="alert">${esc(S.vError)}</p>` : `<p class="muted small">${S.coupon ? 'Fill this in, then choose your day.' : 'Fill this in first, then pick your services.'}</p>`}</form>`;
 }
 
@@ -349,7 +400,16 @@ bk.addEventListener('change', e => {
 });
 
 // remember what is typed in the vehicle box, so switching vehicles or steps never loses it
-bk.addEventListener('input', e => { if (e.target.name === 'vinfo') S.vehicles[S.active] = e.target.value; });
+bk.addEventListener('input', e => { if (e.target.name === 'vinfo') { S.vehicles[S.active] = e.target.value; renderMakeSuggestions(); } });
+// tap a suggested make: it goes into the box, ready for the model
+bk.addEventListener('click', e => {
+  const b = e.target.closest('[data-make]');
+  if (!b) return;
+  const input = document.getElementById('f-vinfo'), year = input.value.trim().match(/^(\d{4})\b/);
+  input.value = `${year ? year[1] + ' ' : ''}${b.dataset.make} `;
+  S.vehicles[S.active] = input.value;
+  input.focus(); renderMakeSuggestions();
+});
 
 // Coupon customers: book with the details on file. Nothing is typed in for them.
 async function confirmCoupon() {
@@ -371,7 +431,7 @@ bk.addEventListener('submit', async e => {
   e.preventDefault();
   if (e.target.id === 'bkCoupon') return applyCoupon(String(new FormData(e.target).get('code') || '').trim(), $('#bkCouponMsg'));
   if (e.target.id === 'vform') {                                    // Confirm vehicle info: lock it in
-    const v = String(new FormData(e.target).get('vinfo') || '').replace(/\s+/g, ' ').trim();
+    const v = fixMake(String(new FormData(e.target).get('vinfo') || '').replace(/\s+/g, ' ').trim());
     S.vehicles[S.active] = v;
     if (v.length < 4 || !/[a-z]/i.test(v)) { S.vError = 'Please enter the year, make and model, like 2022 Lexus IS 350.'; S.focusV = true; render(); return; }
     S.locked[S.active] = true; S.vError = ''; render(); return;

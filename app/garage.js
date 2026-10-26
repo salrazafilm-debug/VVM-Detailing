@@ -184,7 +184,7 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
     setBusy(true);
     try{
-      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',
+      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',gift:!!current.gift,gift_from:gift?.from||'',
         summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(current.cents)}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
@@ -260,10 +260,10 @@ function GiftSection({ gift, onBook }) {
     {gift.size&&<p className="room-reset-size">{sizeName(gift.size)}</p>}
     <p className="room-small">Valid until {date(gift.expires_at)}</p>
     <div className="gift-actions">
-      {gift.variation_id?<button type="button" className="room-gold" onClick={onBook}>BOOK MY DAY</button>:<p className="room-small">Text us to pick your day.</p>}
+      {gift.variation_id?<button type="button" className="room-gold" onClick={onBook}>{claimed?'BOOK YOUR FREE DETAIL':'BOOK MY DAY'}</button>:<p className="room-small">Text us to pick your day.</p>}
       {!claimed&&<button type="button" className="room-link" disabled={busy} onClick={claim}>{busy?'Saving…':'CLAIM & SAVE FOR LATER'}</button>}
     </div>
-    {claimed&&<p className="room-small">Saved to your Garage. It waits here until you book.</p>}
+    {claimed&&<p className="room-small">Saved. Book your free detail whenever you're ready.</p>}
     {err&&<p className="room-small" role="alert">{err}</p>}
   </section>;
 }
