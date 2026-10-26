@@ -10,7 +10,7 @@ const { vehicleLabel } = require('../server/garage-vehicle');
     const input = await sharp({create:{width:3600,height:2400,channels:3,background:'#e9b3b3'}})[format]().toBuffer();
     const photo = await normalizeGaragePhoto(input);
     const meta = await sharp(photo).metadata();
-    assert.equal(meta.format,'webp');assert.equal(meta.width,1800);assert.equal(meta.height,1200);
+    assert.equal(meta.format,'webp');assert.equal(meta.width,2400);assert.equal(meta.height,1600);
     assert.ok(photo.length < 4*1024*1024);assert.equal(meta.exif,undefined);
   }
   const oriented = await sharp({create:{width:400,height:200,channels:3,background:'#4f8ff0'}}).jpeg().withMetadata({orientation:6}).toBuffer();

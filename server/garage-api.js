@@ -7,7 +7,7 @@ const json = (data, status = 200) => Response.json(data, { status });
 const sharp = require('sharp');
 // Smaller copy served to clients: loads faster on phones. The original is kept.
 async function displayCopy(bytes) {
-  try { return await sharp(bytes).resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toBuffer(); }
+  try { return await sharp(bytes).resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true }).webp({ quality: 88, effort: 4 }).toBuffer(); }
   catch { return null; }
 }
 const clean = (s, max = 300) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -270,7 +270,7 @@ exports.adminPost = async req => {
         const meta = await sharp(original).metadata();
         let out = sharp(original);
         if (crop) out = out.extract({ left: Math.round(crop.x * meta.width), top: Math.round(crop.y * meta.height), width: Math.max(1, Math.round(crop.w * meta.width)), height: Math.max(1, Math.round(crop.h * meta.height)) });
-        small = await out.resize({ width: 1400, height: 1400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toBuffer();
+        small = await out.resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true }).webp({ quality: 88, effort: 4 }).toBuffer();
       } catch { throw Object.assign(new Error('That photo could not be cropped. Try another photo.'), { status: 400 }); }
       const display_path = `${row.vehicle_id}/display-${crypto.randomUUID()}.webp`;
       const { error: upErr } = await ctx.admin.storage.from('garage-photos').upload(display_path, small, { contentType: 'image/webp', upsert: false });
