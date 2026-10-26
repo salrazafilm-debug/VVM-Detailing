@@ -603,4 +603,4 @@ exports.remindersCronGet = async req => {
 
 function cryptoRandom() { return require('crypto').randomUUID(); }
 
-module.exports = { customerGet: exports.customerGet, adminGet: exports.adminGet, adminPost: exports.adminPost, photoPost: exports.photoPost, logoPost: exports.logoPost, reminderPost: exports.reminderPost, remindersCronGet: exports.remindersCronGet };
+module.exports = { customerGet: exports.customerGet, customerPost: exports.customerPost, adminGet: exports.adminGet, adminPost: exports.adminPost, photoPost: exports.photoPost, logoPost: exports.logoPost, reminderPost: exports.reminderPost, remindersCronGet: exports.remindersCronGet };
