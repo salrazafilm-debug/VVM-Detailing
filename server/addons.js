@@ -1,7 +1,7 @@
 // Interior add-ons. Priced here (not in Square) and added to the booking total. They only apply to
 // bookings that include a Full Factory Reset or an Interior Reset.
 const ADDONS = [
-  { id: 'stain', name: 'Shampoo (stain removal)', priceCents: 5000 },
+  { id: 'stain', name: 'Shampoo (stain removal)', priceCents: 6000 },
   { id: 'pet-hair', name: 'Pet hair removal', priceCents: 5000 },
   { id: 'odor', name: 'Odor removal', priceCents: 6000 },
 ];

@@ -66,5 +66,5 @@ Never put tokens or secrets in the repo or in chat. Never write to the owner's S
 - Run `npm test` before pushing. Check phone width (about 390px) and desktop (1280px). Keep `prefers-reduced-motion` support.
 
 ## Add-ons and admin (added 2026-10-19)
-- Interior add-ons (Shampoo/stain removal $50, Pet hair $50, Odor removal $60) live in `server/addons.js`, are priced on the server, only apply when the cart has a Full Factory Reset or Interior Reset, and are not available on coupon bookings. They do not change the booking length. Change prices or names in that one file.
+- Interior add-ons (Shampoo/stain removal $60, Pet hair $50, Odor removal $60) live in `server/addons.js`, are priced on the server, only apply when the cart has a Full Factory Reset or Interior Reset, and are not available on coupon bookings. They do not change the booking length. Change prices or names in that one file.
 - `/admin` is the admin sign-in (goes to `/garage-admin`). The dashboard lists each client by name, then each vehicle's dates (service dates and photo upload dates) with photo thumbnails (private, short-lived links) and an "Add photos" button.
