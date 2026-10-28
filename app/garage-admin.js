@@ -66,6 +66,20 @@ function GiftPanel({ vehicle, busy, onAction }) {
   </div>;
 }
 
+// Discount codes: a code the customer types for dollars off any booking. No client choice; you pick the amount and how many uses.
+function DiscountCodes({ codes, busy, onAction }) {
+  const [code,setCode]=useState(''),[dollars,setDollars]=useState('40'),[uses,setUses]=useState('1');
+  return <details className="g-panel admin-disclosure" open><summary><span>Discount codes<small>Dollars off any booking. The customer types the code.</small></span><b aria-hidden="true">+</b></summary>
+    <form className="g-form admin-status" onSubmit={async e=>{e.preventDefault();const d=await onAction({action:'create_discount',code,amount_dollars:dollars,uses_limit:uses},'Code saved.');if(d)setCode('')}}>
+      <label>Code<input value={code} maxLength={20} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. SAVE$40" autoCapitalize="characters"/></label>
+      <label>Dollars off<input type="number" min="1" max="1000" step="1" inputMode="numeric" value={dollars} onChange={e=>setDollars(e.target.value)}/></label>
+      <label>How many people can use it<input type="number" min="1" max="1000" step="1" inputMode="numeric" value={uses} onChange={e=>setUses(e.target.value)}/></label>
+      <div className="admin-status-actions"><button className="g-button" disabled={busy||!code.trim()}>CREATE CODE</button></div>
+    </form>
+    {codes.length?<ul className="discount-list">{codes.map(c=><li key={c.code}><div><b>{c.code}</b> <span>${c.amount_cents/100} off</span><small>{c.used} of {c.uses_limit} used{c.used>=c.uses_limit?' · all used':''}{c.active?'':' · off'}</small></div><button type="button" className="g-button" disabled={busy} onClick={()=>onAction({action:'set_discount_active',code:c.code,active:!c.active},c.active?'Code turned off.':'Code turned on.')}>{c.active?'Turn off':'Turn on'}</button></li>)}</ul>:<p className="g-inline-help">No codes yet.</p>}
+  </details>;
+}
+
 function VehicleStatus({ vehicle, busy, onSave }) {
   const dollars=c=>c==null?'':String(c/100);
   const sh=vehicle.share_style||{};
@@ -252,7 +266,7 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
 }
 
 export default function GarageAdmin() {
-  const [customers,setCustomers]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+  const [customers,setCustomers]=useState([]),[discountCodes,setDiscountCodes]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [email,setEmail]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[newPassword,setNewPassword]=useState(''),[showPassword,setShowPassword]=useState(false),[showNewPassword,setShowNewPassword]=useState(false);
   const [customer,setCustomer]=useState(''),[year,setYear]=useState(''),[make,setMake]=useState(''),[model,setModel]=useState(''),[color,setColor]=useState('');
   const [vehicle,setVehicle]=useState(''),[serviceDate,setServiceDate]=useState(today()),[title,setTitle]=useState('Full Factory Reset'),[description,setDescription]=useState('');
@@ -281,7 +295,7 @@ export default function GarageAdmin() {
   function selectClient(id){if(actionLock.current)return;setCustomer(id);setVehicle(preferredGarageVehicleId(customers.find(c=>c.user_id===id)?.garage_vehicles));setCreatingClient(false);setCreatingVehicle(false);setNotice('');setError('');setYear('');setMake('');setModel('');setColor('');clearVehicleDrafts()}
   function selectVehicle(id){if(actionLock.current)return;setVehicle(id);setCreatingVehicle(false);setNotice('');setError('');clearVehicleDrafts()}
   async function load(){
-    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);if(d.warning)setError(d.warning)}
+    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);setDiscountCodes(d.discount_codes||[]);if(d.warning)setError(d.warning)}
     catch(e){setError(e.message)}finally{setLoading(false)}
   }
   async function action(body,success){
@@ -382,6 +396,7 @@ export default function GarageAdmin() {
         </div>}
       </section>
     </fieldset>
+    <DiscountCodes codes={discountCodes} busy={busy} onAction={action}/>
     <details className="g-panel admin-disclosure admin-directory"><summary><span>Client directory & history<small>Browse every client, vehicle and photo by date</small></span><b aria-hidden="true">+</b></summary>{loading?<p className="g-muted">Loading clients…</p>:<ClientDashboard customers={sortedCustomers} busy={busy} vehiclesLoaded={vehiclesLoaded} onAddPhoto={dashboardPhoto}/>}</details>
     <footer className="g-footer"><span>A little love. Every detail.</span><a href="/">Back to VVM Details →</a></footer>
   </main>;

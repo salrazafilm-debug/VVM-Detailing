@@ -14,6 +14,15 @@ create index if not exists holds_date_idx on public.holds (date);
 alter table public.holds enable row level security;
 
 -- Coupon uses: one row per completed coupon booking. A code stops working after its limit (see server/coupons.js).
+create table if not exists public.discount_codes (
+  code text primary key,
+  amount_cents integer not null check (amount_cents > 0),
+  uses_limit integer not null check (uses_limit >= 1),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.discount_codes enable row level security;
+
 create table if not exists public.coupon_uses (
   id         bigserial primary key,
   code       text not null,

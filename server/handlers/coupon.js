@@ -1,5 +1,5 @@
 const { loadCatalog, json, fail, httpError, isPublic } = require('../square');
-const { findCoupon, store: couponStore, sizeMatches } = require('../coupon-db');
+const { findCoupon, findDiscount, store: couponStore, sizeMatches } = require('../coupon-db');
 
 // GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
@@ -7,6 +7,11 @@ exports.handler = async (event) => {
     const code = (event.queryStringParameters || {}).code;
     let coupon = await findCoupon(code);
     if (!coupon) {
+      const discount = await findDiscount(code);
+      if (discount) {
+        if (discount.usesLeft < 1) throw httpError(404, 'This code has been used up.');
+        return json(200, { discount: true, code: discount.code, amountCents: discount.amountCents, usesLeft: discount.usesLeft });
+      }
       const offer = await couponStore().garageOffer(code);
       if (!offer) throw httpError(404, 'That offer is no longer available.');
       const catalog = await loadCatalog();

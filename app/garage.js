@@ -169,6 +169,23 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
   const [month,setMonth]=useState(thisMonth),[days,setDays]=useState(null),[loadErr,setLoadErr]=useState(''),[day,setDay]=useState(''),[time,setTime]=useState('');
   const [name,setName]=useState(profile?.display_name||''),[phone,setPhone]=useState(profile?.phone||''),[email,setEmail]=useState(profile?.email||''),[notes,setNotes]=useState(''),[loc,setLoc]=useState(profile?.location||''),[editLoc,setEditLoc]=useState(!profile?.location);
   const [busy,setBusy]=useState(false),[err,setErr]=useState(''),[done,setDone]=useState(null);
+  // Discount code (dollars off). A code can't be combined with a membership or gift price, so it only applies to options without one.
+  const [code,setCode]=useState(''),[discount,setDiscount]=useState(null),[codeMsg,setCodeMsg]=useState('');
+  const discountCents=discount&&current&&!current.member?discount.amountCents:0;
+  const payCents=Math.max(0,(current?.cents||0)-discountCents);
+  async function applyCode(){
+    setCodeMsg('');
+    const c=code.trim();
+    if(!c)return setCodeMsg('Type your code first.');
+    try{
+      const r=await fetch(`/api/coupon?code=${encodeURIComponent(c)}`,{cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'That code is not valid.');
+      if(!j.discount)throw new Error('That code is not valid for online booking.');
+      setDiscount({code:j.code,amountCents:j.amountCents});
+      setCodeMsg(current?.member?`${j.code} is saved. It applies to the paint correction, since membership prices cannot be combined with a code.`:`${j.code} applied: $${(j.amountCents/100).toFixed(0)} off.`);
+    }catch(e){setCodeMsg(e.message)}
+  }
   useEffect(()=>{let live=true;setDays(null);setLoadErr('');setDay('');setTime('');if(!offer?.variation_id)return;
     if(!current)return;
     fetch(`/api/availability?plan=${encodeURIComponent(current.plan)}&month=${month}`,{cache:'no-store'})
@@ -184,8 +201,8 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
     setBusy(true);
     try{
-      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',gift:!!current.gift,gift_from:gift?.from||'',
-        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(current.cents)}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
+      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',discount:discountCents?discount.code:'',gift:!!current.gift,gift_from:gift?.from||'',
+        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(payCents)}${discountCents?` (code ${discount.code})`:''}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
       setDone({day,time});
@@ -204,7 +221,8 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}</p>
     {!opts.length&&<p className="room-muted">Nothing is open to book right now. Text us to book.</p>}
     {opts.length>1&&<div className="room-options" role="radiogroup" aria-label="What to book">{opts.map(o=><button type="button" key={o.id} role="radio" aria-checked={current?.id===o.id} className={`room-option${current?.id===o.id?' is-on':''}`} onClick={()=>{setChoice(o.id);setDay('');setTime('')}}><span className="room-option-title">{o.title}</span><span className="room-muted">{o.sub}</span><strong>{money(o.cents)}</strong></button>)}</div>}
-    {current&&<section className={`room-reset-card${current.member?'':` room-plain-card is-${current.id}`}`}><span className="room-label">{current.member?'MEMBERSHIP RESET · BIG DISCOUNT':current.id==='bundle'?'BUNDLE · SAVE':'BOOKING'}</span><h3>{current.title}</h3><p className="room-reset-size">{current.sub||sizeName(offer?.size)}</p><p className="room-reset-prices">{current.was?<s>{money(current.was)}</s>:null} <strong>{money(current.cents)}</strong></p></section>}
+    {current&&<section className={`room-reset-card${current.member?'':` room-plain-card is-${current.id}`}`}><span className="room-label">{current.member?'MEMBERSHIP RESET · BIG DISCOUNT':current.id==='bundle'?'BUNDLE · SAVE':'BOOKING'}</span><h3>{current.title}</h3><p className="room-reset-size">{current.sub||sizeName(offer?.size)}</p><p className="room-reset-prices">{current.was?<s>{money(current.was)}</s>:null} <strong>{money(payCents)}</strong>{discountCents?<small> {discount.code} · −{money(discountCents)}</small>:null}</p></section>}
+    {current&&<form className="room-code" onSubmit={e=>{e.preventDefault();applyCode()}}><label className="room-small" htmlFor="gCode">Discount code</label><div className="room-code-row"><input id="gCode" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" placeholder="Enter code"/><button type="button" className="room-link" onClick={applyCode}>Apply</button></div>{codeMsg&&<p className="room-small" role="status">{codeMsg}</p>}</form>}
     {current&&<><section className="room-section"><div className="room-section-heading"><h3>Pick a day</h3></div>
       <div className="room-month"><button type="button" className="room-link" disabled={month<=thisMonth} onClick={()=>setMonth(addMonth(month,-1))} aria-label="Previous month">‹ Prev</button><strong>{monthLabel(month)}</strong><button type="button" className="room-link" onClick={()=>setMonth(addMonth(month,1))} aria-label="Next month">Next ›</button></div>
       {loadErr&&<p className="room-err" role="alert">{loadErr}</p>}

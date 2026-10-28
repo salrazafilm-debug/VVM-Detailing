@@ -80,4 +80,31 @@ function store() {
   };
 }
 
-module.exports = { sizeMatches, store, findCoupon, toCoupon };
+// Discount codes ("SAVE$40"): dollars off any booking, made in the Garage admin. Each use is a row in coupon_uses.
+const normalizeDiscount = s => String(s || '').replace(/\s+/g, '').toUpperCase();
+async function discountUses(key) {
+  const { count, error } = await client().from('coupon_uses').select('code', { count: 'exact', head: true }).eq('code', key);
+  if (error) throw new Error(error.message);
+  return count || 0;
+}
+async function findDiscount(code) {
+  const key = normalizeDiscount(code);
+  if (!key) return null;
+  const { data, error } = await client().from('discount_codes').select('*').eq('code', key).eq('active', true).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const used = await discountUses(key);
+  return { code: data.code, amountCents: data.amount_cents, usesLimit: data.uses_limit, usesLeft: Math.max(0, data.uses_limit - used) };
+}
+// Takes one use for a booking. Returns the use id so it can be given back if the booking email fails.
+async function takeDiscountUse(code) {
+  const d = await findDiscount(code);
+  if (!d || d.usesLeft < 1) throw Object.assign(new Error('That code has been used up or is no longer valid. Please check it or call us.'), { status: 400 });
+  const { data, error } = await client().from('coupon_uses').insert({ code: d.code }).select('id').single();
+  if (error) throw new Error(error.message);
+  return { id: data.id, code: d.code, amountCents: d.amountCents };
+}
+async function giveBackDiscountUse(id) {
+  await client().from('coupon_uses').delete().eq('id', id);
+}
+module.exports = { sizeMatches, store, findCoupon, toCoupon, normalizeDiscount, findDiscount, takeDiscountUse, giveBackDiscountUse, discountUses, client };

@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { addonList: [], addons: [[], []], coupon: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { addonList: [], addons: [[], []], coupon: null, discount: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -88,6 +88,8 @@ const carAddons = i => addonsOk(i) ? S.addonList.filter(a => (S.addons[i] || [])
 const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0) + carAddons(i).reduce((n, a) => n + a.priceCents, 0);
 const totalMin = () => booked().reduce((n, _, i) => n + carMin(i), 0);
 const totalCents = () => booked().reduce((n, _, i) => n + carCents(i), 0);
+// What the customer pays: the total minus a discount code (dollars off). Never below zero.
+const payCents = () => Math.max(0, totalCents() - (S.discount ? S.discount.amountCents : 0));
 const planStr = () => booked().map(c => c.map(x => x.v.id).join('.')).join(',');
 const names = i => carItems(i).map(x => x.item).join(' + ');
 const vname = i => (S.vehicles[i] || '').trim();
@@ -241,7 +243,7 @@ function serviceStep() {
   if (booked().some((_, i) => carItems(i).length)) {
     html += `<div class="cart"><p class="cart-k">Your booking</p>${booked().map((_, i) => `<div class="cart-car"><p class="cart-v">${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}${esc(vname(i))}</p>${carItems(i).map(x => `<div class="cart-line"><span>${esc(x.item)} · ${esc(x.v.label)}</span><span>${money(x.v.priceCents)}</span><button type="button" class="rm" data-act="drop" data-car="${i}" data-id="${esc(x.v.id)}" aria-label="Remove ${esc(x.item)}">×</button></div>`).join('') || '<p class="muted small">No service yet</p>'}</div>`).join('')}
       ${booked().map((_, i) => carAddons(i).map(a => `<div class="cart-line"><span>${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}+ ${esc(a.name)}</span><span>${money(a.priceCents)}</span><button type="button" class="rm" data-act="addon" data-car="${i}" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">×</button></div>`).join('')).join('')}
-      <div class="cart-total"><span>Total · about ${dur(totalMin())}</span><b>${money(totalCents())}</b></div>
+      <div class="cart-total"><span>Total${S.discount ? ` after code ${esc(S.discount.code)}` : ''} · about ${dur(totalMin())}</span><b>${money(payCents())}</b>${S.discount ? ` <button type="button" class="link" data-act="nodiscount">Remove code</button>` : ''}</div>
       ${booked().some((_, i) => { const k = carItems(i).map(x => x.kind); return k.includes('interior') && k.includes('exterior'); }) ? '<p class="tip"><b>Tip:</b> the Full Factory Reset includes both and costs less.</p>' : ''}</div>`;
   }
   html += `<p class="muted small add-hint">Tap <b>+</b> on any size to add another service${S.count === 2 ? ' to this vehicle' : ''}. Tap it again to remove it.</p>
@@ -277,7 +279,7 @@ function render() {
       <div class="sum">
         <p class="sum-k">Confirm your booking</p>
         <h3 class="sum-t">${esc(S.coupon.customer)}</h3>
-        <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(totalCents())} · about ${dur(totalMin())}</p>
+        <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(payCents())} · about ${dur(totalMin())}</p>
         <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
       </div>
       ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
@@ -293,7 +295,7 @@ function render() {
       cells += `<button type="button" class="day ${open ? 'open' : ''} ${S.date === k ? 'sel' : ''}" ${open ? `data-act="day" data-d="${k}"` : 'disabled'} aria-label="${open ? 'Available ' : 'Unavailable '}${esc(longDate(k))}">${d}</button>`;
     }
     html += `${S.coupon ? `<p class="coupon-hello">Hello ${esc(S.coupon.customer || 'there')}! Pick your day.</p>` : ''}${back(S.coupon && S.coupon.customer ? 'welcome' : 'service')}
-      <p class="picked"><b>${esc(title())}</b> · ${money(totalCents())} · about ${dur(totalMin())}${S.count === 2 ? `<br><span class="picked-sub">${lines().map(esc).join('<br>')}</span>` : ''}</p>
+      <p class="picked"><b>${esc(title())}</b> · ${money(payCents())} · about ${dur(totalMin())}${S.count === 2 ? `<br><span class="picked-sub">${lines().map(esc).join('<br>')}</span>` : ''}</p>
       <div class="cal">
         <div class="cal-head"><button type="button" class="nav-m" data-act="prev" ${atNow ? 'disabled' : ''} aria-label="Previous month">‹</button><b>${label}</b><button type="button" class="nav-m" data-act="next" aria-label="Next month">›</button></div>
         <div class="dow">${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<span>${d}</span>`).join('')}</div>
@@ -306,7 +308,7 @@ function render() {
       <div class="sum">
         <p class="sum-k">Your booking</p>
         <h3 class="sum-t">${esc(title())}</h3>
-        <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(totalCents())} · about ${dur(totalMin())}</p>
+        <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(payCents())} · about ${dur(totalMin())}</p>
         <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
       </div>
       <form id="bform" class="form" novalidate>
@@ -381,6 +383,7 @@ bk.addEventListener('click', async e => {
   }
   else if (a === 'addon') { const i = t.dataset.car !== undefined ? +t.dataset.car : S.active, id = t.dataset.id; const cur = S.addons[i] || []; S.addons[i] = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]; render(); }
   else if (a === 'drop') { const i = +t.dataset.car; S.cars[i] = carItems(i).filter(x => x.v.id !== t.dataset.id); S.notice = ''; render(); }
+  else if (a === 'nodiscount') { S.discount = null; render(); }
   else if (a === 'nocoupon') { S.coupon = null; S.cars = [[]]; S.locked = [false, false]; S.vError = ''; S.focusV = false; S.error = ''; render(); }
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'prev' || a === 'next') { S.m += a === 'next' ? 1 : -1; if (S.m > 11) { S.m = 0; S.y++; } if (S.m < 0) { S.m = 11; S.y--; } S.date = null; await loadMonth(); }
@@ -446,7 +449,7 @@ bk.addEventListener('submit', async e => {
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', discount: S.discount && !S.coupon ? S.discount.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;
@@ -653,6 +656,15 @@ async function applyCoupon(code, msg, chosenId) {
   let d;
   try { d = await api('/coupon?code=' + encodeURIComponent(code)); }
   catch (err) { msg.textContent = err.message || 'That code is not valid.'; return; }
+  // Discount code (dollars off any booking): the normal cart stays, and the total goes down
+  if (d.discount) {
+    if (S.coupon) { msg.textContent = 'This code cannot be used with this booking offer.'; return; }
+    S.discount = { code: d.code, amountCents: d.amountCents };
+    render();
+    const again = $('#bkCouponMsg');
+    if (again) again.textContent = `${d.code} applied: $${(d.amountCents / 100).toFixed(0)} off your booking.`;
+    return;
+  }
   // Garage offers: the customer picks their vehicle size first
   if (d.garage_offer && d.size_options && !chosenId) {
     msg.innerHTML = `<b>${esc(d.code)}</b> works. Choose your vehicle size: <select id="couponSize">${d.size_options.map(v => `<option value="${esc(v.id)}" ${v.id === d.id ? 'selected' : ''}>${esc(v.label)} · ${money(v.priceCents)}</option>`).join('')}</select> <button type="button" class="mini" id="couponPick">Continue</button>`;

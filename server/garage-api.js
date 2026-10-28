@@ -2,6 +2,7 @@ const { customerContext, requireAdmin, responseError, config } = require('./gara
 const { createClient } = require('@supabase/supabase-js');
 const { vehicleLabel } = require('./garage-vehicle');
 const { prepareShowroomPhoto } = require('./garage-showroom');
+const { normalizeDiscount } = require('./coupon-db');
 
 const json = (data, status = 200) => Response.json(data, { status });
 const sharp = require('sharp');
@@ -126,7 +127,9 @@ exports.adminGet = async req => {
     const logoUrls={};
     await Promise.all((profiles||[]).filter(p=>p.logo_path).map(async p=>{try{logoUrls[p.user_id]=(await ctx.admin.storage.from('garage-photos').createSignedUrl(p.logo_path,900)).data?.signedUrl||null}catch{}}));
     const data=(profiles||[]).map(({logo_path,...profile})=>({...profile,has_logo:!!logo_path,logo_url:logoUrls[profile.user_id]||null,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
-    return Response.json({customers:data,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
+    // Discount codes: each code with how many of its uses are taken.
+    const discountCodes=await adminDiscountList(ctx.admin);
+    return Response.json({customers:data,discount_codes:discountCodes,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -413,6 +416,31 @@ exports.adminPost = async req => {
       if (error) throw Object.assign(new Error('Could not save appointment.'), { status: 400 });
       return json({ ok: true, appointment: data });
     }
+    if (action === 'create_discount') {
+      // A code the customer types. Letters, numbers and $ only; whole dollars; a number of uses.
+      const code = normalizeDiscount(b.code);
+      if (!/^[A-Z0-9$-]{3,20}$/.test(code)) throw Object.assign(new Error('Codes are 3 to 20 letters or numbers (for example SAVE$40 or SAVE40).'), { status: 400 });
+      const dollars = Math.round(Number(b.amount_dollars)), uses = Math.round(Number(b.uses_limit));
+      if (!Number.isInteger(dollars) || dollars < 1 || dollars > 1000) throw Object.assign(new Error('Enter the dollars off, from 1 to 1000.'), { status: 400 });
+      if (!Number.isInteger(uses) || uses < 1 || uses > 1000) throw Object.assign(new Error('Enter how many people can use it, from 1 to 1000.'), { status: 400 });
+      // Codes must be unique across every kind of code the site already uses.
+      const [{ data: old }, { data: garageCode }, { data: taken }] = await Promise.all([
+        ctx.admin.from('coupons').select('code').eq('code', code).maybeSingle(),
+        ctx.admin.from('garage_offers').select('id').eq('coupon_code', code).maybeSingle(),
+        ctx.admin.from('discount_codes').select('code').eq('code', code).maybeSingle(),
+      ]);
+      if (old || garageCode || taken) throw Object.assign(new Error('That code already exists. Pick another.'), { status: 400 });
+      const { data, error } = await ctx.admin.from('discount_codes').insert({ code, amount_cents: dollars * 100, uses_limit: uses, active: true }).select().single();
+      if (error) throw Object.assign(new Error('Could not create the code. Check the discount database update.'), { status: 503 });
+      return json({ ok: true, message: `Code ${code} is ready: $${dollars} off, ${uses} use${uses === 1 ? '' : 's'}.`, code: data });
+    }
+    if (action === 'set_discount_active') {
+      const code = normalizeDiscount(b.code);
+      if (!code) throw Object.assign(new Error('Choose a code.'), { status: 400 });
+      const { error } = await ctx.admin.from('discount_codes').update({ active: b.active === true }).eq('code', code);
+      if (error) throw Object.assign(new Error('Could not change the code. Check the discount database update.'), { status: 503 });
+      return json({ ok: true, message: b.active === true ? `Code ${code} is on.` : `Code ${code} is off.` });
+    }
     if (action === 'gift_send' || action === 'gift_remove') {
       const vehicle_id = clean(b.vehicle_id, 80);
       if (!vehicle_id) throw Object.assign(new Error('Choose a vehicle.'), { status: 400 });
@@ -448,6 +476,20 @@ exports.customerPost = async req => {
     return json({ ok: true });
   } catch (e) { return responseError(e); }
 };
+
+// Every discount code with how many of its uses are taken. Used by the admin page.
+async function adminDiscountList(admin) {
+  // A problem here must not stop the rest of the admin page from loading.
+  try {
+    const { data: codes, error } = await admin.from('discount_codes').select('*').order('created_at', { ascending: false });
+    if (error) return [];
+    const names = (codes || []).map(c => c.code);
+    const { data: uses } = names.length ? await admin.from('coupon_uses').select('code').in('code', names) : { data: [] };
+    const counts = {};
+    for (const u of uses || []) counts[u.code] = (counts[u.code] || 0) + 1;
+    return (codes || []).map(c => ({ code: c.code, amount_cents: c.amount_cents, uses_limit: c.uses_limit, used: counts[c.code] || 0, active: c.active }));
+  } catch { return []; }
+}
 
 async function savedPhotoResponse(admin, data, {isCutout, warning, isHero, coverFor='desktop', reused=false}) {
   const warnings=warning?[warning]:[];

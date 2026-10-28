@@ -1,5 +1,6 @@
 const { json, httpError } = require('../square');
 const { sendBookingEmail } = require('../mail');
+const { takeDiscountUse, giveBackDiscountUse } = require('../coupon-db');
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 
@@ -16,6 +17,10 @@ async function emailRequest(b) {
   const vehicles = (Array.isArray(b.vehicles) ? b.vehicles : []).map(v => clean(v, 120)).filter(Boolean);
   const two = vehicles.length > 1;
   const services = clean(b.summary, 1500) || 'Not listed';
+  // A discount code takes dollars off the booking. It can't be combined with a membership or gift price.
+  const discountCode = clean(b.discount, 40).replace(/\s+/g, '').toUpperCase();
+  if (discountCode && clean(b.coupon, 40)) throw httpError(400, 'A discount code cannot be used together with a membership or gift price.');
+  const use = discountCode ? await takeDiscountUse(discountCode) : null;
   // A gifted detail (free): the email says so at the top, so it is not mistaken for a paid booking.
   const gift = b.gift === true;
   try {
@@ -29,10 +34,12 @@ async function emailRequest(b) {
         `Vehicle${two ? 's' : ''}: ${two ? vehicles.map((v, i) => `${i + 1}) ${v}`).join(' | ') : vehicles[0] || 'Not given'}`,
         `Services: ${services}`,
         ...(clean(b.coupon, 40) ? [`Code / membership: ${clean(b.coupon, 40)}`] : []),
+        ...(use ? [`Discount code: ${use.code} (take $${(use.amountCents / 100).toFixed(0)} off)`] : []),
         `Notes: ${notes || 'None'}`,
       ],
     });
   } catch (e) {
+    if (use) await giveBackDiscountUse(use.id).catch(() => {});
     console.error('booking email failed:', e.message);
     throw httpError(e.status || 502, e.status === 503 ? e.message : 'We could not send your request. Please call or text us to book.');
   }
