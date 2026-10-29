@@ -316,7 +316,23 @@ function serviceStep() {
   return html;
 }
 
+// Redraws the booking and keeps the page where the customer is looking. Swapping the content can make the page
+// shorter, and the browser would then drop the view to the bottom of the site. A NEW step shows the top of the booking
+// (just under the menu); an update inside a step keeps the booking exactly where it was on screen.
+let lastStep = null;
 function render() {
+  const top0 = bk.getBoundingClientRect().top, stepBefore = lastStep;
+  renderBooking();
+  lastStep = S.step;
+  if (stepBefore === null || !S.services || !S.services.length) return;   // first draw: do not move the page
+  if (S.step !== stepBefore) {
+    window.scrollTo({ left: 0, top: Math.max(0, bk.getBoundingClientRect().top + scrollY - 96), behavior: 'instant' });
+  } else {
+    const delta = bk.getBoundingClientRect().top - top0;
+    if (Math.abs(delta) > 1) window.scrollBy({ left: 0, top: delta, behavior: 'instant' });
+  }
+}
+function renderBooking() {
   if (S.step === 'error') { bk.innerHTML = `<p><b>Online booking is unavailable right now.</b></p>${contactLine}`; return; }
   if (!S.services) { bk.innerHTML = '<p class="muted">Loading open times…</p>'; return; }
   let html = stepper();
@@ -463,7 +479,11 @@ bk.addEventListener('click', async e => {
   else if (a === 'nocoupon') { S.coupon = null; S.cars = [[]]; S.locked = [false, false]; S.vError = ''; S.focusV = false; S.error = ''; render(); }
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'prev' || a === 'next') { S.m += a === 'next' ? 1 : -1; if (S.m > 11) { S.m = 0; S.y++; } if (S.m < 0) { S.m = 11; S.y--; } S.date = null; await loadMonth(); }
-  else if (a === 'day') { S.date = t.dataset.d; render(); }
+  else if (a === 'day') {
+    S.date = t.dataset.d; render();
+    // show the start times that just appeared
+    document.querySelector('#bk .slots')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+  }
   else if (a === 'time') { S.time = t.dataset.t; S.error = ''; S.step = S.coupon && S.coupon.customer ? 'confirm' : 'details'; render(); }
   else if (a === 'coupon-day') { S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'confirm') { await confirmCoupon(); }
