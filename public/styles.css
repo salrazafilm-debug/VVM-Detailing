@@ -1586,3 +1586,7 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 #book .welcome-addr input{padding:14px 16px;border:2px solid #9fd0f3;border-radius:14px;font:600 1rem var(--body)}
 #book .form label.optin{display:flex;flex-direction:row;align-items:flex-start;gap:10px;text-transform:none;letter-spacing:0;font:500 .92rem/1.4 var(--body);color:#0b2a4a}
 #book .form label.optin input{width:22px;height:22px;flex:none;margin:1px 0 0;padding:0}
+
+/* Full Factory Reset card: free travel up to 30 min (phones: under the sealant line) */
+.bl-4{font:600 .92rem/1.35 var(--body);color:rgba(255,255,255,.92)}
+.bl-4 b{font:900 .95rem var(--display);letter-spacing:.05em;color:#ffd45a}
