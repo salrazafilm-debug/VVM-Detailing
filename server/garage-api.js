@@ -3,6 +3,8 @@ const { createClient } = require('@supabase/supabase-js');
 const { vehicleLabel } = require('./garage-vehicle');
 const { prepareShowroomPhoto } = require('./garage-showroom');
 const { normalizeDiscount } = require('./coupon-db');
+const referrals = require('./referrals');
+const customerMail = require('./customer-mail');
 
 const json = (data, status = 200) => Response.json(data, { status });
 const sharp = require('sharp');
@@ -36,12 +38,15 @@ exports.customerGet = async req => {
       db.from('garage_vehicles').select('*').eq('customer_id', owner).order('created_at', { ascending: true }),
     ]);
     if (previewId && !profile && !pErr) throw Object.assign(new Error('Client not found.'), {status:404});
+    // Rewards tab: the client's referral code and progress. A problem here must not stop the rest of the Garage.
+    let rewards = null;
+    try { rewards = await referrals.rewardsFor(ctx.admin, owner, profile?.display_name); } catch { rewards = null; }
     const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
     const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', location: p.location || '', loyal: p.loyal === true, logo_url: logo } : p;
     const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
-    if (!ids.length) return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: [] });
+    if (!ids.length) return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: [], rewards });
     const [sv, ph, ap, cy, offers] = await Promise.all([
       db.from('garage_services').select('*').in('vehicle_id', ids).order('service_date', { ascending: false }),
       db.from('garage_photos').select('*').in('vehicle_id', ids).order('created_at', { ascending: false }),
@@ -89,7 +94,7 @@ exports.customerGet = async req => {
         return g ? { id: g.id, from: g.gift_from, expires_at: g.expires_at, coupon_code: g.coupon_code, claimed: !!g.claimed_at, ...priceFor(v), price_cents: 0 } : null;
       })(),
     }));
-    return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload });
+    return clientJson({ profile: profile || { email: ctx.user.email }, vehicles: payload, rewards });
   } catch (e) { return responseError(e); }
 };
 
@@ -129,7 +134,9 @@ exports.adminGet = async req => {
     const data=(profiles||[]).map(({logo_path,...profile})=>({...profile,has_logo:!!logo_path,logo_url:logoUrls[profile.user_id]||null,garage_vehicles:rows.filter(v=>v.customer_id===profile.user_id)}));
     // Discount codes: each code with how many of its uses are taken.
     const discountCodes=await adminDiscountList(ctx.admin);
-    return Response.json({customers:data,discount_codes:discountCodes,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
+    const bookingList=await adminBookingList(ctx.admin);
+    const referralSummary=await adminReferralSummary(ctx.admin);
+    return Response.json({customers:data,discount_codes:discountCodes,bookings:bookingList,referral_leaders:referralSummary,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -424,12 +431,13 @@ exports.adminPost = async req => {
       if (!Number.isInteger(dollars) || dollars < 1 || dollars > 1000) throw Object.assign(new Error('Enter the dollars off, from 1 to 1000.'), { status: 400 });
       if (!Number.isInteger(uses) || uses < 1 || uses > 1000) throw Object.assign(new Error('Enter how many people can use it, from 1 to 1000.'), { status: 400 });
       // Codes must be unique across every kind of code the site already uses.
-      const [{ data: old }, { data: garageCode }, { data: taken }] = await Promise.all([
+      const [{ data: old }, { data: garageCode }, { data: taken }, { data: refCode }] = await Promise.all([
         ctx.admin.from('coupons').select('code').eq('code', code).maybeSingle(),
         ctx.admin.from('garage_offers').select('id').eq('coupon_code', code).maybeSingle(),
         ctx.admin.from('discount_codes').select('code').eq('code', code).maybeSingle(),
+        ctx.admin.from('garage_profiles').select('user_id').eq('referral_code', code).maybeSingle(),
       ]);
-      if (old || garageCode || taken) throw Object.assign(new Error('That code already exists. Pick another.'), { status: 400 });
+      if (old || garageCode || taken || refCode) throw Object.assign(new Error('That code already exists. Pick another.'), { status: 400 });
       const { data, error } = await ctx.admin.from('discount_codes').insert({ code, amount_cents: dollars * 100, uses_limit: uses, active: true }).select().single();
       if (error) throw Object.assign(new Error('Could not create the code. Check the discount database update.'), { status: 503 });
       return json({ ok: true, message: `Code ${code} is ready: $${dollars} off, ${uses} use${uses === 1 ? '' : 's'}.`, code: data });
@@ -440,6 +448,27 @@ exports.adminPost = async req => {
       const { error } = await ctx.admin.from('discount_codes').update({ active: b.active === true }).eq('code', code);
       if (error) throw Object.assign(new Error('Could not change the code. Check the discount database update.'), { status: 503 });
       return json({ ok: true, message: b.active === true ? `Code ${code} is on.` : `Code ${code} is off.` });
+    }
+    if (action === 'booking_status') {
+      // Confirm, cancel or reopen a booking request. Confirming also emails the customer (if email is set up).
+      const id = clean(b.booking_id, 80), status = ['confirmed', 'cancelled', 'requested'].includes(b.status) ? b.status : null;
+      if (!id || !status) throw Object.assign(new Error('Choose a booking.'), { status: 400 });
+      const { data: row, error } = await ctx.admin.from('booking_requests').update({ status }).eq('id', id).select('*').maybeSingle();
+      if (error || !row) throw Object.assign(new Error('Could not update the booking. Check the bookings database update.'), { status: 503 });
+      let note = '';
+      if (status === 'confirmed') { const r = await customerMail.sendConfirmation(row).catch(() => ({ sent: false, reason: 'email error' })); note = r.sent ? ' Confirmation emailed to the customer.' : ` (No confirmation email sent: ${r.reason}.)`; }
+      if (status === 'cancelled' && row.referral_id) await ctx.admin.from('referrals').update({ status: 'dismissed' }).eq('id', row.referral_id).eq('status', 'pending');
+      return json({ ok: true, message: `Booking ${status}.${note}` });
+    }
+    if (action === 'booking_complete') {
+      const id = clean(b.booking_id, 80);
+      if (!id) throw Object.assign(new Error('Choose a booking.'), { status: 400 });
+      const result = await referrals.completeBooking(ctx.admin, id);
+      const parts = ['Booking completed.'];
+      if (result.referral) parts.push(`Referral counted: ${result.referral.completed} completed.`);
+      if (result.rewardGift) parts.push('That client reached 5 and a free Full Factory Reset gift was sent to them.');
+      if (result.warning) parts.push(result.warning);
+      return json({ ok: true, message: parts.join(' ') });
     }
     if (action === 'gift_send' || action === 'gift_remove') {
       const vehicle_id = clean(b.vehicle_id, 80);
@@ -476,6 +505,37 @@ exports.customerPost = async req => {
     return json({ ok: true });
   } catch (e) { return responseError(e); }
 };
+
+// Booking requests from the website, newest days first, with the referral each one used. Used by the admin Bookings tab.
+async function adminBookingList(admin) {
+  try {
+    const since = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
+    const { data: rows, error } = await admin.from('booking_requests').select('*').gte('booking_date', since).order('booking_date', { ascending: true }).order('booking_time', { ascending: true }).limit(500);
+    if (error) return [];
+    const refIds = (rows || []).map(r => r.referral_id).filter(Boolean);
+    const { data: refs } = refIds.length ? await admin.from('referrals').select('id,code,status,referrer_user_id').in('id', refIds) : { data: [] };
+    const { data: owners } = refs?.length ? await admin.from('garage_profiles').select('user_id,display_name').in('user_id', refs.map(r => r.referrer_user_id)) : { data: [] };
+    const nameOf = id => (owners || []).find(o => o.user_id === id)?.display_name || '';
+    return (rows || []).map(r => {
+      const ref = (refs || []).find(x => x.id === r.referral_id);
+      return { id: r.id, created_at: r.created_at, name: r.name, email: r.email, phone: r.phone, zip: r.zip, drop_off: r.drop_off, travel_fee_cents: r.travel_fee_cents, discount_label: r.discount_label, discount_cents: r.discount_cents, total_cents: r.total_cents, vehicles: r.vehicles, services: r.services, booking_date: r.booking_date, booking_time: r.booking_time, coupon: r.coupon, gift: r.gift, marketing_opt_in: r.marketing_opt_in, status: r.status, reminder_sent_at: r.reminder_sent_at, referral: ref ? { code: ref.code, status: ref.status, from: nameOf(ref.referrer_user_id) } : null };
+    });
+  } catch { return []; }
+}
+
+// Who is referring friends: each client's code, completed and waiting referrals, and free details earned.
+async function adminReferralSummary(admin) {
+  try {
+    const { data: rows, error } = await admin.from('referrals').select('referrer_user_id,status');
+    if (error || !rows?.length) return [];
+    const by = {};
+    for (const r of rows) { const o = by[r.referrer_user_id] ||= { completed: 0, pending: 0 }; if (r.status === 'completed') o.completed++; else if (r.status === 'pending') o.pending++; }
+    const ids = Object.keys(by);
+    const { data: people } = await admin.from('garage_profiles').select('user_id,display_name,email,referral_code').in('user_id', ids);
+    return ids.map(id => { const p = (people || []).find(x => x.user_id === id) || {}; return { name: p.display_name || p.email || 'Client', code: p.referral_code || '', completed: by[id].completed, pending: by[id].pending, earned: Math.floor(by[id].completed / 5) }; })
+      .sort((a, b) => b.completed - a.completed || b.pending - a.pending);
+  } catch { return []; }
+}
 
 // Every discount code with how many of its uses are taken. Used by the admin page.
 async function adminDiscountList(admin) {
@@ -626,6 +686,8 @@ exports.remindersCronGet = async req => {
     if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) throw Object.assign(new Error('Not authorized.'), { status:401 });
     const { url, secret: serviceKey } = config();
     const admin = createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+    // Day-before booking reminders go first, so a problem with the Garage reminder queue cannot stop them.
+    const bookingReminders = await customerMail.sendBookingReminders(admin).catch(() => ({ error: 'reminders failed' }));
     const {data:pending,error:queueError} = await admin.rpc('garage_pending_reminders',{p_limit:100});
     if(queueError) {
       // Provider messages can include malformed credential/header values. Never log their text.
@@ -639,7 +701,7 @@ exports.remindersCronGet = async req => {
       const result=await exports.reminderPost(new Request('https://garage.internal/api/garage/reminder',{method:'POST',headers:{'content-type':'application/json','x-garage-webhook-key':process.env.GARAGE_REMINDER_SECRET||''},body:JSON.stringify(item)}));
       results.push({type:item.message_type,status:result.status,body:await result.json()});
     }
-    return json({processed:results.length,results});
+    return json({processed:results.length,results,bookingReminders});
   } catch(e){return responseError(e)}
 };
 

@@ -124,3 +124,36 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .crop-frame{position:absolute;border:2px solid #f0d63c;box-shadow:0 0 0 9999px rgba(20,12,14,.55);cursor:move;touch-action:none}
 .crop-handle{position:absolute;right:-10px;bottom:-10px;width:22px;height:22px;border-radius:50%;background:#f0d63c;border:2px solid #1a1214;cursor:nwse-resize;touch-action:none}
 .admin-adjust-bar{display:grid;gap:8px}.admin-adjust-bar .admin-segment{justify-self:start}
+
+/* ===== Admin sections: tab bar and Bookings tab ===== */
+.admin-tabs{position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:6px 0 18px;padding:8px;border-radius:18px;background:rgba(255,255,255,.88);backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(26,18,20,.12);overflow-x:auto}
+.admin-tabs button{flex:1 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border:0;border-radius:13px;background:transparent;color:var(--gink);font:800 .88rem var(--gdisplay);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.admin-tabs button.is-active{background:var(--gink);color:#fff}
+.admin-tabs button b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#e4572e;color:#fff;font:900 .75rem var(--gbody)}
+.admin-bookings,.admin-rewards{display:grid;gap:16px;margin-bottom:24px}
+.abk-group h3{margin:0 0 8px;font:italic 900 1.25rem var(--gdisplay);letter-spacing:-.03em}.abk-group h3 span{font:700 .9rem var(--gbody);opacity:.6}
+.abk-list{display:grid;gap:12px;list-style:none;margin:0;padding:0}
+.abk{display:grid;grid-template-columns:96px 1fr;gap:6px 16px;padding:16px;border-radius:18px;background:#fff;border:1px solid rgba(26,18,20,.1);box-shadow:0 6px 18px rgba(26,18,20,.08)}
+.abk-requested{border-color:#e4572e;box-shadow:0 0 0 2px rgba(228,87,46,.18)}
+.abk-cancelled{opacity:.6}.abk-completed{background:#f3faf3}
+.abk-when{display:grid;align-content:start;gap:2px}.abk-when strong{font:900 1rem var(--gdisplay)}.abk-when span{font:700 .9rem var(--gbody);color:#555}
+.abk-main p{margin:0 0 4px;font:500 .95rem/1.4 var(--gbody)}.abk-name b{font:800 1.05rem var(--gbody)}
+.abk-svc{color:#333}.abk-meta,.abk-contact{font-size:.86rem!important;color:#555}
+.abk-contact a{text-decoration:underline}
+.abk-tag{margin-left:8px;padding:2px 8px;border-radius:99px;background:#1a1214;color:#fff;font:800 .66rem var(--gbody);letter-spacing:.08em;font-style:normal;vertical-align:middle}
+.abk-tag.gift{background:#f0b429;color:#2a1a00}.abk-tag.ref{background:#7a4fe0}
+.abk-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding-top:6px}
+.abk-actions .g-button{width:auto;min-height:44px}
+.abk-ghost{min-height:44px;padding:0 16px;border:2px solid var(--gink);border-radius:999px;background:transparent;color:var(--gink);font:800 .85rem var(--gbody);cursor:pointer}
+@media(max-width:560px){.abk{grid-template-columns:1fr}.abk-when{grid-auto-flow:column;justify-content:start;gap:10px;align-items:baseline}}
+.admin-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}
+.admin-tabs button{min-width:0;padding:0 6px;font-size:.78rem;letter-spacing:.03em;position:relative}
+.admin-tabs button b{position:absolute;top:-6px;right:2px;min-width:20px;height:20px;font-size:.7rem}
+@media(min-width:700px){.admin-tabs button{font-size:.9rem;letter-spacing:.06em}}
+.discount-list{list-style:none;margin:0;padding:0}
+.discount-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-top:1px solid rgba(26,18,20,.1)}
+.discount-list li b{font:800 1.05rem var(--gbody)}
+.discount-list li span{margin-left:8px;font:700 .9rem var(--gbody);opacity:.7}
+.discount-list li small{display:block;margin-top:3px;font:500 .85rem var(--gbody);opacity:.75}
+.discount-list .g-button{width:auto;min-height:42px;flex:none}
+.admin-bookings h2,.admin-rewards h2{margin:0;font:italic 900 clamp(1.5rem,3vw,1.95rem)/1.1 var(--gdisplay);letter-spacing:-.045em}

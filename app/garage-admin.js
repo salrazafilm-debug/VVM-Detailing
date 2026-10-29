@@ -80,6 +80,68 @@ function DiscountCodes({ codes, busy, onAction }) {
   </details>;
 }
 
+// ---- Bookings tab: every request from the website, in the order you work them ----
+const dollarsOf = c => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
+const bookingDay = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
+const bookingTime = t => { const [h,m]=String(t).split(':').map(Number); return `${((h+11)%12)+1}:${String(m||0).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
+
+function BookingCard({ b, busy, onAction }) {
+  const set = (status,msg) => onAction({action:'booking_status',booking_id:b.id,status},msg);
+  const done = () => onAction({action:'booking_complete',booking_id:b.id});
+  return <li className={`abk abk-${b.status}`}>
+    <div className="abk-when"><strong>{bookingDay(b.booking_date)}</strong><span>{bookingTime(b.booking_time)}</span></div>
+    <div className="abk-main">
+      <p className="abk-name"><b>{b.name}</b>{b.gift&&<em className="abk-tag gift">GIFT</em>}{b.drop_off&&<em className="abk-tag">DROP-OFF</em>}{b.referral&&<em className="abk-tag ref">REFERRAL {b.referral.code}{b.referral.from?` · from ${b.referral.from}`:''}</em>}</p>
+      <p>{b.vehicles}</p>
+      <p className="abk-svc">{b.services}</p>
+      <p className="abk-meta">{b.drop_off?'Drop-off':`ZIP ${b.zip||'?'}${b.travel_fee_cents?` · travel ${dollarsOf(b.travel_fee_cents)}`:' · no travel fee'}`}{b.discount_label?` · ${b.discount_label} −${dollarsOf(b.discount_cents)}`:''}{b.total_cents!=null?` · quoted ${dollarsOf(b.total_cents)}`:b.gift?' · free (gift)':' · membership price'}</p>
+      <p className="abk-contact">{b.phone?<a href={`tel:${String(b.phone).replace(/\D/g,'')}`}>{b.phone}</a>:'No phone'} · <a href={`mailto:${b.email}`}>{b.email}</a></p>
+    </div>
+    <div className="abk-actions">
+      {b.status==='requested'&&<><button type="button" className="g-button" disabled={busy} onClick={()=>set('confirmed')}>CONFIRM</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button></>}
+      {b.status==='confirmed'&&<><button type="button" className="g-button" disabled={busy} onClick={done}>MARK COMPLETED</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button></>}
+      {b.status==='cancelled'&&<button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('requested')}>Reopen</button>}
+    </div>
+  </li>;
+}
+
+function AdminBookings({ bookings, busy, onAction }) {
+  const t = today();
+  const needs = bookings.filter(b=>b.status==='requested');
+  const coming = bookings.filter(b=>b.status==='confirmed'&&b.booking_date>=t);
+  const happened = bookings.filter(b=>b.status==='confirmed'&&b.booking_date<t);
+  const history = bookings.filter(b=>b.status==='completed'||b.status==='cancelled').slice(-40).reverse();
+  const group = (title,list,hint) => list.length?<section className="abk-group"><h3>{title} <span>({list.length})</span></h3>{hint&&<p className="g-inline-help">{hint}</p>}<ul className="abk-list">{list.map(b=><BookingCard key={b.id} b={b} busy={busy} onAction={onAction}/>)}</ul></section>:null;
+  return <div className="admin-bookings">
+    <div className="admin-section-head"><div><p className="g-eyebrow">YOUR DAY AT A GLANCE</p><h2>Bookings.</h2></div></div>
+    {!bookings.length&&<p className="g-muted">No booking requests yet. Each one from the website shows up here, and you also get the email.</p>}
+    {group('Needs your OK',needs,'Tap CONFIRM after you have texted them and added it to Square. They get a confirmation email, and a reminder the day before.')}
+    {group('Coming up',coming)}
+    {group('Happened. Mark completed',happened,'Marking a detail completed counts a referral for the friend who sent them.')}
+    {history.length>0&&<details className="g-panel admin-disclosure"><summary><span>Recent history<small>Completed and cancelled</small></span><b aria-hidden="true">+</b></summary><ul className="abk-list">{history.map(b=><BookingCard key={b.id} b={b} busy={busy} onAction={onAction}/>)}</ul></details>}
+  </div>;
+}
+
+// ---- Codes and rewards: discount codes, who is referring friends, and the email list ----
+function ReferralLeaders({ leaders }) {
+  return <details className="g-panel admin-disclosure" open><summary><span>Referrals<small>Who is sending friends. A referral counts when you mark the booking completed.</small></span><b aria-hidden="true">+</b></summary>
+    {leaders.length?<ul className="discount-list">{leaders.map(l=><li key={l.code||l.name}><div><b>{l.name}</b> <span>{l.code}</span><small>{l.completed} completed · {l.pending} waiting{l.earned?` · ${l.earned} free detail${l.earned>1?'s':''} earned`:''}</small></div></li>)}</ul>:<p className="g-inline-help">No referrals yet. Every Garage client has a code on their Rewards tab.</p>}
+  </details>;
+}
+
+function EmailList({ bookings }) {
+  const emails = [...new Map(bookings.filter(b=>b.marketing_opt_in).map(b=>[String(b.email).toLowerCase(),b])).values()];
+  function download() {
+    const rows = ['email,name', ...emails.map(b=>`${JSON.stringify(b.email)},${JSON.stringify(b.name)}`)];
+    const url = URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'vvm-email-list.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+  return <details className="g-panel admin-disclosure"><summary><span>Email list<small>Customers who said yes to offers and news</small></span><b aria-hidden="true">+</b></summary>
+    <div className="g-form"><p className="g-inline-help">{emails.length} customer{emails.length===1?'':'s'} said yes to emails. Download the list and import it into Brevo (free plan, 300 emails a day) to send a newsletter. Only email people on this list.</p>
+    <div className="admin-status-actions"><button type="button" className="g-button" disabled={!emails.length} onClick={download}>DOWNLOAD LIST (CSV)</button></div></div>
+  </details>;
+}
+
 function VehicleStatus({ vehicle, busy, onSave }) {
   const dollars=c=>c==null?'':String(c/100);
   const sh=vehicle.share_style||{};
@@ -266,7 +328,7 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
 }
 
 export default function GarageAdmin() {
-  const [customers,setCustomers]=useState([]),[discountCodes,setDiscountCodes]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+  const [customers,setCustomers]=useState([]),[discountCodes,setDiscountCodes]=useState([]),[bookings,setBookings]=useState([]),[leaders,setLeaders]=useState([]),[section,setSection]=useState('bookings'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [email,setEmail]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[newPassword,setNewPassword]=useState(''),[showPassword,setShowPassword]=useState(false),[showNewPassword,setShowNewPassword]=useState(false);
   const [customer,setCustomer]=useState(''),[year,setYear]=useState(''),[make,setMake]=useState(''),[model,setModel]=useState(''),[color,setColor]=useState('');
   const [vehicle,setVehicle]=useState(''),[serviceDate,setServiceDate]=useState(today()),[title,setTitle]=useState('Full Factory Reset'),[description,setDescription]=useState('');
@@ -295,7 +357,7 @@ export default function GarageAdmin() {
   function selectClient(id){if(actionLock.current)return;setCustomer(id);setVehicle(preferredGarageVehicleId(customers.find(c=>c.user_id===id)?.garage_vehicles));setCreatingClient(false);setCreatingVehicle(false);setNotice('');setError('');setYear('');setMake('');setModel('');setColor('');clearVehicleDrafts()}
   function selectVehicle(id){if(actionLock.current)return;setVehicle(id);setCreatingVehicle(false);setNotice('');setError('');clearVehicleDrafts()}
   async function load(){
-    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);setDiscountCodes(d.discount_codes||[]);if(d.warning)setError(d.warning)}
+    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);setDiscountCodes(d.discount_codes||[]);setBookings(d.bookings||[]);setLeaders(d.referral_leaders||[]);if(d.warning)setError(d.warning)}
     catch(e){setError(e.message)}finally{setLoading(false)}
   }
   async function action(body,success){
@@ -360,9 +422,11 @@ export default function GarageAdmin() {
   return <main className="garage-shell admin-shell">
     <header className="garage-top"><a className="garage-brand" href="/"><img src="/assets/logo.jpg" alt=""/> VVM DETAILS <span className="admin-pill">ADMIN</span></a><div className="garage-account"><a href="/garage">CUSTOMER VIEW</a><button className="g-text-button" disabled={busy} onClick={signOut}>SIGN OUT</button></div></header>
     <div className="garage-heading"><div><p className="g-eyebrow">A LITTLE CARE. ALL IN ORDER.</p><h1>The Garage.</h1><p className="g-muted">Client. Vehicle. Photos. You’re in control.</p></div><span className="admin-count">{loading?'Loading clients…':`${customers.length} client${customers.length===1?'':'s'}`}</span></div>
-    <ol className="admin-steps" aria-label="Garage setup"><li className={client?'is-complete':'is-current'}><b>{client?'✓':'01'}</b> Client</li><li className={selectedVehicle?'is-complete':client?'is-current':''}><b>{selectedVehicle?'✓':'02'}</b> Vehicle</li><li className={selectedVehicle?'is-current':''}><b>03</b> Photos</li><li><b>04</b> Optional details</li></ol>
+    <nav className="admin-tabs" aria-label="Admin sections">{[['bookings','Bookings',bookings.filter(b=>b.status==='requested').length],['clients','Clients',0],['rewards','Rewards',0],['directory','Directory',0]].map(([id,label,n])=><button key={id} type="button" className={section===id?'is-active':''} aria-pressed={section===id} onClick={()=>setSection(id)}>{label}{n>0&&<b>{n}</b>}</button>)}</nav>
+    {section==='clients'&&<ol className="admin-steps" aria-label="Garage setup"><li className={client?'is-complete':'is-current'}><b>{client?'✓':'01'}</b> Client</li><li className={selectedVehicle?'is-complete':client?'is-current':''}><b>{selectedVehicle?'✓':'02'}</b> Vehicle</li><li className={selectedVehicle?'is-current':''}><b>03</b> Photos</li><li><b>04</b> Optional details</li></ol>}
     <div className="admin-feedback" aria-live="polite">{error&&<p className="g-alert" role="alert">{error}{/sign in/i.test(error)&&<> <a href="/admin">Sign in as admin</a></>} <button type="button" className="g-text-button" disabled={busy||loading} onClick={()=>{setError('');setLoading(true);load()}}>REFRESH</button></p>}{notice&&<p className="g-notice" role="status"><button type="button" className="g-text-button admin-dismiss" aria-label="Dismiss notification" onClick={()=>setNotice('')}>×</button>{notice}</p>}</div>
-    <fieldset className="admin-workspace" disabled={busy||loading} aria-busy={busy||loading}>
+    <div style={{display:section==='bookings'?undefined:'none'}}><AdminBookings bookings={bookings} busy={busy||loading} onAction={action}/></div>
+    <fieldset className="admin-workspace" style={{display:section==='clients'?undefined:'none'}} disabled={busy||loading} aria-busy={busy||loading}>
       <section className="g-panel admin-step" aria-labelledby="client-step">
         <div className="admin-section-head"><div><p className="g-eyebrow">01 / START HERE</p><h2 id="client-step">Choose your client.</h2></div><button type="button" className="g-button admin-add" aria-expanded={creatingClient} onClick={()=>setCreatingClient(v=>!v)}>{creatingClient?'CANCEL':'+ NEW CLIENT'}</button></div>
         <div className="g-form"><label>Find a client<input type="search" placeholder="Search by name or email" value={query} onChange={e=>setQuery(e.target.value)}/></label><label htmlFor="admin-client">Client name</label><select id="admin-client" value={customer} onChange={e=>selectClient(e.target.value)}><option value="">Select a client</option>{[...new Map([...matches,...(client?[client]:[])].map(c=>[c.user_id,c])).values()].map(c=><option key={c.user_id} value={c.user_id}>{c.display_name||c.email}{c.display_name?` · ${c.email}`:''}</option>)}</select></div>
@@ -396,8 +460,8 @@ export default function GarageAdmin() {
         </div>}
       </section>
     </fieldset>
-    <DiscountCodes codes={discountCodes} busy={busy} onAction={action}/>
-    <details className="g-panel admin-disclosure admin-directory"><summary><span>Client directory & history<small>Browse every client, vehicle and photo by date</small></span><b aria-hidden="true">+</b></summary>{loading?<p className="g-muted">Loading clients…</p>:<ClientDashboard customers={sortedCustomers} busy={busy} vehiclesLoaded={vehiclesLoaded} onAddPhoto={dashboardPhoto}/>}</details>
+    <div className="admin-rewards" style={{display:section==='rewards'?undefined:'none'}}><div className="admin-section-head"><div><p className="g-eyebrow">GROW THE BUSINESS</p><h2>Codes &amp; rewards.</h2></div></div><DiscountCodes codes={discountCodes} busy={busy} onAction={action}/><ReferralLeaders leaders={leaders}/><EmailList bookings={bookings}/></div>
+    <details open style={{display:section==='directory'?undefined:'none'}} className="g-panel admin-disclosure admin-directory"><summary><span>Client directory & history<small>Browse every client, vehicle and photo by date</small></span><b aria-hidden="true">+</b></summary>{loading?<p className="g-muted">Loading clients…</p>:<ClientDashboard customers={sortedCustomers} busy={busy} vehiclesLoaded={vehiclesLoaded} onAddPhoto={dashboardPhoto}/>}</details>
     <footer className="g-footer"><span>A little love. Every detail.</span><a href="/">Back to VVM Details →</a></footer>
   </main>;
 }

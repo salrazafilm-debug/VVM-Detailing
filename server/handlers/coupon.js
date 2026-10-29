@@ -1,5 +1,7 @@
 const { loadCatalog, json, fail, httpError, isPublic } = require('../square');
 const { findCoupon, findDiscount, store: couponStore, sizeMatches } = require('../coupon-db');
+const { findReferrer, firstName } = require('../referrals');
+const { REFERRAL_DISCOUNT_CENTS } = require('../travel');
 
 // GET /api/coupon?code=KIMBEACH160 -> what the code books and what it costs
 exports.handler = async (event) => {
@@ -12,6 +14,9 @@ exports.handler = async (event) => {
         if (discount.usesLeft < 1) throw httpError(404, 'This code has been used up.');
         return json(200, { discount: true, code: discount.code, amountCents: discount.amountCents, usesLeft: discount.usesLeft });
       }
+      // A client's referral code: $20 off a Full Factory Reset for a new client. Counts for the referrer when the booking is completed.
+      const referrer = await findReferrer(require('../coupon-db').client(), code).catch(() => null);
+      if (referrer) return json(200, { referral: true, code: referrer.code, referrerName: firstName(referrer.name), amountCents: REFERRAL_DISCOUNT_CENTS, onlyFor: 'Full Factory Reset' });
       const offer = await couponStore().garageOffer(code);
       if (!offer) throw httpError(404, 'That offer is no longer available.');
       const catalog = await loadCatalog();

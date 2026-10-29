@@ -7,7 +7,7 @@ import GarageIcon from './garage-icons';
 import GarageIntro from './garage-intro';
 import './garage-showroom.css';
 
-const tabs = [['home','Home'],['garage','My Garage'],['health','Health'],['bookings','Bookings']];
+const tabs = [['home','Home'],['garage','My Garage'],['health','Health'],['bookings','Bookings'],['rewards','Rewards']];
 const date = value => value ? (value instanceof Date ? value : new Date(String(value).includes('T') ? value : `${value}T12:00:00Z`)).toLocaleDateString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',year:'numeric'}) : '—';
 const time = value => new Date(value).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
 const todayET = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -171,8 +171,22 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
   const [busy,setBusy]=useState(false),[err,setErr]=useState(''),[done,setDone]=useState(null);
   // Discount code (dollars off). A code can't be combined with a membership or gift price, so it only applies to options without one.
   const [code,setCode]=useState(''),[discount,setDiscount]=useState(null),[codeMsg,setCodeMsg]=useState('');
-  const discountCents=discount&&current&&!current.member?discount.amountCents:0;
-  const payCents=Math.max(0,(current?.cents||0)-discountCents);
+  // Where we go: a ZIP code sets the travel fee and the family area ($30 off). Drop-off has no travel fee.
+  const [mode,setMode]=useState('come'),[zip,setZip]=useState(()=>String(profile?.location||'').match(/\b\d{5}\b/)?.[0]||''),[zinfo,setZinfo]=useState(null),[zbusy,setZbusy]=useState(false);
+  const zclean=String(zip).replace(/\D/g,'').slice(0,5);
+  const whereOk=mode==='drop'||!!(zinfo?.ok&&zinfo.zip===zclean);
+  const feeCents=mode==='come'&&zinfo?.ok?zinfo.feeCents:0;
+  // One discount per booking, the biggest wins. A membership or gift price takes none.
+  const choices=current&&!current.member?[discount&&{label:`Code ${discount.code}`,cents:discount.amountCents},zinfo?.ok&&zinfo.family&&{label:'Family area',cents:3000}].filter(Boolean):[];
+  const bestOff=choices.length?choices.reduce((a,b)=>b.cents>a.cents?b:a):null;
+  const discountCents=Math.min(current?.cents||0,bestOff?.cents||0);
+  const payCents=Math.max(0,(current?.cents||0)-discountCents)+feeCents;
+  async function checkZip(){
+    setZbusy(true);
+    try{const r=await fetch(`/api/travel?zip=${encodeURIComponent(zclean)}`,{cache:'no-store'});setZinfo(await r.json())}
+    catch{setZinfo({ok:false,message:'We could not check that ZIP code. Please try again.'})}
+    finally{setZbusy(false)}
+  }
   async function applyCode(){
     setCodeMsg('');
     const c=code.trim();
@@ -196,13 +210,14 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
   async function confirm(){
     setErr('');
     if(!day||!time||!current)return setErr('Choose a day and time.');
+    if(!whereOk)return setErr('Check your ZIP code first, or choose drop-off.');
     if(name.trim().length<2)return setErr('Enter your name.');
     if(profile?.phone&&phone.replace(/\D/g,'').length!==10)return setErr('Enter a 10-digit phone number.');
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
     setBusy(true);
     try{
-      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',discount:discountCents?discount.code:'',gift:!!current.gift,gift_from:gift?.from||'',
-        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(payCents)}${discountCents?` (code ${discount.code})`:''}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
+      const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',discount:bestOff&&bestOff.label.startsWith('Code ')?discount.code:'',zip:zclean,dropOff:mode==='drop',servicesCents:current.cents||0,gift:!!current.gift,gift_from:gift?.from||'',
+        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(payCents)}${bestOff?` (${bestOff.label})`:''}${feeCents?` incl. ${money(feeCents)} travel`:''}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
       setDone({day,time});
@@ -221,7 +236,8 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     <p className="room-vehicle-name">{vehicleLabel(vehicle)}</p>
     {!opts.length&&<p className="room-muted">Nothing is open to book right now. Text us to book.</p>}
     {opts.length>1&&<div className="room-options" role="radiogroup" aria-label="What to book">{opts.map(o=><button type="button" key={o.id} role="radio" aria-checked={current?.id===o.id} className={`room-option${current?.id===o.id?' is-on':''}`} onClick={()=>{setChoice(o.id);setDay('');setTime('')}}><span className="room-option-title">{o.title}</span><span className="room-muted">{o.sub}</span><strong>{money(o.cents)}</strong></button>)}</div>}
-    {current&&<section className={`room-reset-card${current.member?'':` room-plain-card is-${current.id}`}`}><span className="room-label">{current.member?'MEMBERSHIP RESET · BIG DISCOUNT':current.id==='bundle'?'BUNDLE · SAVE':'BOOKING'}</span><h3>{current.title}</h3><p className="room-reset-size">{current.sub||sizeName(offer?.size)}</p><p className="room-reset-prices">{current.was?<s>{money(current.was)}</s>:null} <strong>{money(payCents)}</strong>{discountCents?<small> {discount.code} · −{money(discountCents)}</small>:null}</p></section>}
+    {current&&<section className={`room-reset-card${current.member?'':` room-plain-card is-${current.id}`}`}><span className="room-label">{current.member?'MEMBERSHIP RESET · BIG DISCOUNT':current.id==='bundle'?'BUNDLE · SAVE':'BOOKING'}</span><h3>{current.title}</h3><p className="room-reset-size">{current.sub||sizeName(offer?.size)}</p><p className="room-reset-prices">{current.was?<s>{money(current.was)}</s>:null} <strong>{money(payCents)}</strong>{discountCents?<small> {bestOff.label} · −{money(discountCents)}</small>:null}{feeCents?<small> + {money(feeCents)} travel</small>:null}</p></section>}
+    {current&&<div className="room-where"><span className="room-small">Where should we come?</span><div className="room-where-opts" role="group"><button type="button" className={mode==='come'?'on':''} aria-pressed={mode==='come'} onClick={()=>setMode('come')}>We come to you</button><button type="button" className={mode==='drop'?'on':''} aria-pressed={mode==='drop'} onClick={()=>setMode('drop')}>I'll drop off</button></div>{mode==='drop'&&<p className="room-small">Drop off at 3412 Hillside Pl, Chesapeake Beach, MD 20732. No travel fee.</p>}<form onSubmit={e=>{e.preventDefault();checkZip()}} className="room-code-row"><input inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={e=>{setZip(e.target.value);setZinfo(null)}} placeholder="Your ZIP code" aria-label="Your ZIP code"/><button type="submit" className="room-link" disabled={zbusy}>{zbusy?'Checking…':'Check'}</button></form>{zinfo&&(zinfo.ok?<p className="room-small" role="status">✓ {zinfo.city}, {zinfo.state}{mode==='come'?(zinfo.feeCents?` · travel fee ${money(zinfo.feeCents)}`:' · no travel fee'):''}{zinfo.family?' · family area: $30 off':''}</p>:mode==='come'?<p className="room-small" role="alert">{zinfo.message}</p>:null)}</div>}
     {current&&<form className="room-code" onSubmit={e=>{e.preventDefault();applyCode()}}><label className="room-small" htmlFor="gCode">Discount code</label><div className="room-code-row"><input id="gCode" value={code} onChange={e=>setCode(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" placeholder="Enter code"/><button type="button" className="room-link" onClick={applyCode}>Apply</button></div>{codeMsg&&<p className="room-small" role="status">{codeMsg}</p>}</form>}
     {current&&<><section className="room-section"><div className="room-section-heading"><h3>Pick a day</h3></div>
       <div className="room-month"><button type="button" className="room-link" disabled={month<=thisMonth} onClick={()=>setMonth(addMonth(month,-1))} aria-label="Previous month">‹ Prev</button><strong>{monthLabel(month)}</strong><button type="button" className="room-link" onClick={()=>setMonth(addMonth(month,1))} aria-label="Next month">Next ›</button></div>
@@ -260,6 +276,37 @@ async function downloadPhoto(photo) {
     document.body.appendChild(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   } catch { window.open(photo.url, '_blank', 'noopener'); }
+}
+
+// Rewards tab: the client's own referral code, share buttons and the 5-referral progress bar.
+function Rewards({ rewards }) {
+  const [msg,setMsg]=useState('');
+  if(!rewards)return <div className="room-empty"><GarageIcon name="gift"/><h3>Rewards are almost ready.</h3><p>Your referral code will show up here soon.</p></div>;
+  const {code,link,goal,progress,pending,earned}=rewards;
+  async function copy(text,label){
+    try{await navigator.clipboard.writeText(text);setMsg(label)}catch{setMsg('Press and hold the code to copy it.')}
+    setTimeout(()=>setMsg(''),2600);
+  }
+  async function share(){
+    if(navigator.share){try{await navigator.share({title:'VVM Details',text:`Use my code ${code} for $20 off your first Full Factory Reset at VVM Details.`,url:link});return}catch{/* closed the share sheet */}}
+    copy(link,'Link copied. Send it to a friend!');
+  }
+  return <section className="rewards" aria-label="Rewards">
+    <div className="rewards-card">
+      <span className="rewards-label">REFER A FRIEND</span>
+      <h3>Earn a FREE Full Factory Reset</h3>
+      <p>When 5 friends book with your code, your next Full Factory Reset is on us. They get <b>$20 off</b> their first one.</p>
+      <div className="rewards-code"><small>YOUR CODE</small><strong>{code}</strong></div>
+      <div className="rewards-actions"><button type="button" className="room-gold" onClick={share}>SHARE MY CODE</button><button type="button" className="room-link" onClick={()=>copy(code,'Code copied')}>Copy code</button></div>
+      {msg&&<p className="rewards-msg" role="status">{msg}</p>}
+    </div>
+    <div className="rewards-progress">
+      <div className="rewards-count"><strong>{progress}</strong><span>of {goal} referrals</span></div>
+      <div className="rewards-bar" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={progress} aria-label="Referral progress"><i style={{width:`${progress/goal*100}%`}}/></div>
+      <p className="room-small">{goal-progress} more to earn a free detail. A referral counts once your friend's detail is done.{pending?` ${pending} waiting to be completed.`:''}</p>
+      {earned>0&&<p className="rewards-earned">You've earned {earned} free detail{earned>1?'s':''}! Look for "Gift waiting for you!" on your Bookings tab.</p>}
+    </div>
+  </section>;
 }
 
 // Gift a detail: "Gift waiting for you!" opens a card with Book my day, or Claim and save for later (it stays here until booked).
@@ -301,7 +348,7 @@ function Bookings({ vehicle, preview, onBook }) {
 }
 
 export default function Garage() {
-  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[giftBooking,setGiftBooking]=useState(false),[sizeOverride,setSizeOverride]=useState(null),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
+  const [data,setData]=useState(null),[selected,setSelected]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[view,setView]=useState(()=>{try{const v=new URLSearchParams(location.search).get('view');return ['home','garage','health','bookings','rewards'].includes(v)?v:'home'}catch{return 'home'}}),[photo,setPhoto]=useState(null),[imageFailed,setImageFailed]=useState(false),[legacyCutout,setLegacyCutout]=useState(false),[isPhone,setIsPhone]=useState(false),[introDone,setIntroDone]=useState(false),[booking,setBooking]=useState(false),[giftBooking,setGiftBooking]=useState(false),[sizeOverride,setSizeOverride]=useState(null),[coverLoaded,setCoverLoaded]=useState(''),[coverWaitDone,setCoverWaitDone]=useState(false),[,refreshClock]=useState(0);
   const heading=useRef(null),dialog=useRef(null),previousFocus=useRef(null);
   useEffect(()=>{
     let active=true;
@@ -329,7 +376,7 @@ export default function Garage() {
   const hero=vehicle?.photos.find(p=>p.id===coverId) || vehicle?.photos.find(p=>p.id===vehicle.hero_photo_id) || vehicle?.photos.find(p=>p.photo_kind==='hero') || vehicle?.photos.find(p=>p.photo_kind==='after');
   const firstName=(data?.profile?.display_name||'').trim().split(/\s+/)[0];
   function navigate(next){setView(next);setPhoto(null);setBooking(false)}
-  const title={health:'HEALTH',garage:'MY GARAGE',bookings:'BOOKINGS'}[view],logo=data?.profile?.logo_url;
+  const title={health:'HEALTH',garage:'MY GARAGE',bookings:'BOOKINGS',rewards:'REWARDS'}[view],logo=data?.profile?.logo_url;
   // Keep the intro until the cover photo has loaded (or 12 seconds pass), so the Garage opens with its photo ready.
   const waitingCover=!!hero?.url&&!imageFailed&&coverLoaded!==hero.url&&!coverWaitDone;
   const showIntro=!introDone||loading||waitingCover;
@@ -347,6 +394,7 @@ export default function Garage() {
       {view!=='home'&&<section className="client-sheet" aria-labelledby="room-panel-title"><div className="room-sheet-head"><h1 id="room-panel-title" tabIndex="-1" ref={heading} className={view==='garage'&&logo?'has-logo':''}>{view==='garage'&&logo?<img className="room-garage-logo" src={logo} alt={`${firstName?`${firstName}’s `:''}Garage`}/>:title}</h1><button className="room-close" onClick={()=>navigate('home')} aria-label="Return to showroom"><GarageIcon name="close"/></button></div>
         {data.vehicles.length>1&&['garage','health','bookings'].includes(view)&&<label className="room-sheet-vehicle">Vehicle<select aria-label="Select vehicle" value={selected} onChange={e=>setSelected(e.target.value)}>{data.vehicles.map(v=><option key={v.id} value={v.id}>{vehicleLabel(v)}</option>)}</select></label>}
         {view==='health'&&<Health vehicle={vehicle}/>}
+        {view==='rewards'&&<Rewards rewards={data.rewards}/>}
         {view==='garage'&&<VehicleDetails vehicle={vehicle} onPhoto={setPhoto} profile={data.profile}/>}
         {view==='garage'&&<ReviewPrompt/>}
         {view==='bookings'&&(booking&&(giftBooking?vehicle?.gift?.variation_id:(vehicle?.offer?.variation_id||vehicle?.paint_offer))?<ResetBooking vehicle={vehicle} profile={data.profile} gift={giftBooking?vehicle.gift:null} onBack={()=>setBooking(false)}/>:<Bookings vehicle={vehicle} preview={data.preview} onBook={kind=>{setGiftBooking(kind==='gift');setBooking(true)}}/>)}

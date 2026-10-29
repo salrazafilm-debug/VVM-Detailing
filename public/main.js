@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { addonList: [], addons: [[], []], coupon: null, discount: null, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { addonList: [], addons: [[], []], coupon: null, discount: null, referral: null, optIn: false, where: { mode: 'come', zip: '', info: null, busy: false }, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -88,8 +88,26 @@ const carAddons = i => addonsOk(i) ? S.addonList.filter(a => (S.addons[i] || [])
 const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0) + carAddons(i).reduce((n, a) => n + a.priceCents, 0);
 const totalMin = () => booked().reduce((n, _, i) => n + carMin(i), 0);
 const totalCents = () => booked().reduce((n, _, i) => n + carCents(i), 0);
-// What the customer pays: the total minus a discount code (dollars off). Never below zero.
-const payCents = () => Math.max(0, totalCents() - (S.discount ? S.discount.amountCents : 0));
+// ---- Where we go, travel fee and the ONE discount per booking (the biggest wins) ----
+const FAMILY_OFF = 3000, REFERRAL_OFF = 2000;
+const DROP = { street: '3412 Hillside Pl', city: 'Chesapeake Beach', state: 'MD', zip: '20732' };
+const cleanZip = z => String(z || '').replace(/\D/g, '').slice(0, 5);
+const hasReset = () => booked().some((_, i) => carItems(i).some(x => x.item === 'Full Factory Reset'));
+// where we come from: "come" needs a checked ZIP code; "drop" (drop-off) needs nothing
+const whereOk = () => S.where.mode === 'drop' || !!(S.where.info && S.where.info.ok && S.where.info.zip === cleanZip(S.where.zip));
+const feeCents = () => (S.where.mode === 'come' && S.where.info && S.where.info.ok ? S.where.info.feeCents : 0);
+// a code, the family area and a referral never stack: only the biggest is used. A membership price takes none.
+function activeDiscount() {
+  if (S.coupon) return null;
+  const c = [];
+  if (S.discount) c.push({ kind: 'code', label: `Code ${S.discount.code}`, cents: S.discount.amountCents });
+  if (S.where.info && S.where.info.ok && S.where.info.family) c.push({ kind: 'family', label: 'Family area', cents: FAMILY_OFF });
+  if (S.referral && hasReset()) c.push({ kind: 'referral', label: 'Referral, new client', cents: REFERRAL_OFF });
+  return c.length ? c.reduce((x, y) => (y.cents > x.cents ? y : x)) : null;
+}
+const discountCents = () => Math.min(totalCents(), (activeDiscount() || { cents: 0 }).cents);
+// What the customer pays: services minus the discount, plus the travel fee (the fee is not discounted).
+const payCents = () => totalCents() - discountCents() + feeCents();
 const planStr = () => booked().map(c => c.map(x => x.v.id).join('.')).join(',');
 const names = i => carItems(i).map(x => x.item).join(' + ');
 const vname = i => (S.vehicles[i] || '').trim();
@@ -105,13 +123,43 @@ function conflict(items, g) {
   return '';
 }
 const problem = () => (S.count === 2 && booked().some((_, i) => carItems(i).some(x => x.kind === 'ceramic'))) ? CERAMIC_MSG : '';
-const ready = () => S.count < 3 && booked().every((_, i) => S.locked[i] && carItems(i).length) && !problem();
+const ready = () => S.count < 3 && booked().every((_, i) => S.locked[i] && carItems(i).length) && !problem() && whereOk();
 
 function stepper() {
   const labels = ['Service', 'Date & time', 'Details'], at = { welcome: 0, service: 0, date: 1, details: 2, confirm: 2, done: 3 }[S.step];
   return `<ol class="bsteps">${labels.map((n, i) => `<li class="${i === at ? 'on' : i < at ? 'past' : ''}"><span>${i + 1}</span>${n}</li>`).join('')}</ol>`;
 }
 const back = to => `<button type="button" class="link" data-act="back" data-to="${to}">← Back</button>`;
+
+async function checkZip() {
+  const zip = cleanZip(S.where.zip);
+  S.where.zip = zip; S.where.busy = true; render();
+  try { S.where.info = await api('/travel?zip=' + zip); }
+  catch { S.where.info = { ok: false, message: 'We could not check that ZIP code. Please try again.' }; }
+  S.where.busy = false; render();
+}
+function whereMsg() {
+  const w = S.where, i = w.info;
+  if (!i) return '';
+  if (!i.ok) return w.mode === 'drop' ? '' : `<p class="err" role="alert">${esc(i.message)}</p><div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20outside%20the%20online%20area">Email us</a></div>`;
+  const bits = [`${esc(i.city)}, ${esc(i.state)}`];
+  if (w.mode === 'come') bits.push(i.feeCents ? `travel fee ${money(i.feeCents)}` : 'no travel fee');
+  if (i.family) bits.push('family area: $30 off');
+  return `<p class="where-ok">✓ ${bits.join(' · ')}</p>`;
+}
+// "Where should we come?": a ZIP code sets the travel fee and the family area. Drop-off shows the address and has no fee.
+function whereBlock() {
+  const w = S.where, drop = w.mode === 'drop';
+  return `<div class="where"><p class="where-k">Where should we come?</p>
+    <div class="where-opts" role="group" aria-label="Mobile or drop-off">
+      <button type="button" class="where-opt ${drop ? '' : 'on'}" aria-pressed="${!drop}" data-act="where" data-v="come"><b>We come to you</b><span>Mobile service</span></button>
+      <button type="button" class="where-opt ${drop ? 'on' : ''}" aria-pressed="${drop}" data-act="where" data-v="drop"><b>I'll drop off</b><span>No travel fee</span></button>
+    </div>
+    ${drop ? `<p class="drop-addr">Drop off at <b>${esc(DROP.street)}, ${esc(DROP.city)}, ${DROP.state} ${DROP.zip}</b> · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${DROP.street}, ${DROP.city}, ${DROP.state} ${DROP.zip}`)}" target="_blank" rel="noopener">Open in Maps</a></p>` : ''}
+    <form id="zform" class="zrow" novalidate><label for="f-zip">${drop ? 'Your ZIP code (optional, for the family discount)' : 'Your ZIP code'}</label>
+      <div class="v-in"><input id="f-zip" name="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="e.g. 20732" value="${esc(w.zip)}"><button class="mini" type="submit" ${w.busy ? 'disabled' : ''}>${w.busy ? 'Checking…' : 'Check'}</button></div></form>
+    ${whereMsg()}</div>`;
+}
 
 // Every car make (sold in the US now, or sold here in the past). Used for the car picker and the typo fix.
 const MAKES = ['Acura','Alfa Romeo','Alpine','Aston Martin','Audi','Bentley','BMW','Bugatti','Buick','BYD','Cadillac','Chevrolet','Chrysler','Daewoo','Dodge','Eagle','Ferrari','Fiat','Fisker','Ford','Genesis','Geo','GMC','Honda','Hummer','Hyundai','Infiniti','Ineos','Isuzu','Jaguar','Jeep','Karma','Kia','Koenigsegg','Lamborghini','Lancia','Land Rover','Lexus','Lincoln','Lordstown','Lotus','Lucid','Lynk & Co','Maserati','Maybach','Mazda','McLaren','Mercedes-Benz','Mercury','Mini','Mitsubishi','MG','Morgan','Nikola','Nissan','NIO','Oldsmobile','Pagani','Plymouth','Polestar','Pontiac','Porsche','Ram','Rimac','Rivian','Rolls-Royce','Saab','Saturn','Scion','Scout','Smart','Subaru','Suzuki','Tesla','Toyota','Triumph','VinFast','Volkswagen','Volvo','Xpeng','Yugo','Zeekr'];
@@ -215,7 +263,7 @@ function couponForm() {
 
 function serviceStep() {
   if (S.coupon) return couponStep();
-  let html = couponForm() + vehicleRow() + multiBlock();
+  let html = couponForm() + vehicleRow() + multiBlock() + whereBlock();
   if (S.count === 3) {
     return html + `<div class="notice help"><b>3 or more vehicles?</b> We would love to help. Text or email us and we will set up your day.
       <div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20for%203%2B%20vehicles">Email us</a></div></div>`;
@@ -243,12 +291,14 @@ function serviceStep() {
   if (booked().some((_, i) => carItems(i).length)) {
     html += `<div class="cart"><p class="cart-k">Your booking</p>${booked().map((_, i) => `<div class="cart-car"><p class="cart-v">${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}${esc(vname(i))}</p>${carItems(i).map(x => `<div class="cart-line"><span>${esc(x.item)} · ${esc(x.v.label)}</span><span>${money(x.v.priceCents)}</span><button type="button" class="rm" data-act="drop" data-car="${i}" data-id="${esc(x.v.id)}" aria-label="Remove ${esc(x.item)}">×</button></div>`).join('') || '<p class="muted small">No service yet</p>'}</div>`).join('')}
       ${booked().map((_, i) => carAddons(i).map(a => `<div class="cart-line"><span>${S.count === 2 ? `Vehicle ${i + 1} · ` : ''}+ ${esc(a.name)}</span><span>${money(a.priceCents)}</span><button type="button" class="rm" data-act="addon" data-car="${i}" data-id="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">×</button></div>`).join('')).join('')}
-      <div class="cart-total"><span>Total${S.discount ? ` after code ${esc(S.discount.code)}` : ''} · about ${dur(totalMin())}</span><b>${money(payCents())}</b>${S.discount ? ` <button type="button" class="link" data-act="nodiscount">Remove code</button>` : ''}</div>
+      ${feeCents() ? `<div class="cart-line"><span>Travel fee · ${esc(S.where.info.city)}</span><span>${money(feeCents())}</span></div>` : ''}
+      ${activeDiscount() ? `<div class="cart-line disc"><span>${esc(activeDiscount().label)} · one discount per booking</span><span>−${money(discountCents())}</span></div>` : ''}
+      <div class="cart-total"><span>Total · about ${dur(totalMin())}</span><b>${money(payCents())}</b>${S.discount ? ` <button type="button" class="link" data-act="nodiscount">Remove code</button>` : ''}${S.referral ? ` <button type="button" class="link" data-act="noreferral">Remove referral</button>` : ''}</div>
       ${booked().some((_, i) => { const k = carItems(i).map(x => x.kind); return k.includes('interior') && k.includes('exterior'); }) ? '<p class="tip"><b>Tip:</b> the Full Factory Reset includes both and costs less.</p>' : ''}</div>`;
   }
   html += `<p class="muted small add-hint">Tap <b>+</b> on any size to add another service${S.count === 2 ? ' to this vehicle' : ''}. Tap it again to remove it.</p>
     <button type="button" class="go" data-act="go" ${ready() ? '' : 'disabled'}>Pick a date &amp; time</button>
-    ${!ready() && !why ? `<p class="muted small">${booked().some((_, i) => !S.locked[i]) ? 'Confirm your vehicle info' + (S.count === 2 ? ' for both vehicles' : '') + ' and' : 'Please'} choose at least one service${S.count === 2 ? ' for each vehicle' : ''}.</p>` : ''}`;
+    ${!ready() && !why ? `<p class="muted small">${booked().some((_, i) => !S.locked[i]) ? 'Confirm your vehicle info' + (S.count === 2 ? ' for both vehicles' : '') + ' and' : 'Please'} choose at least one service${S.count === 2 ? ' for each vehicle' : ''}${whereOk() ? '' : ', and check your ZIP code (or choose drop-off)'}.</p>` : ''}`;
   return html;
 }
 
@@ -271,7 +321,9 @@ function render() {
         <dt>Address</dt><dd>${esc(c.address || 'Not on file')}</dd>
         <dt>Service</dt><dd>Full Factory Reset, ${esc(c.label)} · ${money(c.priceCents)}</dd>
       </dl>
-      <button class="btn primary" type="button" data-act="coupon-day">Select your day</button>
+      ${whereBlock()}
+      <button class="btn primary" type="button" data-act="coupon-day" ${whereOk() ? '' : 'disabled'}>Select your day</button>
+      ${whereOk() ? '' : '<p class="muted small">Check your ZIP code (or choose drop-off) first.</p>'}
       <p class="muted small">Not ${esc(c.customer)}? <button type="button" class="link" data-act="nocoupon">Remove code</button></p>
     </div>`;
   } else if (S.step === 'confirm') {
@@ -316,6 +368,7 @@ function render() {
         <label>Phone<input id="f-phone" name="phone" type="tel" required autocomplete="tel"></label>
         <label>Email<input id="f-email" name="email" type="email" required autocomplete="email"></label>
         <label>Address &amp; concerns<span class="hint">Where should we arrive + any concerns or questions can let us know here - We will get back to you as soon as possible! Thank you!!!</span><textarea id="f-notes" name="notes" rows="4" placeholder="Street address, city, ZIP">${esc(S.coupon && S.coupon.address || '')}</textarea></label>
+        <label class="optin"><input type="checkbox" name="optin"> Email me offers and news (optional, one tap to stop)</label>
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
         <button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Booking…' : 'Book my day'}</button>
@@ -341,6 +394,7 @@ function render() {
       ${contactLine}</div>`;
   }
   bk.innerHTML = html;
+  if (S.focusZ) { S.focusZ = false; const z = $('#f-zip'); if (z) { z.focus({ preventScroll: true }); z.setSelectionRange(z.value.length, z.value.length); } }
   if (S.focusV) { S.focusV = false; const el = $('#f-vinfo'); if (el) { el.focus({ preventScroll: true }); el.setSelectionRange(el.value.length, el.value.length); } }
 }
 
@@ -384,6 +438,8 @@ bk.addEventListener('click', async e => {
   else if (a === 'addon') { const i = t.dataset.car !== undefined ? +t.dataset.car : S.active, id = t.dataset.id; const cur = S.addons[i] || []; S.addons[i] = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]; render(); }
   else if (a === 'drop') { const i = +t.dataset.car; S.cars[i] = carItems(i).filter(x => x.v.id !== t.dataset.id); S.notice = ''; render(); }
   else if (a === 'nodiscount') { S.discount = null; render(); }
+  else if (a === 'noreferral') { S.referral = null; render(); }
+  else if (a === 'where') { S.where.mode = t.dataset.v === 'drop' ? 'drop' : 'come'; render(); }
   else if (a === 'nocoupon') { S.coupon = null; S.cars = [[]]; S.locked = [false, false]; S.vError = ''; S.focusV = false; S.error = ''; render(); }
   else if (a === 'go') { if (!ready()) return; S.date = null; S.time = null; S.error = ''; S.step = 'date'; await loadMonth(); }
   else if (a === 'prev' || a === 'next') { S.m += a === 'next' ? 1 : -1; if (S.m > 11) { S.m = 0; S.y++; } if (S.m < 0) { S.m = 11; S.y--; } S.date = null; await loadMonth(); }
@@ -403,7 +459,7 @@ bk.addEventListener('change', e => {
 });
 
 // remember what is typed in the vehicle box, so switching vehicles or steps never loses it
-bk.addEventListener('input', e => { if (e.target.name === 'vinfo') { S.vehicles[S.active] = e.target.value; renderMakeSuggestions(); } });
+bk.addEventListener('input', e => { if (e.target.name === 'vinfo') { S.vehicles[S.active] = e.target.value; renderMakeSuggestions(); } if (e.target.name === 'zip') { S.where.zip = e.target.value; if (S.where.info && S.where.info.zip !== cleanZip(e.target.value)) { S.where.info = null; S.focusZ = true; render(); } } });
 // tap a suggested make: it goes into the box, ready for the model
 bk.addEventListener('click', e => {
   const b = e.target.closest('[data-make]');
@@ -420,7 +476,7 @@ async function confirmCoupon() {
   try {
     const c = S.coupon;
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.customer, phone: c.phone, email: c.email, notes: c.address, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: c.code }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.customer, phone: c.phone, email: c.email, notes: c.address, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: c.code, zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: S.optIn }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
   } catch (err) {
@@ -432,6 +488,7 @@ async function confirmCoupon() {
 
 bk.addEventListener('submit', async e => {
   e.preventDefault();
+  if (e.target.id === 'zform') { S.where.zip = cleanZip(new FormData(e.target).get('zip')); return checkZip(); }
   if (e.target.id === 'bkCoupon') return applyCoupon(String(new FormData(e.target).get('code') || '').trim(), $('#bkCouponMsg'));
   if (e.target.id === 'vform') {                                    // Confirm vehicle info: lock it in
     const v = fixMake(String(new FormData(e.target).get('vinfo') || '').replace(/\s+/g, ' ').trim());
@@ -449,7 +506,7 @@ bk.addEventListener('submit', async e => {
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', discount: S.discount && !S.coupon ? S.discount.code : '', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', discount: S.discount && !S.coupon ? S.discount.code : '', zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: f.optin === 'on', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;
@@ -650,6 +707,21 @@ function loadMedia(root = document) {
 
 /* ----- coupon codes (Book Now box and footer box) ----- */
 // Checks a code with the server. A valid code takes the customer straight to the calendar.
+// A friendly pop-up for a new client who came through a referral
+function thankYouPopup(r) {
+  document.querySelector('.vvm-pop')?.remove();
+  const el = document.createElement('div');
+  el.className = 'vvm-pop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Thank you');
+  el.innerHTML = `<div class="vvm-pop-card"><p class="vvm-pop-k">WELCOME TO THE FAMILY</p><h3>Thank you!</h3>
+    <p>${esc(r.name)} sent you our way. You get <b>$20 off</b> your Full Factory Reset. We can't wait to make your vehicle shine.</p>
+    <button type="button" class="vvm-pop-btn">Let's go</button></div>`;
+  const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el || e.target.closest('.vvm-pop-btn')) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(el);
+  el.querySelector('.vvm-pop-btn').focus();
+}
 async function applyCoupon(code, msg, chosenId) {
   if (!code) { msg.textContent = 'Type your code first.'; return; }
   msg.textContent = 'Checking…';
@@ -657,6 +729,16 @@ async function applyCoupon(code, msg, chosenId) {
   try { d = await api('/coupon?code=' + encodeURIComponent(code)); }
   catch (err) { msg.textContent = err.message || 'That code is not valid.'; return; }
   // Discount code (dollars off any booking): the normal cart stays, and the total goes down
+  // Referral code from a client: $20 off a Full Factory Reset for a new client
+  if (d.referral) {
+    if (S.coupon) { msg.textContent = 'This code cannot be used with this booking offer.'; return; }
+    S.referral = { code: d.code, name: d.referrerName || 'a friend', cents: d.amountCents };
+    render();
+    const again = $('#bkCouponMsg');
+    if (again) again.textContent = `Referral code ${d.code} saved. $20 off applies to a Full Factory Reset.`;
+    thankYouPopup(S.referral);
+    return;
+  }
   if (d.discount) {
     if (S.coupon) { msg.textContent = 'This code cannot be used with this booking offer.'; return; }
     S.discount = { code: d.code, amountCents: d.amountCents };

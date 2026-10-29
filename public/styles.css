@@ -1553,3 +1553,29 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 @media (prefers-reduced-motion:reduce){.hero-book,.garage-promo .gp-card:before,.garage-promo .gp-card:after,.garage-promo .gp-title,.garage-promo .gp-badge,.garage-promo .gp-btn{animation:none!important}}
 
 .make-sug{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+
+/* ===== Where we go: ZIP check, drop-off, travel fee, discount line, referral pop-up, email opt-in ===== */
+#book .where{margin:0 0 16px;padding:16px 18px;border-radius:20px;border:2px solid #2d78c4;background:#fff;display:grid;gap:10px;box-shadow:0 8px 24px rgba(45,120,196,.14)}
+#book .where-k{margin:0;font:800 .84rem var(--display);letter-spacing:.1em;text-transform:uppercase;color:#0b2a4a}
+#book .where-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#book .where-opt{display:grid;gap:2px;padding:12px 14px;border-radius:16px;border:2px solid #2d78c4;background:#fff;color:#0b2a4a;text-align:left;font:700 1rem var(--body);cursor:pointer;transition:.2s}
+#book .where-opt span{font-size:.8rem;font-weight:500;opacity:.75}
+#book .where-opt.on{background:linear-gradient(135deg,#0b2a4a,#2d78c4);color:#fff;border-color:#0b2a4a}
+#book .where-opt:hover:not(.on){background:#e3f2ff}
+#book .zrow{display:grid;gap:8px;margin:0}
+#book .zrow label{font:700 .88rem var(--body);color:#0b2a4a}
+#book .where-ok{margin:0;font:700 .95rem var(--body);color:#0b6b3a}
+#book .drop-addr{margin:0;padding:10px 12px;border-radius:12px;background:#f3faff;border:1px dashed #9fd0f3;font:500 .95rem/1.4 var(--body);color:#0b2a4a}
+#book .cart-line.disc span:last-child{color:#0b6b3a;font-weight:800}
+#book .optin{display:flex;gap:10px;align-items:flex-start;font:500 .9rem/1.4 var(--body);color:#0b2a4a;margin:4px 0}
+#book .optin input{margin-top:3px;flex:none}
+@media(max-width:420px){#book .where-opts{grid-template-columns:1fr}}
+.vvm-pop{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:20px;background:rgba(10,12,24,.62);animation:popIn .25s ease-out both}
+.vvm-pop-card{width:min(420px,100%);padding:28px 24px;border-radius:24px;text-align:center;color:#fff;background:linear-gradient(#0d0a14,#0d0a14) padding-box,linear-gradient(90deg,#ffd86b,#ff9ad5,#9ad8ff,#ffd86b,#ff9ad5,#9ad8ff,#ffd86b) border-box;border:2px solid transparent;background-size:auto,200% 100%;animation:popEdge 8s linear infinite;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.vvm-pop-k{margin:0;font:800 .72rem var(--body);letter-spacing:.22em;color:#ffd86b}
+.vvm-pop-card h3{margin:8px 0 10px;font:italic 900 2.2rem/1 var(--display);text-transform:uppercase}
+.vvm-pop-card p{margin:0 0 18px;font:500 1.02rem/1.5 var(--body)}
+.vvm-pop-btn{padding:14px 30px;border:0;border-radius:999px;font:900 .95rem var(--display);letter-spacing:.14em;text-transform:uppercase;color:#2a1a00;background:linear-gradient(135deg,#ffe27a,#f0b429);cursor:pointer;box-shadow:0 0 22px rgba(255,214,90,.6)}
+@keyframes popIn{from{opacity:0}to{opacity:1}}
+@keyframes popEdge{from{background-position:0 0,0% 0}to{background-position:0 0,200% 0}}
+@media(prefers-reduced-motion:reduce){.vvm-pop,.vvm-pop-card{animation:none!important}}

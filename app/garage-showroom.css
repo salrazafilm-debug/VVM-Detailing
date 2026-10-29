@@ -54,7 +54,7 @@
 @media(min-width:801px){.room-nav{width:min(860px,calc(100% - 48px));padding:7px}.room-nav button{min-height:58px;gap:10px;font-size:.95rem}.room-nav svg{width:24px;height:24px}}
 
 /* --- Garage v2: banner, membership, protection steps --- */
-.room-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+.room-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
 /* Top-left banner: big badge + name, dark glass with a gold edge */
 .room-banner{display:flex;align-items:center;gap:16px;padding:10px 26px 10px 10px;border-radius:24px;background:linear-gradient(120deg,rgba(14,10,22,.88),rgba(28,20,40,.78));border:1px solid rgba(240,214,60,.55);box-shadow:0 0 0 1px rgba(255,255,255,.06) inset,0 10px 34px rgba(0,0,0,.35),0 0 26px rgba(240,214,60,.18);backdrop-filter:blur(14px);text-decoration:none;color:#fff;position:relative;overflow:hidden}
 .room-banner:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#f0d63c,#ffe98a,#f0d63c,transparent)}
@@ -380,3 +380,36 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .gift-card h3{margin:8px 0 6px;font:italic 900 clamp(1.5rem,6vw,2rem)/1.05 var(--gdisplay);text-transform:uppercase;color:#fff}
 .gift-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:14px}
 @media(prefers-reduced-motion:reduce){.gift-banner,.gift-card{animation:none!important}}
+
+/* Rewards tab: referral code, share buttons and the progress bar (same dark holographic look as the gift card) */
+.rewards{display:grid;gap:16px}
+.rewards-card{position:relative;isolation:isolate;padding:22px 20px;border-radius:22px;color:#fff;border:2px solid transparent;background:linear-gradient(#0d0a14,#0d0a14) padding-box,linear-gradient(90deg,#ffd86b,#ff9ad5,#9ad8ff,#ffd86b,#ff9ad5,#9ad8ff,#ffd86b) border-box;background-size:auto,200% 100%;animation:giftEdge 8s linear infinite}
+.rewards-label{font:800 .72rem var(--gbody);letter-spacing:.2em;color:#ffd86b}
+.rewards-card h3{margin:8px 0 6px;font:italic 900 clamp(1.5rem,6vw,2rem)/1.05 var(--gdisplay);text-transform:uppercase}
+.rewards-card p{margin:0 0 14px;font:500 1rem/1.5 var(--gbody)}
+.rewards-code{display:grid;gap:2px;margin:6px 0 14px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.07);border:1px dashed rgba(255,216,107,.7);text-align:center}
+.rewards-code small{font:800 .68rem var(--gbody);letter-spacing:.22em;color:#ffd86b}
+.rewards-code strong{font:900 clamp(1.7rem,8vw,2.3rem)/1.1 var(--gdisplay);letter-spacing:.14em;background:linear-gradient(90deg,#fff 0%,#c9e6ff 12%,#e6c9ff 25%,#ffd6ec 37%,#fff1b8 46%,#fff 50%,#c9e6ff 62%,#e6c9ff 75%,#ffd6ec 87%,#fff1b8 96%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rewardsHolo 9s linear infinite}
+@keyframes rewardsHolo{from{background-position:0% 0}to{background-position:200% 0}}
+.rewards-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.rewards-msg{margin:12px 0 0!important;font:700 .92rem var(--gbody)!important;color:#9ad8ff}
+.rewards-progress{padding:18px 20px;border-radius:22px;background:#0d0a14;color:#fff;border:1px solid rgba(255,255,255,.14)}
+.rewards-count{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.rewards-count strong{font:italic 900 2.6rem/1 var(--gdisplay)}
+.rewards-count span{font:700 .95rem var(--gbody);letter-spacing:.06em;color:#c9e6ff}
+.rewards-bar{height:14px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.rewards-bar i{display:block;height:100%;border-radius:inherit;min-width:0;transition:width .6s ease;background:linear-gradient(90deg,#ffd86b,#ff9ad5,#9ad8ff,#ffd86b);box-shadow:0 0 14px rgba(255,216,107,.55)}
+.rewards-progress .room-small{margin:12px 0 0;color:rgba(255,255,255,.82)}
+.rewards-earned{margin:12px 0 0;padding:12px 14px;border-radius:14px;background:rgba(255,216,107,.16);border:1px solid rgba(255,216,107,.55);font:700 .95rem/1.4 var(--gbody);color:#ffe9a8}
+@media(prefers-reduced-motion:reduce){.rewards-card,.rewards-code strong{animation:none!important}.rewards-bar i{transition:none}}
+
+/* Garage booking: where we go */
+.room-where{display:grid;gap:10px;margin:0 0 16px;padding:14px 16px;border-radius:18px;background:#fff;border:1px solid rgba(0,0,0,.1)}
+.room-where-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.room-where-opts button{padding:12px;border-radius:14px;border:2px solid #1a1214;background:#fff;color:#1a1214;font:700 .95rem var(--gbody);cursor:pointer}
+.room-where-opts button.on{background:#1a1214;color:#fff}
+.room-code{display:grid;gap:8px;margin:0 0 16px}
+.room-code-row{display:flex;gap:10px;align-items:center}
+.room-code-row input{flex:1 1 auto;min-width:0;padding:13px 14px;border-radius:14px;border:2px solid #1a1214;background:#fff;color:#1a1214;font:700 1rem var(--gbody);letter-spacing:.04em}
+.room-code-row input::placeholder{font-weight:500;letter-spacing:0;color:#777}
+.rewards-actions .room-link{color:#ffd86b}

@@ -9,7 +9,7 @@ Module._load=function(req,...a){
   if(req.endsWith('/holds')) return {addHold:async()=>{calls.holds++}};
   return realLoad.call(this,req,...a)};
 const {handler}=require('../server/handlers/book.js');
-const body={name:'Test Person',phone:'2405550100',email:'t@e.com',date:'2026-11-05',time:'09:00',vehicles:['2022 Lexus IS 350'],summary:'2022 Lexus IS 350: Full Factory Reset (SUV) + Pet hair removal',notes:'gate code 12'};
+const body={name:'Test Person',phone:'2405550100',email:'t@e.com',date:'2026-11-05',time:'09:00',vehicles:['2022 Lexus IS 350'],summary:'2022 Lexus IS 350: Full Factory Reset (SUV) + Pet hair removal',notes:'gate code 12',zip:'20732',servicesCents:32000};
 const post=(b)=>handler({httpMethod:'POST',body:JSON.stringify(b)});
 (async()=>{
   let r=await post(body); assert.equal(r.statusCode,200,r.body);
@@ -20,6 +20,23 @@ const post=(b)=>handler({httpMethod:'POST',body:JSON.stringify(b)});
   assert.equal(sent.replyTo,'t@e.com');
   // membership or code is included when given
   r=await post({...body,coupon:'VVM123'}); assert.equal(r.statusCode,200); assert.match(sent.lines.join('\n'),/Code \/ membership: VVM123/);
+  // family area ZIP: no travel fee, and the $30 family discount is applied (one discount per booking)
+  r=await post(body); assert.equal(r.statusCode,200); let t=sent.lines.join('\n');
+  assert.match(t,/Travel fee: \$0/); assert.match(t,/Family area: yes/); assert.match(t,/Discount applied: Family area \(-\$30\)/); assert.match(t,/TOTAL \$290/);
+  // a ZIP that is a paid trip: the fee is in the email, no family discount
+  r=await post({...body,zip:'20001'}); assert.equal(r.statusCode,200); t=sent.lines.join('\n');
+  assert.match(t,/Travel: ZIP 20001/); assert.doesNotMatch(t,/Family area/); assert.match(t,/Travel fee: \$(25|30)/);
+  // too far, unknown ZIP or no ZIP: not booked online, nothing emailed
+  let mailBefore=calls.mail;
+  for(const z of ['22101','99999','','12']){ r=await post({...body,zip:z}); assert.equal(r.statusCode,400,'zip '+z); }
+  assert.equal(calls.mail,mailBefore);
+  // drop-off needs no ZIP and has no travel fee
+  r=await post({...body,zip:'',dropOff:true}); assert.equal(r.statusCode,200); t=sent.lines.join('\n');
+  assert.match(t,/DROP-OFF/); assert.doesNotMatch(t,/Travel: ZIP/);
+  // a membership or gift price takes no family discount
+  r=await post({...body,coupon:'VVM123'}); assert.equal(r.statusCode,200); assert.doesNotMatch(sent.lines.join('\n'),/Discount applied/);
+  // gifted detail is labelled
+  r=await post({...body,coupon:'VVMGIFT',gift:true,gift_from:'VVM Details'}); assert.equal(r.statusCode,200); assert.match(sent.subject,/GIFTED DETAIL/);
   // bad input is refused, nothing is emailed
   const before=calls.mail;
   for(const bad of [{...body,name:'A'},{...body,phone:'123'},{...body,email:'nope'},{...body,date:'tomorrow'}]){ r=await post(bad); assert.equal(r.statusCode,400,JSON.stringify(bad)); }
