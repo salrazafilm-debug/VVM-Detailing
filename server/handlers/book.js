@@ -28,6 +28,12 @@ async function emailRequest(b) {
   const dropOff = b.dropOff === true;
   const zipInfo = dropOff && !b.zip ? null : travel.lookupZip(b.zip);
   if (!dropOff && !zipInfo.ok) throw httpError(400, zipInfo.message);
+  if (!dropOff) {
+    // Mobile service needs the address. If it ends in a ZIP, that ZIP must be the one that set the fee.
+    if (location.length < 5) throw httpError(400, 'Please enter the address where we should arrive.');
+    const tail = location.match(/\b(\d{5})(?:-\d{4})?\s*$/);
+    if (tail && tail[1] !== zipInfo.zip) throw httpError(400, `The ZIP in your address (${tail[1]}) is not the ZIP that was checked (${zipInfo.zip}). Please check both.`);
+  }
   const feeCents = dropOff || !zipInfo?.ok ? 0 : zipInfo.feeCents;
   const family = !!(zipInfo && zipInfo.ok && zipInfo.family);
 

@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { addonList: [], addons: [[], []], coupon: null, discount: null, referral: null, optIn: false, where: { mode: 'come', zip: '', info: null, busy: false }, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { addonList: [], addons: [[], []], coupon: null, discount: null, referral: null, optIn: false, form: { first: '', last: '', phone: '', email: '', address: '', notes: '', optin: false }, where: { mode: 'come', zip: '', info: null, busy: false }, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -137,6 +137,18 @@ async function checkZip() {
   try { S.where.info = await api('/travel?zip=' + zip); }
   catch { S.where.info = { ok: false, message: 'We could not check that ZIP code. Please try again.' }; }
   S.where.busy = false; render();
+}
+// A form value: what the customer already typed, or the details on file for a coupon customer
+function fv(k) {
+  if (S.form[k]) return S.form[k];
+  const c = S.coupon;
+  if (!c) return '';
+  if (k === 'first') return String(c.customer || '').split(' ')[0];
+  if (k === 'last') return String(c.customer || '').split(' ').slice(1).join(' ');
+  if (k === 'phone') return c.phone || '';
+  if (k === 'email') return c.email || '';
+  if (k === 'address') return c.address || '';
+  return '';
 }
 function whereMsg() {
   const w = S.where, i = w.info;
@@ -263,7 +275,7 @@ function couponForm() {
 
 function serviceStep() {
   if (S.coupon) return couponStep();
-  let html = couponForm() + vehicleRow() + multiBlock() + whereBlock();
+  let html = couponForm() + vehicleRow() + multiBlock();
   if (S.count === 3) {
     return html + `<div class="notice help"><b>3 or more vehicles?</b> We would love to help. Text or email us and we will set up your day.
       <div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20for%203%2B%20vehicles">Email us</a></div></div>`;
@@ -296,6 +308,8 @@ function serviceStep() {
       <div class="cart-total"><span>Total · about ${dur(totalMin())}</span><b>${money(payCents())}</b>${S.discount ? ` <button type="button" class="link" data-act="nodiscount">Remove code</button>` : ''}${S.referral ? ` <button type="button" class="link" data-act="noreferral">Remove referral</button>` : ''}</div>
       ${booked().some((_, i) => { const k = carItems(i).map(x => x.kind); return k.includes('interior') && k.includes('exterior'); }) ? '<p class="tip"><b>Tip:</b> the Full Factory Reset includes both and costs less.</p>' : ''}</div>`;
   }
+  // Where we go comes last: once services are chosen, before picking a day
+  if (booked().some((_, i) => carItems(i).length)) html += whereBlock();
   html += `<p class="muted small add-hint">Tap <b>+</b> on any size to add another service${S.count === 2 ? ' to this vehicle' : ''}. Tap it again to remove it.</p>
     <button type="button" class="go" data-act="go" ${ready() ? '' : 'disabled'}>Pick a date &amp; time</button>
     ${!ready() && !why ? `<p class="muted small">${booked().some((_, i) => !S.locked[i]) ? 'Confirm your vehicle info' + (S.count === 2 ? ' for both vehicles' : '') + ' and' : 'Please'} choose at least one service${S.count === 2 ? ' for each vehicle' : ''}${whereOk() ? '' : ', and check your ZIP code (or choose drop-off)'}.</p>` : ''}`;
@@ -321,7 +335,9 @@ function render() {
         <dt>Address</dt><dd>${esc(c.address || 'Not on file')}</dd>
         <dt>Service</dt><dd>Full Factory Reset, ${esc(c.label)} · ${money(c.priceCents)}</dd>
       </dl>
+      ${(!c.address && S.where.mode !== 'drop') ? `<label id="welcomeAddr" class="welcome-addr">Address where we should arrive <em class="req">required</em><input name="address" autocomplete="street-address" placeholder="Street address, city, ZIP" value="${esc(S.form.address)}"></label>` : ''}
       ${whereBlock()}
+      ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
       <button class="btn primary" type="button" data-act="coupon-day" ${whereOk() ? '' : 'disabled'}>Select your day</button>
       ${whereOk() ? '' : '<p class="muted small">Check your ZIP code (or choose drop-off) first.</p>'}
       <p class="muted small">Not ${esc(c.customer)}? <button type="button" class="link" data-act="nocoupon">Remove code</button></p>
@@ -364,11 +380,15 @@ function render() {
         <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
       </div>
       <form id="bform" class="form" novalidate>
-        <label>Name<input id="f-name" name="name" required autocomplete="name" value="${esc(S.coupon && S.coupon.customer || '')}"></label>
-        <label>Phone<input id="f-phone" name="phone" type="tel" required autocomplete="tel"></label>
-        <label>Email<input id="f-email" name="email" type="email" required autocomplete="email"></label>
-        <label>Address &amp; concerns<span class="hint">Where should we arrive + any concerns or questions can let us know here - We will get back to you as soon as possible! Thank you!!!</span><textarea id="f-notes" name="notes" rows="4" placeholder="Street address, city, ZIP">${esc(S.coupon && S.coupon.address || '')}</textarea></label>
-        <label class="optin"><input type="checkbox" name="optin"> Email me offers and news (optional, one tap to stop)</label>
+        <div class="form-row2">
+          <label>First name<input id="f-first" name="first" required autocomplete="given-name" value="${esc(fv('first'))}"></label>
+          <label>Last name<input id="f-last" name="last" required autocomplete="family-name" value="${esc(fv('last'))}"></label>
+        </div>
+        <label>Phone<input id="f-phone" name="phone" type="tel" required autocomplete="tel" value="${esc(fv('phone'))}"></label>
+        <label>Email<input id="f-email" name="email" type="email" required autocomplete="email" value="${esc(fv('email'))}"></label>
+        ${S.where.mode === 'drop' ? '' : `<label>Address where we should arrive <em class="req">required</em><span class="hint">Street address, city and ZIP.</span><input id="f-address" name="address" required autocomplete="street-address" placeholder="Street address, city, ZIP" value="${esc(fv('address'))}"></label>`}
+        <label>Extra concerns <span class="hint">Anything we should know? Stains, pet hair, questions. Optional.</span><textarea id="f-notes" name="notes" rows="3" placeholder="Optional">${esc(fv('notes'))}</textarea></label>
+        <label class="optin"><input type="checkbox" name="optin" ${S.form.optin ? 'checked' : ''}> Email me offers and news (optional, one tap to stop)</label>
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
         <button class="btn primary" type="submit" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Booking…' : 'Book my day'}</button>
@@ -459,7 +479,9 @@ bk.addEventListener('change', e => {
 });
 
 // remember what is typed in the vehicle box, so switching vehicles or steps never loses it
-bk.addEventListener('input', e => { if (e.target.name === 'vinfo') { S.vehicles[S.active] = e.target.value; renderMakeSuggestions(); } if (e.target.name === 'zip') { S.where.zip = e.target.value; if (S.where.info && S.where.info.zip !== cleanZip(e.target.value)) { S.where.info = null; S.focusZ = true; render(); } } });
+bk.addEventListener('input', e => { if (e.target.name === 'vinfo') { S.vehicles[S.active] = e.target.value; renderMakeSuggestions(); } if (e.target.closest && e.target.closest('#bform') && e.target.name) S.form[e.target.name] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  if (e.target.name === 'address' && e.target.closest('#welcomeAddr')) S.form.address = e.target.value;
+  if (e.target.name === 'zip') { S.where.zip = e.target.value; if (S.where.info && S.where.info.zip !== cleanZip(e.target.value)) { S.where.info = null; S.focusZ = true; render(); } } });
 // tap a suggested make: it goes into the box, ready for the model
 bk.addEventListener('click', e => {
   const b = e.target.closest('[data-make]');
@@ -472,11 +494,14 @@ bk.addEventListener('click', e => {
 
 // Coupon customers: book with the details on file. Nothing is typed in for them.
 async function confirmCoupon() {
+  // The address where we should arrive: on file, or typed on the welcome step. Drop-off needs none.
+  const addr = String((S.coupon && S.coupon.address) || S.form.address || '').replace(/\s+/g, ' ').trim();
+  if (S.where.mode !== 'drop' && addr.length < 5) { S.error = 'Please enter the address where we should arrive.'; S.step = 'welcome'; render(); return; }
   S.busy = true; S.error = ''; render();
   try {
     const c = S.coupon;
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.customer, phone: c.phone, email: c.email, notes: c.address, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: c.code, zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: S.optIn }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: c.customer, phone: c.phone, email: c.email, notes: '', location: S.where.mode === 'drop' ? '' : addr, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, date: S.date, time: S.time, coupon: c.code, zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: S.optIn }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
   } catch (err) {
@@ -497,16 +522,21 @@ bk.addEventListener('submit', async e => {
     S.locked[S.active] = true; S.vError = ''; render(); return;
   }
   const f = Object.fromEntries(new FormData(e.target));
+  S.form = { first: f.first || '', last: f.last || '', phone: f.phone || '', email: f.email || '', address: f.address || '', notes: f.notes || '', optin: f.optin === 'on' };
   const digits = (f.phone || '').replace(/\D/g, '');
-  if ((f.name || '').trim().length < 2) S.error = 'Please enter your name.';
+  const address = String(f.address || '').replace(/\s+/g, ' ').trim();
+  const tailZip = address.match(/\b(\d{5})(?:-\d{4})?$/);
+  if ((f.first || '').trim().length < 1 || (f.last || '').trim().length < 1) S.error = 'Please enter your first and last name.';
   else if (digits.length < 10) S.error = 'Please enter a 10-digit phone number.';
   else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email || '')) S.error = 'Please enter a valid email.';
+  else if (S.where.mode !== 'drop' && address.length < 5) S.error = 'Please enter the address where we should arrive.';
+  else if (S.where.mode !== 'drop' && tailZip && cleanZip(S.where.zip) && tailZip[1] !== cleanZip(S.where.zip)) S.error = `The ZIP in your address (${tailZip[1]}) is not the ZIP you checked (${cleanZip(S.where.zip)}). Please fix one of them.`;
   else S.error = '';
   if (S.error) { render(); return; }
   S.busy = true; render();
   try {
     const plan = booked().map((_, i) => carItems(i).map(x => x.v.id));
-    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, phone: f.phone, email: f.email, notes: f.notes, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', discount: S.discount && !S.coupon ? S.discount.code : '', zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: f.optin === 'on', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
+    S.result = await api('/book', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${f.first.trim()} ${f.last.trim()}`, phone: f.phone, email: f.email, notes: f.notes, location: S.where.mode === 'drop' ? '' : address, website: f.website, summary: lines().join(' | '), vehicles: booked().map((_, i) => vname(i)), plan, addons: booked().map((_, i) => carAddons(i).map(a => a.id)), date: S.date, time: S.time, coupon: S.coupon ? S.coupon.code : '', discount: S.discount && !S.coupon ? S.discount.code : '', zip: cleanZip(S.where.zip), dropOff: S.where.mode === 'drop', referral: S.referral ? S.referral.code : '', hasReset: hasReset(), servicesCents: totalCents(), optIn: f.optin === 'on', offerVariationId: S.coupon?.garage_offer ? S.coupon.id : undefined }) });
     S.step = 'done'; S.busy = false; render();
     bk.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
     return;

@@ -211,13 +211,14 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     setErr('');
     if(!day||!time||!current)return setErr('Choose a day and time.');
     if(!whereOk)return setErr('Check your ZIP code first, or choose drop-off.');
-    if(name.trim().length<2)return setErr('Enter your name.');
+    if(name.trim().split(/\s+/).filter(Boolean).length<2)return setErr('Enter your first and last name.');
+    if(mode!=='drop'&&loc.trim().length<5)return setErr('Enter the address where we should arrive.');
     if(profile?.phone&&phone.replace(/\D/g,'').length!==10)return setErr('Enter a 10-digit phone number.');
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return setErr('Enter a valid email.');
     setBusy(true);
     try{
       const r=await fetch('/api/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,email,notes,website:'',vehicles:[vehicleLabel(vehicle)],plan:current.plan.split(',').map(x=>x.split('.')),date:day,time,coupon:current.member?offer.coupon_code:'',discount:bestOff&&bestOff.label.startsWith('Code ')?discount.code:'',zip:zclean,dropOff:mode==='drop',servicesCents:current.cents||0,gift:!!current.gift,gift_from:gift?.from||'',
-        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(payCents)}${bestOff?` (${bestOff.label})`:''}${feeCents?` incl. ${money(feeCents)} travel`:''}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:loc})});
+        summary:`${vehicleLabel(vehicle)}: ${current.title}${current.sub?` (${current.sub})`:''}. ${current.id==='reset'?`MEMBERSHIP RESET${current.custom?' (custom price)':''}. `:''}${current.gift?'GIFT: free Full Factory Reset (interior and exterior). ':''}TOTAL ${money(payCents)}${bestOff?` (${bestOff.label})`:''}${feeCents?` incl. ${money(feeCents)} travel`:''}${current.was&&!current.custom?` (membership discount; normal ${money(current.was)})`:''}.`,location:mode==='drop'?'':loc})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'We could not send your request. Please call or text us to book.');
       setDone({day,time});

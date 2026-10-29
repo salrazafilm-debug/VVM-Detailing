@@ -1579,3 +1579,10 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 @keyframes popIn{from{opacity:0}to{opacity:1}}
 @keyframes popEdge{from{background-position:0 0,0% 0}to{background-position:0 0,200% 0}}
 @media(prefers-reduced-motion:reduce){.vvm-pop,.vvm-pop-card{animation:none!important}}
+#book .form-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:480px){#book .form-row2{grid-template-columns:1fr}}
+#book .req{font:800 .68rem var(--body);letter-spacing:.1em;text-transform:uppercase;font-style:normal;color:#e4572e;margin-left:6px}
+#book .welcome-addr{display:grid;gap:6px;margin:14px 0;font:700 .9rem var(--body);color:#0b2a4a}
+#book .welcome-addr input{padding:14px 16px;border:2px solid #9fd0f3;border-radius:14px;font:600 1rem var(--body)}
+#book .form label.optin{display:flex;flex-direction:row;align-items:flex-start;gap:10px;text-transform:none;letter-spacing:0;font:500 .92rem/1.4 var(--body);color:#0b2a4a}
+#book .form label.optin input{width:22px;height:22px;flex:none;margin:1px 0 0;padding:0}
