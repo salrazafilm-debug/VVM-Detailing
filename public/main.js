@@ -141,7 +141,9 @@ function familyPopup() {
   el.innerHTML = `<div class="fam-confetti" aria-hidden="true">${confetti}</div>
     <div class="vvm-pop-card"><span class="fam-pin" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22.2s7.2-6.3 7.2-12.4a7.2 7.2 0 1 0-14.4 0c0 6.1 7.2 12.4 7.2 12.4Z" fill="#ffe27a"/><circle cx="12" cy="9.8" r="2.7" fill="#1a1214"/></svg></span>
     <p class="vvm-pop-k">FAMILY AREA</p><h3>Congrats!</h3>
-    <p>You are located in our <b>Family area</b>! You get <b>FREE travel</b> + <b>$25 off</b> your total price!</p>
+    <p class="fam-sub">YOU'RE IN OUR FAMILY AREA!</p>
+    <ul class="fam-list"><li class="fl-red">FREE TRAVEL</li><li class="fl-plus" aria-hidden="true">+</li><li class="fl-blue">$25 OFF</li></ul>
+    <p class="fam-note">YOUR TOTAL PRICE</p>
     <button type="button" class="vvm-pop-btn">Claim</button></div>`;
   const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };

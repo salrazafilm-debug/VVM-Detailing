@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+// Local SEO pages (built by scripts/build-seo-pages.py). Each is public/<slug>.html, served at /<slug>.
+const seoSlugs = JSON.parse(readFileSync(new URL('./scripts/seo-slugs.json', import.meta.url), 'utf8'));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -10,11 +14,13 @@ const nextConfig = {
       { source: '/appointments', destination: '/#book', permanent: true },
       { source: '/services-store', destination: '/#services', permanent: true },
       { source: '/services-store/:path*', destination: '/#services', permanent: true },
+      // one address per page: the .html version sends visitors (and Google) to the clean address
+      ...seoSlugs.map(slug => ({ source: `/${slug}.html`, destination: `/${slug}`, permanent: true })),
     ];
   },
   // The whole site is public/index.html, served at the home page
   async rewrites() {
-    return { beforeFiles: [{ source: '/', destination: '/index.html' }] };
+    return { beforeFiles: [{ source: '/', destination: '/index.html' }, ...seoSlugs.map(slug => ({ source: `/${slug}`, destination: `/${slug}.html` }))] };
   },
   async headers() {
     const security = [

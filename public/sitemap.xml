@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://vvmdetails.com/</loc></url>
-  <url><loc>https://vvmdetails.com/privacy.html</loc></url>
-  <url><loc>https://vvmdetails.com/terms.html</loc></url>
+  <url><loc>https://vvmdetails.com/</loc><lastmod>2026-10-30</lastmod><priority>1.0</priority></url>
+  <url><loc>https://vvmdetails.com/privacy.html</loc><lastmod>2026-10-30</lastmod><priority>0.3</priority></url>
+  <url><loc>https://vvmdetails.com/terms.html</loc><lastmod>2026-10-30</lastmod><priority>0.3</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.9</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-chesapeake-beach-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-north-beach-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-prince-frederick-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-huntingtown-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-dunkirk-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-detailing-owings-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/full-factory-reset-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/interior-car-detailing-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/mobile-car-wash-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/ceramic-coating-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/headlight-restoration-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
+  <url><loc>https://vvmdetails.com/boat-detailing-calvert-county-md</loc><lastmod>2026-10-30</lastmod><priority>0.8</priority></url>
 </urlset>
