@@ -89,7 +89,7 @@ const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0) + carA
 const totalMin = () => booked().reduce((n, _, i) => n + carMin(i), 0);
 const totalCents = () => booked().reduce((n, _, i) => n + carCents(i), 0);
 // ---- Where we go, travel fee and the ONE discount per booking (the biggest wins) ----
-const FAMILY_OFF = 3000, REFERRAL_OFF = 2000;
+const FAMILY_OFF = 2500, REFERRAL_OFF = 2000;
 const DROP = { street: '3412 Hillside Pl', city: 'Chesapeake Beach', state: 'MD', zip: '20732' };
 const cleanZip = z => String(z || '').replace(/\D/g, '').slice(0, 5);
 const hasReset = () => booked().some((_, i) => carItems(i).some(x => x.item === 'Full Factory Reset'));
@@ -163,7 +163,7 @@ function whereMsg() {
   if (!i.ok) return w.mode === 'drop' ? '' : `<p class="err" role="alert">${esc(i.message)}</p><div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20outside%20the%20online%20area">Email us</a></div>`;
   const bits = [`${esc(i.city)}, ${esc(i.state)}`];
   if (w.mode === 'come') bits.push(i.feeCents ? `travel fee ${money(i.feeCents)}` : 'no travel fee');
-  if (i.family) bits.push('family area: $30 off');
+  if (i.family) bits.push('family area: $25 off');
   return `<p class="where-ok">✓ ${bits.join(' · ')}</p>`;
 }
 // "Where should we come?": a ZIP code sets the travel fee and the family area. Drop-off shows the address and has no fee.

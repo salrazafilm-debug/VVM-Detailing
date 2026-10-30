@@ -20,9 +20,9 @@ const post=(b)=>handler({httpMethod:'POST',body:JSON.stringify(b)});
   assert.equal(sent.replyTo,'t@e.com');
   // membership or code is included when given
   r=await post({...body,coupon:'VVM123'}); assert.equal(r.statusCode,200); assert.match(sent.lines.join('\n'),/Code \/ membership: VVM123/);
-  // family area ZIP: no travel fee, and the $30 family discount is applied (one discount per booking)
+  // family area ZIP: no travel fee, and the $25 family discount is applied (one discount per booking)
   r=await post(body); assert.equal(r.statusCode,200); let t=sent.lines.join('\n');
-  assert.match(t,/Travel fee: \$0/); assert.match(t,/Family area: yes/); assert.match(t,/Discount applied: Family area \(-\$30\)/); assert.match(t,/TOTAL \$290/);
+  assert.match(t,/Travel fee: \$0/); assert.match(t,/Family area: yes/); assert.match(t,/Discount applied: Family area \(-\$25\)/); assert.match(t,/TOTAL \$295/);
   // a ZIP that is a paid trip: the fee is in the email, no family discount
   r=await post({...body,zip:'20001',location:'1 K St NW, Washington, DC 20001'}); assert.equal(r.statusCode,200); t=sent.lines.join('\n');
   assert.match(t,/Travel: ZIP 20001/); assert.doesNotMatch(t,/Family area/); assert.match(t,/Travel fee: \$(25|30)/);

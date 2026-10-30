@@ -6,10 +6,11 @@ const ZIPS = require('./travel-zips.json');
 
 const HOME = { street: '3412 Hillside Pl', city: 'Chesapeake Beach', state: 'MD', zip: '20732' };
 const MAX_MINUTES = 70;                 // farther than this is not booked online (text or email us)
-const FAMILY_DISCOUNT_CENTS = 3000;     // $30 off for the family area
+const FAMILY_DISCOUNT_CENTS = 2500;     // $25 off for the family area
 const REFERRAL_DISCOUNT_CENTS = 2000;   // $20 off a Full Factory Reset for a new client with a referral code
-// Family area ZIP codes (about 15 to 20 minutes from home). They never pay a travel fee.
-const FAMILY_ZIPS = ['20732', '20714', '20639', '20657', '20736', '20754', '20678', '20685'];
+// Family area ZIP codes: the six towns on the Calvert County map (Chesapeake Beach, North Beach, Huntingtown, Owings,
+// Dunkirk, Prince Frederick). They never pay a travel fee.
+const FAMILY_ZIPS = ['20732', '20714', '20639', '20736', '20754', '20678'];
 // ZIP codes whose drive time the estimate gets wrong. Example: '20601': 55
 const OVERRIDE_MINUTES = {};
 
