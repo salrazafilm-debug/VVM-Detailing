@@ -582,6 +582,17 @@ bk.addEventListener('submit', async e => {
   render();
 })();
 
+// Phones: "Show info" opens and closes a card's description
+document.querySelectorAll('.info-toggle').forEach(btn => btn.addEventListener('click', () => {
+  // both cards in the same row open together, so the row stays even
+  const card = btn.closest('.card'), open = !card.classList.contains('info-open');
+  document.querySelectorAll(`.card[data-row="${card.dataset.row}"]`).forEach(c => {
+    c.classList.toggle('info-open', open);
+    const b = c.querySelector('.info-toggle');
+    if (b) { b.setAttribute('aria-expanded', open); b.textContent = open ? 'Hide info' : 'Show info'; }
+  });
+}));
+
 document.querySelectorAll('.sizes').forEach(ul => ul.addEventListener('click', e => {
   const b = e.target.closest('.size'); if (!b) return;
   const on = b.classList.toggle('flipped');

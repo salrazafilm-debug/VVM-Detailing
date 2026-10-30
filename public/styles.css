@@ -1627,3 +1627,37 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .local-area{display:grid;justify-items:center;gap:22px;padding-top:10px}
 .local-area picture{display:block;width:min(1100px,100%)}
 .local-area img{display:block;width:100%;height:auto;border-radius:24px;box-shadow:0 18px 50px rgba(26,18,20,.32)}
+
+/* ===== Phones: Interior + Exterior side by side, then ADD-ONS (Headlight + Engine Bay side by side). Saves a lot of scrolling. ===== */
+.info-toggle,.addons-title{display:none}
+@media(max-width:600px){
+  .cards{grid-template-columns:1fr 1fr;gap:14px 10px;align-items:stretch}
+  .cards>.card{grid-column:1/-1}
+  .cards>.card.std:not(.wide){grid-column:auto;display:flex;flex-direction:column;border-width:2px;border-radius:22px}
+  .cards>.card.std:not(.wide) .photo{aspect-ratio:4/3;flex:none}
+  .cards>.card.std:not(.wide) .photo.ba{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+  .cards>.card.std:not(.wide) .photo.ba figcaption{font-size:.52rem;letter-spacing:.06em;padding:3px 6px;left:4px;bottom:4px}
+  .cards>.card.std:not(.wide) .info{display:flex;flex-direction:column;flex:1;padding:11px 9px 12px;text-align:center}
+  .cards>.card.std:not(.wide) h3{font-size:1.02rem;line-height:1.12;margin:0 0 9px}
+  .cards>.card.std:not(.wide) .sizes{display:flex;flex-wrap:nowrap;justify-content:center;gap:5px;margin:0 0 6px}
+  .cards>.card.std:not(.wide) .sizes li{flex:1 1 0;min-width:0}
+  .cards>.card.std:not(.wide) .size{width:100%;height:36px}
+  .cards>.card.std:not(.wide) .size .face{font-size:.74rem;border-radius:12px;letter-spacing:0;white-space:nowrap}
+  .cards>.card.std:not(.wide) .size .back{font-size:.95rem}
+  .cards>.card.std:not(.wide) .size-hint{font-size:.68rem;line-height:1.3;margin:0 0 9px}
+  /* the "Show info" button */
+  .cards>.card.std:not(.wide) .info-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:34px;margin:0 0 9px;padding:0 8px;border:2px solid var(--ink);border-radius:12px;background:transparent;color:var(--ink);font:800 .66rem var(--display);letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
+  .cards>.card.std:not(.wide) .info-toggle:after{content:"";width:5px;height:5px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-2px) rotate(45deg);transition:transform .25s}
+  .cards>.card.std.info-open .info-toggle{background:var(--ink);color:#fff}
+  .cards>.card.std.info-open .info-toggle:after{transform:translateY(1px) rotate(-135deg)}
+  .cards>.card.std:not(.wide) .desc{display:none}
+  .cards>.card.std.info-open:not(.wide) .desc{display:block;margin:0 0 10px;font-size:.8rem;line-height:1.45;text-align:left}
+  /* the Book my day button */
+  .cards>.card.std:not(.wide) .cta-row{margin-top:auto;display:grid;grid-template-columns:1fr;justify-content:stretch}
+  .cards>.card.std:not(.wide) a.cta:not(.alt){display:block;width:100%;margin-top:auto;box-sizing:border-box;padding:12px 4px;border-radius:14px;font:900 .7rem var(--display);letter-spacing:.07em;text-align:center;background:linear-gradient(135deg,#2c1b20,#1a1214)}
+  .cards>.card.std:not(.wide) .cta.alt{display:none}
+  .addons-title{display:block;grid-column:1/-1;margin:10px 0 -2px;text-align:center;font:italic 900 1.5rem var(--display);letter-spacing:-.02em;text-transform:uppercase;color:var(--ink)}
+  .addons-title small{display:block;margin-top:2px;font:700 .8rem var(--body);letter-spacing:.04em;text-transform:none;font-style:normal;opacity:.75}
+}
+@media(max-width:360px){.cards>.card.std:not(.wide) .size .face{font-size:.68rem}.cards>.card.std:not(.wide) h3{font-size:.95rem}}
+@media(prefers-reduced-motion:reduce){.info-toggle:after{transition:none}}
