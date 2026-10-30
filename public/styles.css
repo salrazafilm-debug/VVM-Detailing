@@ -1713,3 +1713,25 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .foot-areas a{color:rgba(255,255,255,.85);text-decoration:underline;text-underline-offset:3px}
 .foot-areas a:hover{color:#f7c948}
 @media(max-width:520px){.seo-badges{gap:8px}.seo-badges li{padding:11px 6px;font-size:.78rem}.seo-badges li b{font-size:.98rem}.seo-alt{padding:17px 22px}}
+
+/* Coupon box: at the end of checkout (details step) */
+#book .bk-coupon-end{margin:4px 0 10px;padding:14px 16px;border-radius:16px;background:#f3faff;border:1.5px dashed #9fd0f3}
+#book .bk-coupon-end label{font:800 .84rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:#0b2a4a}
+
+/* Local area banner: full width of the page, edge to edge */
+.section.local-area{max-width:none;padding:0 0 clamp(26px,4vw,44px);display:block;text-align:center}
+.local-area picture{display:block;width:100%;max-width:none}
+.local-area img{width:100%;border-radius:0;box-shadow:none}
+.local-area .hero-book{margin-top:24px}
+
+/* Phones: "Show info" arrow on the Boat and Ceramic cards (the description opens under it) */
+@media(max-width:600px){
+  #boats .info-toggle,#pe-front .info-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:min(100%,320px);min-height:38px;margin:0 auto 12px;padding:0 14px;border:2px solid var(--ink);border-radius:12px;background:transparent;color:var(--ink);font:800 .72rem var(--display);letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
+  #pe-front .info-toggle{border-color:#0b2a4a;color:#0b2a4a}
+  #boats .info-toggle:after,#pe-front .info-toggle:after{content:"";width:6px;height:6px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-2px) rotate(45deg);transition:transform .25s}
+  #boats.info-open .info-toggle,#pe-front.info-open .info-toggle{background:var(--ink);color:#fff}
+  #pe-front.info-open .info-toggle{background:#0b2a4a}
+  #boats.info-open .info-toggle:after,#pe-front.info-open .info-toggle:after{transform:translateY(1px) rotate(-135deg)}
+  #boats:not(.info-open) .desc,#pe-front:not(.info-open) .desc{display:none}
+  #pe-front:not(.info-open) .cta.ghost{display:none}
+}

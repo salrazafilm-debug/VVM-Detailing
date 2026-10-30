@@ -70,7 +70,7 @@ const api = (...a) => (window.VVM_API || realApi)(...a);
 const now0 = new Date();
 // count: 1 vehicle, 2 vehicles (same day, back to back), 3 = "3 or more" (we send them to text / email us)
 // cars[i] = services picked for vehicle i: { item, kind, v }
-const S = { addonList: [], addons: [[], []], coupon: null, discount: null, referral: null, optIn: false, form: { first: '', last: '', phone: '', email: '', address: '', notes: '', optin: false }, where: { mode: 'come', zip: '', info: null, busy: false }, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
+const S = { linkCoupon: /[?&]coupon=/.test(location.search), addonList: [], addons: [[], []], coupon: null, discount: null, referral: null, optIn: false, form: { first: '', last: '', phone: '', email: '', address: '', notes: '', optin: false }, where: { mode: 'come', zip: '', info: null, busy: false }, step: 'service', services: null, open: null, count: 1, active: 0, cars: [[]], multi: false, vehicles: ['', ''], locked: [false, false], vError: '', focusV: false, notice: '', y: now0.getFullYear(), m: now0.getMonth(), days: {}, loading: false, date: null, time: null, error: '', busy: false, result: null };
 const bk = $('#bk');
 if (window.VVM_DEMO) $('#demoBadge').hidden = false;
 
@@ -307,7 +307,7 @@ function couponForm() {
 
 function serviceStep() {
   if (S.coupon) return couponStep();
-  let html = couponForm() + vehicleRow() + multiBlock();
+  let html = (S.linkCoupon ? couponForm() : '') + vehicleRow() + multiBlock();
   if (S.count === 3) {
     return html + `<div class="notice help"><b>3 or more vehicles?</b> We would love to help. Text or email us and we will set up your day.
       <div class="notice-btns"><a class="mini" href="sms:+12406019451">Text (240) 601-9451</a><a class="mini alt" href="mailto:${esc(CONTACT_EMAIL)}?subject=Booking%20for%203%2B%20vehicles">Email us</a></div></div>`;
@@ -427,6 +427,7 @@ function renderBooking() {
         <p class="sum-v">${lines().map(esc).join('<br>')}<br>${money(payCents())} · about ${dur(totalMin())}</p>
         <p class="sum-d">${esc(longDate(S.date)).replace(/ (\d+)$/, '&nbsp;$1')} <span class="sum-at">at ${fmtTime(S.time)}</span></p>
       </div>
+      <form id="bkCoupon" novalidate></form>
       <form id="bform" class="form" novalidate>
         <div class="form-row2">
           <label>First name<input id="f-first" name="first" required autocomplete="given-name" value="${esc(fv('first'))}"></label>
@@ -436,6 +437,9 @@ function renderBooking() {
         <label>Email<input id="f-email" name="email" type="email" required autocomplete="email" value="${esc(fv('email'))}"></label>
         ${S.where.mode === 'drop' ? '' : `<label>Address where we should arrive <em class="req">required</em><span class="hint">Street address, city and ZIP.</span><input id="f-address" name="address" required autocomplete="street-address" placeholder="Street address, city, ZIP" value="${esc(fv('address'))}"></label>`}
         <label>Extra concerns <span class="hint">Anything we should know? Stains, pet hair, questions. Optional.</span><textarea id="f-notes" name="notes" rows="3" placeholder="Optional">${esc(fv('notes'))}</textarea></label>
+        <div class="bk-coupon bk-coupon-end"><label for="bkCode">Have a coupon or referral code?</label>
+          <div class="coupon-row"><input id="bkCode" name="code" form="bkCoupon" autocomplete="off" autocapitalize="characters" placeholder="Enter code"><button class="mini" type="submit" form="bkCoupon">Apply</button></div>
+          <p class="coupon-msg" id="bkCouponMsg" aria-live="polite"></p></div>
         <label class="optin"><input type="checkbox" name="optin" ${S.form.optin ? 'checked' : ''}> Email me offers and news (optional, one tap to stop)</label>
         <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
         ${S.error ? `<p class="err" role="alert">${esc(S.error)}</p>` : ''}
