@@ -1734,4 +1734,5 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   #boats.info-open .info-toggle:after,#pe-front.info-open .info-toggle:after{transform:translateY(1px) rotate(-135deg)}
   #boats:not(.info-open) .desc,#pe-front:not(.info-open) .desc{display:none}
   #pe-front:not(.info-open) .cta.ghost{display:none}
+  #pe-front:not(.info-open) .card-foot{display:none}
 }
