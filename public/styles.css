@@ -1592,3 +1592,20 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .bl-4 b{font:900 .95rem var(--display);letter-spacing:.05em;color:#ffd45a}
 #book .where-note{margin:0;padding:10px 12px;border-radius:12px;background:#ecfaf1;border:1px solid #9bd8b3;font:500 .92rem/1.4 var(--body);color:#0b3d22}
 #book .where-note b{font-weight:800}
+
+/* Hero: bigger "Mobile Car Wash & Detailing" and the "LOCAL TO Calvert County" line with a glowing location pin */
+.hero-inner .eyebrow{font-size:clamp(1.05rem,2.6vw,1.6rem);letter-spacing:.24em;font-weight:700;opacity:1}
+@media(max-width:600px){.hero-inner .eyebrow{font-size:.98rem;letter-spacing:.2em;margin-bottom:10px}}
+.lede.local{display:flex;align-items:center;justify-content:center;gap:12px;white-space:nowrap}
+.lede.local .local-t{font:800 clamp(1rem,2vw,1.4rem)/1.2 var(--body);letter-spacing:.16em;text-transform:uppercase;color:#fff}
+.lede.local b{font-weight:900;background:linear-gradient(90deg,#fff 0%,#ffe27a 12%,#8fd0ff 25%,#ff9a7a 37%,#fff 50%,#ffe27a 62%,#8fd0ff 75%,#ff9a7a 87%,#fff 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 10px rgba(255,226,122,.45));animation:localHolo 8s linear infinite}
+@keyframes localHolo{from{background-position:0% 0}to{background-position:200% 0}}
+.pin-wrap{position:relative;display:inline-grid;place-items:center;width:30px;height:34px;flex:none}
+.pin-wrap:before{content:"";position:absolute;left:50%;bottom:2px;width:22px;height:8px;margin-left:-11px;border-radius:50%;background:radial-gradient(rgba(255,226,122,.7),transparent 70%);animation:pinPulse 2.4s ease-out infinite}
+.pin{position:relative;width:26px;height:30px;filter:drop-shadow(0 0 8px rgba(255,200,80,.75));animation:pinBob 3s ease-in-out infinite}
+@keyframes pinBob{50%{transform:translateY(-3px)}}
+@keyframes pinPulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@media(max-width:600px){.lede.local{margin:0 0 18px;gap:9px}.lede.local .local-t{font-size:max(.92rem,3.9vw);letter-spacing:.12em}.pin-wrap{width:24px;height:28px}.pin{width:21px;height:25px}}
+@media(prefers-reduced-motion:reduce){.lede.local b,.pin,.pin-wrap:before{animation:none!important}}
+@media(max-width:600px){.hero-inner .eyebrow{font-size:.9rem;letter-spacing:.14em;text-wrap:balance}}
+.hero-btns .holo-btn{display:inline-flex;align-items:center;justify-content:center}
