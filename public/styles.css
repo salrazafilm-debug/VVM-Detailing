@@ -1661,3 +1661,16 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 }
 @media(max-width:360px){.cards>.card.std:not(.wide) .size .face{font-size:.68rem}.cards>.card.std:not(.wide) h3{font-size:.95rem}}
 @media(prefers-reduced-motion:reduce){.info-toggle:after{transition:none}}
+
+/* Family-area celebration pop-up */
+.vvm-pop.family .vvm-pop-card{position:relative;animation:popBounce .7s cubic-bezier(.2,1.4,.4,1) both,popEdge 8s linear infinite}
+.vvm-pop.family h3{font-size:2.6rem}
+.vvm-pop.family p b{color:#ffe27a}
+.fam-pin{display:inline-grid;place-items:center;width:58px;height:58px;margin:-6px auto 8px;border-radius:50%;background:radial-gradient(rgba(255,200,80,.35),transparent 70%);animation:famPin 1.6s ease-in-out infinite}
+.fam-pin svg{width:34px;height:40px;filter:drop-shadow(0 0 10px rgba(255,200,80,.8))}
+.fam-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.fam-confetti i{position:absolute;top:-14px;left:var(--x);width:9px;height:14px;background:var(--c);border-radius:2px;opacity:0;animation:famFall var(--t) var(--d) ease-in forwards}
+@keyframes popBounce{0%{opacity:0;transform:scale(.5) translateY(30px)}60%{opacity:1;transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes famPin{50%{transform:translateY(-5px) scale(1.06)}}
+@keyframes famFall{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(var(--r))}}
+@media(prefers-reduced-motion:reduce){.vvm-pop.family .vvm-pop-card,.fam-pin,.fam-confetti i{animation:none!important}.fam-confetti{display:none}}

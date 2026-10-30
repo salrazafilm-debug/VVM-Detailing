@@ -131,12 +131,34 @@ function stepper() {
 }
 const back = to => `<button type="button" class="link" data-act="back" data-to="${to}">← Back</button>`;
 
+// Celebration when the ZIP code is in the family area
+function familyPopup() {
+  document.querySelector('.vvm-pop')?.remove();
+  const tones = ['#ffe27a', '#4f8ff0', '#e4572e', '#ffffff', '#8fd0ff', '#f7c948'];
+  const confetti = Array.from({ length: 22 }, (_, i) => `<i style="--x:${Math.round(Math.random() * 100)}%;--d:${(Math.random() * 0.8).toFixed(2)}s;--t:${(2.2 + Math.random() * 1.6).toFixed(2)}s;--r:${Math.round(Math.random() * 720 - 360)}deg;--c:${tones[i % tones.length]}"></i>`).join('');
+  const el = document.createElement('div');
+  el.className = 'vvm-pop family'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Family area');
+  el.innerHTML = `<div class="fam-confetti" aria-hidden="true">${confetti}</div>
+    <div class="vvm-pop-card"><span class="fam-pin" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22.2s7.2-6.3 7.2-12.4a7.2 7.2 0 1 0-14.4 0c0 6.1 7.2 12.4 7.2 12.4Z" fill="#ffe27a"/><circle cx="12" cy="9.8" r="2.7" fill="#1a1214"/></svg></span>
+    <p class="vvm-pop-k">FAMILY AREA</p><h3>Congrats!</h3>
+    <p>You are located in our <b>Family area</b>! You get <b>FREE travel</b> + <b>$25 off</b> your total price!</p>
+    <button type="button" class="vvm-pop-btn">Claim</button></div>`;
+  const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  el.addEventListener('click', e => { if (e.target === el || e.target.closest('.vvm-pop-btn')) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(el);
+  el.querySelector('.vvm-pop-btn').focus({ preventScroll: true });
+}
 async function checkZip() {
   const zip = cleanZip(S.where.zip);
   S.where.zip = zip; S.where.busy = true; render();
   try { S.where.info = await api('/travel?zip=' + zip); }
   catch { S.where.info = { ok: false, message: 'We could not check that ZIP code. Please try again.' }; }
   S.where.busy = false; render();
+  // a family-area ZIP gets a celebration, once per ZIP (not with a membership price: no discount applies there)
+  const i = S.where.info;
+  if (i && i.ok && i.family && !S.coupon && S.where.celebrated !== i.zip) { S.where.celebrated = i.zip; familyPopup(); }
 }
 // A form value: what the customer already typed, or the details on file for a coupon customer
 function fv(k) {
