@@ -230,6 +230,7 @@ function ResetBooking({ vehicle, profile, onBack, gift }) {
     <p className="room-yay-sub">You're all booked and ready!</p>
     <p className="room-yay-line">Your request is in. We'll text or email you back to confirm your booking!</p>
     <p className="room-yay-when">{dayLabel(done.day)} at {clock(done.time)}</p>
+    <div className="room-ready"><span className="room-ready-k">WHAT TO HAVE READY</span><ul><li><b>Empty your vehicle.</b> Please remove all personal belongings and any items from your vehicle so we can complete the detail.</li>{mode==='drop'?<li><b>Bring it at your booked time</b> to the drop-off address.</li>:<><li><b>Leave room to work.</b> Park where we can open the doors and work all the way around it.</li><li><b>Water and power.</b> Let us know if you have access. We will confirm anything else when we reach out.</li></>}</ul></div>
     <button type="button" className="room-gold" onClick={onBack}>DONE</button>
   </section>;
   return <>

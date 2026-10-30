@@ -413,3 +413,10 @@ html:has(.client-showroom),body:has(.client-showroom){background:#000}
 .room-code-row input{flex:1 1 auto;min-width:0;padding:13px 14px;border-radius:14px;border:2px solid #1a1214;background:#fff;color:#1a1214;font:700 1rem var(--gbody);letter-spacing:.04em}
 .room-code-row input::placeholder{font-weight:500;letter-spacing:0;color:#777}
 .rewards-actions .room-link{color:#ffd86b}
+
+/* Garage booking complete: what to have ready */
+.room-ready{margin:16px 0;padding:16px 18px;border-radius:18px;text-align:left;background:rgba(255,216,107,.16);border:1.5px solid rgba(255,216,107,.65)}
+.room-ready-k{display:block;margin-bottom:8px;font:900 .74rem var(--gbody);letter-spacing:.2em;color:#9a6b00}
+.room-ready ul{margin:0;padding-left:20px;display:grid;gap:8px}
+.room-ready li{font:500 .98rem/1.45 var(--gbody)}
+.room-ready li b{font-weight:800}

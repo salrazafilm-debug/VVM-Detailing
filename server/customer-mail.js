@@ -27,6 +27,9 @@ function bookingBody(b, intro) {
     `Vehicle: ${b.vehicles || 'on file'}`,
     `Services: ${b.services || 'on file'}`,
     ...(b.drop_off ? ['', `Drop-off location: ${HOME.street}, ${HOME.city}, ${HOME.state} ${HOME.zip}`] : []),
+    '', 'WHAT TO HAVE READY',
+    '- Empty your vehicle: please remove all personal belongings and any items from your vehicle so we can complete the detail.',
+    ...(b.drop_off ? ['- Bring it at your booked time to the drop-off location above.'] : ['- Leave room to work: park where we can open the doors and work all the way around it.', '- Water and power: let us know if you have access. We will confirm anything else when we reach out.']),
     '', 'Need to change anything? Text (240) 601-9451 or just reply to this email.', '', 'See you soon!', 'VVM Details',
   ].join('\n');
 }

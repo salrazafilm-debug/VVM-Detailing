@@ -150,6 +150,13 @@ function fv(k) {
   if (k === 'address') return c.address || '';
   return '';
 }
+// What to have ready: shown on the booking-complete screen (the emails say the same)
+function readyCard() {
+  const items = S.where.mode === 'drop'
+    ? ['<b>Empty your vehicle.</b> Please remove all personal belongings and any items from your vehicle so we can complete the detail.', '<b>Bring it at your booked time</b> to the drop-off address we showed you.']
+    : ['<b>Empty your vehicle.</b> Please remove all personal belongings and any items from your vehicle so we can complete the detail.', '<b>Leave room to work.</b> Park where we can open the doors and work all the way around it.', '<b>Water and power.</b> Let us know if you have access. We will confirm anything else when we reach out.'];
+  return `<div class="ready"><p class="ready-k">WHAT TO HAVE READY</p><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
+}
 function whereMsg() {
   const w = S.where, i = w.info;
   if (!i) return '';
@@ -427,6 +434,7 @@ function renderBooking() {
         <p class="yay-l">${lines().map(esc).join('<br>')}</p>
         <p class="yay-d">${esc(longDate(S.date))} <span>at ${fmtTime(S.time)}</span></p>
       </div>
+      ${readyCard()}
       <p class="yay-note">We'll text or email you back to confirm your booking!</p>
       ${contactLine}</div>`;
   }

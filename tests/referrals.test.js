@@ -101,6 +101,7 @@ function fakeDb(tables) {
   r = await customerMail.sendBookingReminders(db3);
   assert.equal(r.sent, 1); assert.equal(sent.length, 1);
   assert.equal(sent[0].to[0].email, 'a@x.com'); assert.match(sent[0].textContent, /9:30 AM/); assert.match(sent[0].subject, /tomorrow/i);
+  assert.match(sent[0].textContent, /WHAT TO HAVE READY/); assert.match(sent[0].textContent, /personal belongings/);
   assert.ok(T3.booking_requests[0].reminder_sent_at);
   r = await customerMail.sendBookingReminders(db3);
   assert.equal(r.sent, 0, 'one reminder only');
