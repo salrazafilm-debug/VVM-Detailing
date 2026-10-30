@@ -1590,3 +1590,5 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 /* Full Factory Reset card: free travel up to 30 min (phones: under the sealant line) */
 .bl-4{font:600 .92rem/1.35 var(--body);color:rgba(255,255,255,.92)}
 .bl-4 b{font:900 .95rem var(--display);letter-spacing:.05em;color:#ffd45a}
+#book .where-note{margin:0;padding:10px 12px;border-radius:12px;background:#ecfaf1;border:1px solid #9bd8b3;font:500 .92rem/1.4 var(--body);color:#0b3d22}
+#book .where-note b{font-weight:800}

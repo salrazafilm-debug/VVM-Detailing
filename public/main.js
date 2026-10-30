@@ -167,6 +167,7 @@ function whereBlock() {
       <button type="button" class="where-opt ${drop ? '' : 'on'}" aria-pressed="${!drop}" data-act="where" data-v="come"><b>We come to you</b><span>Mobile service</span></button>
       <button type="button" class="where-opt ${drop ? 'on' : ''}" aria-pressed="${drop}" data-act="where" data-v="drop"><b>I'll drop off</b><span>No travel fee</span></button>
     </div>
+    ${drop ? '' : '<p class="where-note"><b>FREE travel up to 30 min</b> from us. Farther trips: $20 (31 to 45 min), $25 (46 to 49), $30 (50 to 70).</p>'}
     ${drop ? `<p class="drop-addr">Drop off at <b>${esc(DROP.street)}, ${esc(DROP.city)}, ${DROP.state} ${DROP.zip}</b> · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${DROP.street}, ${DROP.city}, ${DROP.state} ${DROP.zip}`)}" target="_blank" rel="noopener">Open in Maps</a></p>` : ''}
     <form id="zform" class="zrow" novalidate><label for="f-zip">${drop ? 'Your ZIP code (optional, for the family discount)' : 'Your ZIP code'}</label>
       <div class="v-in"><input id="f-zip" name="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="e.g. 20732" value="${esc(w.zip)}"><button class="mini" type="submit" ${w.busy ? 'disabled' : ''}>${w.busy ? 'Checking…' : 'Check'}</button></div></form>
