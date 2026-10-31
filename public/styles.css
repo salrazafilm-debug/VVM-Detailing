@@ -1724,8 +1724,8 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .local-area img{width:100%;border-radius:0;box-shadow:none}
 .local-area .hero-book{margin-top:24px}
 
-/* Phones: "Show info" arrow on the Boat and Ceramic cards (the description opens under it) */
-@media(max-width:600px){
+/* "Show info" arrow on the Boat and Ceramic cards, phones and desktop (the description opens under it) */
+@media(min-width:0){
   #boats .info-toggle,#pe-front .info-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:min(100%,320px);min-height:38px;margin:0 auto 12px;padding:0 14px;border:2px solid var(--ink);border-radius:12px;background:transparent;color:var(--ink);font:800 .72rem var(--display);letter-spacing:.07em;text-transform:uppercase;cursor:pointer}
   #pe-front .info-toggle{border-color:#0b2a4a;color:#0b2a4a}
   #boats .info-toggle:after,#pe-front .info-toggle:after{content:"";width:6px;height:6px;border:solid currentColor;border-width:0 2px 2px 0;transform:translateY(-2px) rotate(45deg);transition:transform .25s}
