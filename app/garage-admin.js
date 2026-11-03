@@ -91,9 +91,10 @@ function BookingCard({ b, busy, onAction }) {
   return <li className={`abk abk-${b.status}`}>
     <div className="abk-when"><strong>{bookingDay(b.booking_date)}</strong><span>{bookingTime(b.booking_time)}</span></div>
     <div className="abk-main">
-      <p className="abk-name"><b>{b.name}</b>{b.gift&&<em className="abk-tag gift">GIFT</em>}{b.drop_off&&<em className="abk-tag">DROP-OFF</em>}{b.referral&&<em className="abk-tag ref">REFERRAL {b.referral.code}{b.referral.from?` · from ${b.referral.from}`:''}</em>}</p>
+      <p className="abk-name"><b>{b.name}</b>{b.gift&&<em className="abk-tag gift">GIFT</em>}{b.drop_off&&<em className="abk-tag">DROP-OFF</em>}{b.garage_user_id&&<em className="abk-tag">GARAGE</em>}{b.referral&&<em className="abk-tag ref">REFERRAL {b.referral.code}{b.referral.from?` · from ${b.referral.from}`:''}</em>}</p>
       <p>{b.vehicles}</p>
       <p className="abk-svc">{b.services}</p>
+      {b.address&&<p className="abk-meta">{b.address}</p>}
       <p className="abk-meta">{b.drop_off?'Drop-off':`ZIP ${b.zip||'?'}${b.travel_fee_cents?` · travel ${dollarsOf(b.travel_fee_cents)}`:' · no travel fee'}`}{b.discount_label?` · ${b.discount_label} −${dollarsOf(b.discount_cents)}`:''}{b.total_cents!=null?` · quoted ${dollarsOf(b.total_cents)}`:b.gift?' · free (gift)':' · membership price'}</p>
       <p className="abk-contact">{b.phone?<a href={`tel:${String(b.phone).replace(/\D/g,'')}`}>{b.phone}</a>:'No phone'} · <a href={`mailto:${b.email}`}>{b.email}</a></p>
     </div>
@@ -115,7 +116,7 @@ function AdminBookings({ bookings, busy, onAction }) {
   return <div className="admin-bookings">
     <div className="admin-section-head"><div><p className="g-eyebrow">YOUR DAY AT A GLANCE</p><h2>Bookings.</h2></div></div>
     {!bookings.length&&<p className="g-muted">No booking requests yet. Each one from the website shows up here, and you also get the email.</p>}
-    {group('Needs your OK',needs,'Tap CONFIRM after you have texted them and added it to Square. They get a confirmation email, and a reminder the day before.')}
+    {group('Needs your OK',needs,'Tap CONFIRM after you have texted them and added it to Square. They get a confirmation email, and a reminder the day before. Their Garage is made too, and stays OFF until you turn it on under Clients.')}
     {group('Coming up',coming)}
     {group('Happened. Mark completed',happened,'Marking a detail completed counts a referral for the friend who sent them.')}
     {history.length>0&&<details className="g-panel admin-disclosure"><summary><span>Recent history<small>Completed and cancelled</small></span><b aria-hidden="true">+</b></summary><ul className="abk-list">{history.map(b=><BookingCard key={b.id} b={b} busy={busy} onAction={onAction}/>)}</ul></details>}
@@ -181,6 +182,15 @@ function SpeedUp({ onNotice, onError, onDone }) {
     }catch(e){onError(e.message)}finally{setRunning(false)}
   }
   return <div className="admin-speed-row"><button type="button" className="g-button" disabled={running} onClick={run}>{running?'WORKING…':'SPEED UP PHOTOS'}</button>{left!==null&&<span className="g-inline-help">{left} left to convert</span>}</div>;
+}
+
+// Garage on/off. A Garage made from a booking starts OFF: the client cannot open it until you turn it on.
+function GarageSwitch({ client, busy, onSet }) {
+  const on = client.garage_enabled !== false;
+  return <div className="g-form admin-status">
+    <p className="g-inline-help">{on?'This client can open their Garage.':'OFF: the client cannot open their Garage yet. Finish the detail, add their photos, then turn it on. They get an email to choose a password.'}</p>
+    <div className="admin-status-actions"><button type="button" className="g-button" disabled={busy} onClick={()=>onSet(!on)}>{on?'TURN GARAGE OFF':'TURN GARAGE ON'}</button></div>
+  </div>;
 }
 
 // Client phone number, used by their Garage booking
@@ -452,6 +462,7 @@ export default function GarageAdmin() {
       <section className="g-panel admin-speed" aria-labelledby="speed-step"><p className="g-eyebrow">FASTER LOADING</p><h2 id="speed-step">Speed up older photos.</h2><p className="g-muted">Makes a smaller copy of every photo saved before this update, so clients’ Garages load faster. Run it once. New photos are already fast.</p><SpeedUp onNotice={setNotice} onError={setError} onDone={load}/></section>
       <section className="admin-extras" aria-labelledby="optional-step"><p className="g-eyebrow">04 / WHEN YOU NEED IT</p><h2 id="optional-step">The extra details.</h2><p className="g-muted">All optional. Add what matters, whenever you’re ready.</p>
         {!selectedVehicle?<p className="g-inline-help">Choose a vehicle to add service history, appointments or a showroom cover.</p>:<div key={vehicle} className="admin-details-list">
+          <details className="g-panel admin-disclosure" open={client.garage_enabled===false}><summary><span>Garage {client.garage_enabled===false?'is OFF':'is ON'}<small>Turn the client's Garage on or off</small></span><b aria-hidden="true">+</b></summary><GarageSwitch client={client} busy={busy} onSet={enabled=>action({action:'garage_enable',customer_id:customer,enabled})}/></details>
           <details className="g-panel admin-disclosure" open><summary><span>Garage health<small>Protection, done ticks and what the client sees</small></span><b aria-hidden="true">+</b></summary><GiftPanel vehicle={selectedVehicle} busy={busy} onAction={action} /><VehicleStatus vehicle={selectedVehicle} busy={busy} onSave={f=>action({action:'update_vehicle',vehicle_id:vehicle,...f})}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Client phone and location<small>Filled in for them when they book</small></span><b aria-hidden="true">+</b></summary><ClientContact client={client} busy={busy} onSave={(phone,location,loyal)=>action({action:'set_contact',customer_id:customer,phone,location,loyal},'Client details saved.')}/></details>
           <details className="g-panel admin-disclosure"><summary><span>Client logo<small>Shown top center in their My Garage</small></span><b aria-hidden="true">+</b></summary><ClientLogo client={client} busy={busy} onChanged={load} onError={setError} onNotice={setNotice}/></details>

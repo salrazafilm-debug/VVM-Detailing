@@ -95,11 +95,14 @@ async function emailRequest(b) {
 
   // The email went out. Now keep a record for admin, reminders and referrals. A problem here is logged, never shown.
   try {
-    const { data: row, error } = await db().from('booking_requests').insert({
+    const record = {
       name, email, phone: digits ? b.phone : null, zip: zipInfo?.zip || null, drop_off: dropOff, travel_fee_cents: feeCents,
       discount_label: best ? best.label : null, discount_cents: price.discountCents, total_cents: coupon ? null : price.totalCents,
       vehicles: vehicles.join(' | '), services, booking_date: b.date, booking_time: b.time, coupon: coupon || null, gift, marketing_opt_in: b.optIn === true,
-    }).select('id').single();
+    };
+    let { data: row, error } = await db().from('booking_requests').insert({ ...record, address: dropOff ? null : location }).select('id').single();
+    // The address column comes with the "auto garage" update. Until it is run, still save the booking without it.
+    if (error && /address/i.test(error.message)) ({ data: row, error } = await db().from('booking_requests').insert(record).select('id').single());
     if (error) throw new Error(error.message);
     if (referrer) {
       const referralId = await referrals.recordReferral(db(), { referrer, name, email, bookingId: row.id });

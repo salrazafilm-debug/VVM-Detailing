@@ -362,3 +362,9 @@ create unique index if not exists referrals_one_per_referee on public.referrals 
 create index if not exists referrals_referrer_idx on public.referrals (referrer_user_id);
 alter table public.referrals enable row level security;
 notify pgrst, 'reload schema';
+
+-- Auto-Garage (see migrations/20261103090000_auto_garage.sql)
+alter table public.garage_profiles add column if not exists garage_enabled boolean not null default true;
+alter table public.garage_profiles add column if not exists garage_invited_at timestamptz;
+alter table public.booking_requests add column if not exists address text;
+alter table public.booking_requests add column if not exists garage_user_id uuid;

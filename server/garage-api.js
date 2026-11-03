@@ -5,6 +5,7 @@ const { prepareShowroomPhoto } = require('./garage-showroom');
 const { normalizeDiscount } = require('./coupon-db');
 const referrals = require('./referrals');
 const customerMail = require('./customer-mail');
+const autoGarage = require('./auto-garage');
 
 const json = (data, status = 200) => Response.json(data, { status });
 const sharp = require('sharp');
@@ -43,6 +44,8 @@ exports.customerGet = async req => {
     try { rewards = await referrals.rewardsFor(ctx.admin, owner, profile?.display_name); } catch { rewards = null; }
     const logo = profile?.logo_path ? (await ctx.admin.storage.from('garage-photos').createSignedUrl(profile.logo_path, 900)).data?.signedUrl || null : null;
     const publicProfile = p => p ? { display_name: p.display_name, email: p.email, phone: p.phone || '', location: p.location || '', loyal: p.loyal === true, logo_url: logo } : p;
+    // A Garage made from a booking stays off until the owner turns it on in admin.
+    if (!previewId && profile && profile.garage_enabled === false) throw Object.assign(new Error('Your Garage is being prepared. We will email you the moment it is ready.'), { status: 403 });
     const clientJson = data => Response.json({...data,profile:publicProfile(data.profile),preview:!!previewId},{headers:{'Cache-Control':'private, no-store'}});
     if (pErr || vErr) throw Object.assign(new Error('Could not load your Garage.'), { status: 503 });
     const ids = (vehicles || []).map(v => v.id);
@@ -175,6 +178,13 @@ exports.adminPost = async req => {
       const { error: pErr } = await ctx.admin.from('garage_profiles').upsert(customer, { onConflict: 'user_id' });
       if (pErr) throw Object.assign(new Error('Login created but profile setup failed. Retry from the customer list.'), { status: 503 });
       return json({ ok: true, customer_id: data.user.id, customer:{...customer,garage_vehicles:[]}, message: recovered ? 'Customer profile recovered and selected. Their original password has not changed.' : 'Client login created and selected. Add their vehicle below, then share their login privately.' });
+    }
+    if (action === 'garage_enable') {
+      const customer_id = clean(b.customer_id, 80);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
+      const r = await autoGarage.setEnabled(ctx.admin, customer_id, b.enabled === true);
+      if (!r.ok) throw Object.assign(new Error(r.message), { status: r.status || 503 });
+      return json({ ok: true, message: r.message });
     }
     if (action === 'set_password') {
       const customer_id = clean(b.customer_id, 80), password = String(b.password || '');
@@ -456,7 +466,7 @@ exports.adminPost = async req => {
       const { data: row, error } = await ctx.admin.from('booking_requests').update({ status }).eq('id', id).select('*').maybeSingle();
       if (error || !row) throw Object.assign(new Error('Could not update the booking. Check the bookings database update.'), { status: 503 });
       let note = '';
-      if (status === 'confirmed') { const r = await customerMail.sendConfirmation(row).catch(() => ({ sent: false, reason: 'email error' })); note = r.sent ? ' Confirmation emailed to the customer.' : ` (No confirmation email sent: ${r.reason}.)`; }
+      if (status === 'confirmed') { const r = await customerMail.sendConfirmation(row).catch(() => ({ sent: false, reason: 'email error' })); note = r.sent ? ' Confirmation emailed to the customer.' : ` (No confirmation email sent: ${r.reason}.)`; const g = await autoGarage.createFromBooking(ctx.admin, row).catch(() => ({ note: 'No Garage made: something went wrong. Add them under Clients.' })); if (g.note) note += ` ${g.note}`; }
       if (status === 'cancelled' && row.referral_id) await ctx.admin.from('referrals').update({ status: 'dismissed' }).eq('id', row.referral_id).eq('status', 'pending');
       return json({ ok: true, message: `Booking ${status}.${note}` });
     }
@@ -468,6 +478,8 @@ exports.adminPost = async req => {
       if (result.referral) parts.push(`Referral counted: ${result.referral.completed} completed.`);
       if (result.rewardGift) parts.push('That client reached 5 and a free Full Factory Reset gift was sent to them.');
       if (result.warning) parts.push(result.warning);
+      const g = await autoGarage.recordCompleted(ctx.admin, id).catch(() => ({ note: 'Garage: could not record the service. Add it under Clients.' }));
+      if (g.note) parts.push(g.note);
       return json({ ok: true, message: parts.join(' ') });
     }
     if (action === 'gift_send' || action === 'gift_remove') {
@@ -518,7 +530,7 @@ async function adminBookingList(admin) {
     const nameOf = id => (owners || []).find(o => o.user_id === id)?.display_name || '';
     return (rows || []).map(r => {
       const ref = (refs || []).find(x => x.id === r.referral_id);
-      return { id: r.id, created_at: r.created_at, name: r.name, email: r.email, phone: r.phone, zip: r.zip, drop_off: r.drop_off, travel_fee_cents: r.travel_fee_cents, discount_label: r.discount_label, discount_cents: r.discount_cents, total_cents: r.total_cents, vehicles: r.vehicles, services: r.services, booking_date: r.booking_date, booking_time: r.booking_time, coupon: r.coupon, gift: r.gift, marketing_opt_in: r.marketing_opt_in, status: r.status, reminder_sent_at: r.reminder_sent_at, referral: ref ? { code: ref.code, status: ref.status, from: nameOf(ref.referrer_user_id) } : null };
+      return { id: r.id, created_at: r.created_at, name: r.name, email: r.email, phone: r.phone, zip: r.zip, drop_off: r.drop_off, travel_fee_cents: r.travel_fee_cents, discount_label: r.discount_label, discount_cents: r.discount_cents, total_cents: r.total_cents, vehicles: r.vehicles, services: r.services, booking_date: r.booking_date, booking_time: r.booking_time, coupon: r.coupon, gift: r.gift, marketing_opt_in: r.marketing_opt_in, status: r.status, reminder_sent_at: r.reminder_sent_at, address: r.address || null, garage_user_id: r.garage_user_id || null, referral: ref ? { code: ref.code, status: ref.status, from: nameOf(ref.referrer_user_id) } : null };
     });
   } catch { return []; }
 }

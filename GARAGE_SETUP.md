@@ -50,3 +50,7 @@ Upcoming appointments entered in Garage Admin are confirmed or requested appoint
 ## Delivery reconciliation
 
 Only missing deliveries or definitive HTTP rejections are retried automatically. A timeout, network failure, provider 5xx, or failed acknowledgement remains `queued` with a review error. Check Brevo delivery logs before changing that record to `sent` or `failed`. This prevents blind retries after Brevo may already have accepted the email. The Brevo idempotency key is the delivery UUID; its provider window is finite. New cycle claims recheck the active cycle and business dates under database locks. A service reset after the final check may still overlap an email already being sent; externally delivered email cannot be recalled.
+
+## Auto-Garage (confirming a booking makes the Garage)
+
+Run `supabase/migrations/20261103090000_auto_garage.sql` once in the Supabase SQL Editor. After that, tapping CONFIRM on a booking makes the client's Garage (OFF). Finish the detail, add their photos, then turn it on under Clients. They get an email to choose a password. MARK COMPLETED records the Full Factory Reset and its exterior ceramic sealant.
