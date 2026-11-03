@@ -297,7 +297,7 @@ function Rewards({ rewards }) {
     <div className="rewards-card">
       <span className="rewards-label">REFER A FRIEND</span>
       <h3>Earn a FREE Full Factory Reset</h3>
-      <p>When 5 friends book with your code, your next Full Factory Reset is on us. They get <b>$20 off</b> their first one.</p>
+      <p>Refer 5 friends and your next Full Factory Reset is <b>on us</b>. It can also be gifted to a friend or family. They get <b>$20 off</b> their first one.</p>
       <div className="rewards-code"><small>YOUR CODE</small><strong>{code}</strong></div>
       <div className="rewards-actions"><button type="button" className="room-gold" onClick={share}>SHARE MY CODE</button><button type="button" className="room-link" onClick={()=>copy(code,'Code copied')}>Copy code</button></div>
       {msg&&<p className="rewards-msg" role="status">{msg}</p>}
@@ -305,8 +305,8 @@ function Rewards({ rewards }) {
     <div className="rewards-progress">
       <div className="rewards-count"><strong>{progress}</strong><span>of {goal} referrals</span></div>
       <div className="rewards-bar" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={progress} aria-label="Referral progress"><i style={{width:`${progress/goal*100}%`}}/></div>
-      <p className="room-small">{goal-progress} more to earn a free detail. A referral counts once your friend's detail is done.{pending?` ${pending} waiting to be completed.`:''}</p>
-      {earned>0&&<p className="rewards-earned">You've earned {earned} free detail{earned>1?'s':''}! Look for "Gift waiting for you!" on your Bookings tab.</p>}
+      <p className="room-small">{goal-progress} more to earn a free detail, which can also be gifted to friends or family. Each referral counts once your friend's detail is done.{pending?` ${pending} waiting to be completed.`:''}</p>
+      {earned>0&&<p className="rewards-earned">You've earned {earned} free detail{earned>1?'s':''}! Look for "Gift waiting for you!" on your Bookings tab. Want to gift? <a className="room-link" href="sms:+12406019451">Message us!</a></p>}
     </div>
   </section>;
 }
