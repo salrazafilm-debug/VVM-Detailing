@@ -82,9 +82,24 @@ const INCLUDED_MSG = 'The Full Factory Reset already includes the Interior and E
 const carItems = i => S.cars[i] || [];
 const booked = () => S.cars.slice(0, S.count === 2 ? 2 : 1);               // the vehicles being booked
 const carMin = i => carItems(i).reduce((n, x) => n + x.v.minutes, 0);
-// Interior add-ons: only for a Full Factory Reset or Interior Reset
+// Interior add-ons: only for a Full Factory Reset or Interior Reset. Paint enhancement: only with a Full Factory Reset, priced by size.
+// Same rules as server/addons.js (the server checks them again when the booking is made).
 const addonsOk = i => carItems(i).some(x => x.kind === 'full' || x.kind === 'interior');
-const carAddons = i => addonsOk(i) ? S.addonList.filter(a => (S.addons[i] || []).includes(a.id)) : [];
+const addonSize = i => {
+  for (const x of carItems(i)) {
+    if (x.kind !== 'full' && x.kind !== 'interior') continue;
+    const l = String(x.v.label || '').toLowerCase();
+    if (/mini.?van/.test(l)) return 'minivan'; if (/coupe/.test(l)) return 'coupe'; if (/sedan/.test(l)) return 'sedan';
+    if (/suv/.test(l)) return 'suv'; if (/truck/.test(l)) return 'truck';
+  }
+  return null;
+};
+const addonPrice = (a, i) => {
+  if (!addonsOk(i)) return null;
+  if (a.group === 'paint' && !carItems(i).some(x => x.kind === 'full')) return null;
+  return a.sizePrices ? (a.sizePrices[addonSize(i)] ?? null) : a.priceCents;
+};
+const carAddons = i => S.addonList.filter(a => (S.addons[i] || []).includes(a.id) && addonPrice(a, i) != null).map(a => ({ ...a, priceCents: addonPrice(a, i) }));
 const carCents = i => carItems(i).reduce((n, x) => n + x.v.priceCents, 0) + carAddons(i).reduce((n, a) => n + a.priceCents, 0);
 const totalMin = () => booked().reduce((n, _, i) => n + carMin(i), 0);
 const totalCents = () => booked().reduce((n, _, i) => n + carCents(i), 0);
@@ -327,8 +342,11 @@ function serviceStep() {
         ${S.open === gi ? `<div class="sizes-pick">${g.variations.map(v => { const on = items.some(x => x.v.id === v.id); return `<button type="button" class="chip ${on ? 'on' : ''}" aria-pressed="${on}" data-act="pick" data-g="${gi}" data-id="${esc(v.id)}"><b>${esc(v.label)}</b><span>${money(v.priceCents)} · ${dur(v.minutes)}</span><i class="pm" aria-hidden="true">${on ? '✓' : '+'}</i></button>`; }).join('')}</div>` : ''}
       </div>`;
   }).join('') + '</div>';
-  if (addonsOk(S.active) && !S.coupon) {
-    html += `<div class="addons"><p class="addons-k">Add-ons <span>(optional)</span></p><div class="addons-row">${S.addonList.map(a => { const on = (S.addons[S.active] || []).includes(a.id); return `<button type="button" class="addon ${on ? 'on' : ''}" aria-pressed="${on}" data-act="addon" data-id="${esc(a.id)}"><b>${esc(a.name)}</b><span>${on ? '✓ ' : '+'}${money(a.priceCents)}</span></button>`; }).join('')}</div></div>`;
+  const offered = S.addonList.filter(a => addonPrice(a, S.active) != null);
+  if (offered.length && !S.coupon) {
+    const btn = a => { const on = (S.addons[S.active] || []).includes(a.id); return `<button type="button" class="addon ${on ? 'on' : ''}" aria-pressed="${on}" data-act="addon" data-id="${esc(a.id)}"><b>${esc(a.name)}</b>${a.note ? `<small>${esc(a.note)}</small>` : ''}<span>${on ? '✓ ' : '+'}${money(addonPrice(a, S.active))}</span></button>`; };
+    const group = (title, list) => list.length ? `<p class="addons-k">${title} <span>(optional)</span></p><div class="addons-row">${list.map(btn).join('')}</div>` : '';
+    html += `<div class="addons">${group('Add-ons', offered.filter(a => a.group !== 'protection'))}${group('Protection', offered.filter(a => a.group === 'protection'))}</div>`;
   }
   const why = S.notice || problem();
   if (why) html += `<p class="notice" role="alert">${esc(why)}</p>`;
