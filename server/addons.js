@@ -3,7 +3,7 @@
 // as interior. Change prices, names or rules in this one file (public/main.js copies the same size rule).
 const ADDONS = [
   { id: 'stain', name: 'Shampoo (stain removal)', priceCents: 6000, group: 'interior' },
-  { id: 'water-stain', name: 'Water stain removal', priceCents: 8000, group: 'interior' },
+  { id: 'water-stain', name: 'Water stain removal', note: 'Includes exterior paint', priceCents: 8000, group: 'interior' },
   { id: 'pet-hair', name: 'Pet hair removal', priceCents: 6000, group: 'interior' },
   { id: 'odor', name: 'Odor removal', priceCents: 6000, group: 'interior' },
   { id: 'leather', name: 'Deep leather clean', note: 'For cars 10 years old and up', priceCents: 6000, group: 'interior' },
