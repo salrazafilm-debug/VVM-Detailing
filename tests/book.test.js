@@ -9,7 +9,7 @@ Module._load=function(req,...a){
   if(req.endsWith('/holds')) return {addHold:async()=>{calls.holds++}};
   return realLoad.call(this,req,...a)};
 const {handler}=require('../server/handlers/book.js');
-const body={name:'Test Person',phone:'2405550100',email:'t@e.com',date:'2026-11-05',time:'09:00',vehicles:['2022 Lexus IS 350'],summary:'2022 Lexus IS 350: Full Factory Reset (SUV) + Pet hair removal',notes:'gate code 12',zip:'20732',location:'123 Main St, Chesapeake Beach, MD 20732',servicesCents:32000};
+const body={name:'Test Person',phone:'2405550100',email:'t@e.com',date:'2026-11-05',time:'09:00',vehicles:['2022 Lexus IS 350'],summary:'2022 Lexus IS 350: Full Factory Reset (SUV) + Pet hair removal',notes:'gate code 12',zip:'20732',location:'123 Main St, Chesapeake Beach, MD 20732',plan:[['BL3ZQGHFSFAS5I5J2M6UUHUK']],addons:[['pet-hair']],servicesCents:1};
 const post=(b)=>handler({httpMethod:'POST',body:JSON.stringify(b)});
 (async()=>{
   let r=await post(body); assert.equal(r.statusCode,200,r.body);
@@ -22,7 +22,7 @@ const post=(b)=>handler({httpMethod:'POST',body:JSON.stringify(b)});
   r=await post({...body,coupon:'VVM123'}); assert.equal(r.statusCode,200); assert.match(sent.lines.join('\n'),/Code \/ membership: VVM123/);
   // family area ZIP: no travel fee, and the $25 family discount is applied (one discount per booking)
   r=await post(body); assert.equal(r.statusCode,200); let t=sent.lines.join('\n');
-  assert.match(t,/Travel fee: \$0/); assert.match(t,/Family area: yes/); assert.match(t,/Discount applied: Family area \(-\$25\)/); assert.match(t,/TOTAL \$295/);
+  assert.match(t,/Travel fee: \$0/); assert.match(t,/Family area: yes/); assert.match(t,/Discount applied: Family area \(-\$25\)/); assert.match(t,/TOTAL \$355/); // $320 SUV reset + $60 pet hair, priced by the server, the phone's $0.01 is ignored
   // a ZIP that is a paid trip: the fee is in the email, no family discount
   r=await post({...body,zip:'20001',location:'1 K St NW, Washington, DC 20001'}); assert.equal(r.statusCode,200); t=sent.lines.join('\n');
   assert.match(t,/Travel: ZIP 20001/); assert.doesNotMatch(t,/Family area/); assert.match(t,/Travel fee: \$(25|30)/);

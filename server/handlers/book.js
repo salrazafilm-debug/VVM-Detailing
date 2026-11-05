@@ -3,6 +3,19 @@ const { sendBookingEmail } = require('../mail');
 const { takeDiscountUse, giveBackDiscountUse, findDiscount, client } = require('../coupon-db');
 const travel = require('../travel');
 const referrals = require('../referrals');
+const { STATIC_CATALOG } = require('../catalog-static');
+const { isPublic } = require('../square');
+const { resolvePlan } = require('../rules');
+const { resolveAddons } = require('../addons');
+
+// The price comes from this website's own price list (catalog-static.js) and server/addons.js, never from the phone.
+// Membership, gift and code prices still come from the client, as before (they are checked by their own rules).
+function priceOnServer(b) {
+  const cars = resolvePlan(b.plan, STATIC_CATALOG, isPublic).cars;
+  const addons = resolveAddons(b.addons, cars);
+  const servicesCents = cars.reduce((n, car, i) => n + car.services.reduce((m, v) => m + v.priceCents, 0) + addons[i].reduce((m, a) => m + a.priceCents, 0), 0);
+  return servicesCents;
+}
 
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 const dollars = c => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
@@ -59,7 +72,9 @@ async function emailRequest(b) {
     family && { kind: 'family', label: 'Family area', cents: travel.FAMILY_DISCOUNT_CENTS },
     referrer && b.hasReset === true && { kind: 'referral', label: `Referral ${referrer.code}`, cents: travel.REFERRAL_DISCOUNT_CENTS },
   ]);
-  const servicesCents = Math.max(0, Math.min(1000000, Math.round(Number(b.servicesCents) || 0)));
+  const servicesCents = !coupon && !gift
+    ? priceOnServer(b)
+    : Math.max(0, Math.min(1000000, Math.round(Number(b.servicesCents) || 0)));
   const price = travel.priceBooking({ servicesCents, feeCents, discount: best });
   // Only the code that actually wins uses up one of its uses.
   const use = best && best.kind === 'code' ? await takeDiscountUse(codeInfo.code) : null;
