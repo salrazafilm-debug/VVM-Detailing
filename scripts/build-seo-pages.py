@@ -160,7 +160,7 @@ def foot():
       <a class="foot-pill" href="mailto:{EMAIL}">{EMAIL}</a>
     </div>
     <nav class="foot-areas" aria-label="Areas we serve"><span>Mobile detailing in</span> {TOWN_LINKS}</nav>
-    <nav class="foot-links" aria-label="Footer"><a href="/">Home</a><a href="/#services">Services</a><a href="/#book">Book Now</a><a href="/membership">Membership</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy Policy</a></nav>
+    <nav class="foot-links" aria-label="Footer"><a href="/">Home</a><a href="/#services">Services</a><a href="/#book">Book Now</a><a href="/membership">Membership</a><a href="/gift-cards">Gift Cards</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy Policy</a></nav>
     <p class="foot-copy">&copy; <span id="yr"></span> VVM Details. All rights reserved.</p>
   </div>
 </footer>
@@ -320,7 +320,7 @@ mem = f"""<main class="mem">
     <div class="mem-ticket-foot"><span>Next <b>Full Factory Reset</b></span><span>Valid <b>2 months</b></span></div>
   </div>
   <ol class="mem-steps">
-    <li><span>1</span><h2>Get a Reset</h2><p>Ceramic sealant included.</p></li>
+    <li><span>1</span><h2>Book your Full Factory Reset</h2><p>Ceramic sealant included.</p></li>
     <li><span>2</span><h2>Open your Garage</h2><p>Your coupon is waiting.</p></li>
     <li><span>3</span><h2>Save $100+</h2><p>Use it within 2 months.</p></li>
   </ol>
@@ -332,6 +332,70 @@ page = head('Maintenance Membership | VVM Details',
             'Get a Full Factory Reset and your next one is $100+ off. Starts by itself in your Garage. Use it within 2 months.',
             'membership', [crumbs([('Home', BASE + '/'), ('Maintenance Membership', tag('membership'))])]).replace('<body class="legal-page seo-page">', '<body class="mem-page">') + top() + mem + foot()
 write('membership', page, '0.7')
+
+# ---------- gift cards ----------
+# Paid by card on Square's checkout page (server/gift-cards.js). Same dark-sky look as the membership page.
+gift = r"""<main class="mem gift">
+  <div class="mem-bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+  <section class="mem-hero">
+    <p class="mem-eyebrow">Give the shine</p>
+    <h1 class="mem-title">Gift Cards</h1>
+  </section>
+  <div id="giftDone" class="gift-done" hidden aria-live="polite"></div>
+  <form id="giftForm" class="gift-form" novalidate>
+    <div class="mem-ticket" aria-hidden="true">
+      <div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div>
+      <p class="mem-ticket-deal" id="giftShow">$100</p>
+      <div class="mem-ticket-foot"><span>Any <b>service</b></span><span>Sent by <b>email</b></span></div>
+    </div>
+    <fieldset class="gift-amounts"><legend>Pick an amount</legend>
+      <label><input type="radio" name="amount" value="5000"><span>$50</span></label>
+      <label><input type="radio" name="amount" value="10000" checked><span>$100</span></label>
+      <label><input type="radio" name="amount" value="15000"><span>$150</span></label>
+      <label><input type="radio" name="amount" value="20000"><span>$200</span></label>
+    </fieldset>
+    <div class="gift-fields">
+      <label>Your name<input name="buyerName" autocomplete="name" required></label>
+      <label>Your email<input name="buyerEmail" type="email" autocomplete="email" required></label>
+      <label>Their name <small>optional</small><input name="toName" autocomplete="off"></label>
+      <label>Their email <small>blank = sent to you</small><input name="toEmail" type="email" autocomplete="off"></label>
+      <label class="gift-wide">Message <small>optional</small><textarea name="message" rows="2" maxlength="300"></textarea></label>
+      <input class="gift-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    </div>
+    <p class="gift-err" id="giftErr" role="alert"></p>
+    <div class="mem-ctas"><button class="mem-btn" id="giftPay" type="submit">Pay with card</button></div>
+    <p class="mem-note">Secure checkout by Square. The code arrives by email. One-time use on any booking.</p>
+  </form>
+</main>
+<script>
+(function(){
+  var f=document.getElementById('giftForm'),show=document.getElementById('giftShow'),err=document.getElementById('giftErr'),done=document.getElementById('giftDone'),pay=document.getElementById('giftPay');
+  var money=function(c){return '$'+(c/100)};
+  f.addEventListener('change',function(){var a=f.querySelector('input[name=amount]:checked');if(a)show.textContent=money(+a.value)});
+  f.addEventListener('submit',function(e){
+    e.preventDefault();err.textContent='';var d=new FormData(f),b={};d.forEach(function(v,k){b[k]=v});b.amount=+b.amount;
+    if(!b.buyerName||b.buyerName.trim().length<2){err.textContent='Please enter your name.';return}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.buyerEmail||'')){err.textContent='Please enter your email.';return}
+    pay.disabled=true;pay.textContent='Opening checkout...';
+    fetch('/api/gift-card',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Please try again.');return j})})
+      .then(function(j){location.href=j.url}).catch(function(x){err.textContent=x.message;pay.disabled=false;pay.textContent='Pay with card'});
+  });
+  var gift=new URLSearchParams(location.search).get('gift');if(!gift)return;
+  f.hidden=true;done.hidden=false;done.innerHTML='<p class="gift-wait">Checking your payment...</p>';
+  var tries=0;(function look(){
+    fetch('/api/gift-card?gift='+encodeURIComponent(gift)).then(function(r){return r.json()}).then(function(j){
+      if(j.paid){var who=j.to_email?(j.to_name||j.to_email):'you';done.innerHTML='<p class="gift-yay">YAY!</p><div class="mem-ticket"><div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div><p class="mem-ticket-deal">'+money(j.amount_cents)+'</p><div class="mem-ticket-foot"><span>Code <b class="gift-code"></b></span><span>One-time <b>use</b></span></div></div><p class="mem-sub">We emailed it to <b class="gift-who"></b>.</p>';done.querySelector('.gift-code').textContent=j.code;done.querySelector('.gift-who').textContent=who;return}
+      if(++tries<6){setTimeout(look,2500);return}
+      done.innerHTML='<p class="mem-sub">We have not seen your payment yet. If you paid, your code will be emailed shortly. Questions? Text <a href="sms:+12406019451">(240) 601-9451</a>.</p>';
+    }).catch(function(){done.innerHTML='<p class="mem-sub">Could not check right now. If you paid, your code will be emailed. Text <a href="sms:+12406019451">(240) 601-9451</a> with questions.</p>'});
+  })();
+})();
+</script>
+"""
+page = head('Gift Cards | VVM Details',
+            'Give the shine. VVM Details gift cards from $50, paid securely by card and sent by email. Good on any mobile detail in Calvert County and the DMV.',
+            'gift-cards', [crumbs([('Home', BASE + '/'), ('Gift Cards', tag('gift-cards'))])]).replace('<body class="legal-page seo-page">', '<body class="mem-page">') + top() + gift + foot()
+write('gift-cards', page, '0.6')
 
 # ---------- sitemap and slugs ----------
 urls = [(BASE + '/', '1.0'), (BASE + '/privacy.html', '0.3'), (BASE + '/terms.html', '0.3')] + [(tag(slug), pr) for slug, pr in pages]

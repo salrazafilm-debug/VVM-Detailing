@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gift Cards | VVM Details</title>
+<meta name="description" content="Give the shine. VVM Details gift cards from $50, paid securely by card and sent by email. Good on any mobile detail in Calvert County and the DMV.">
+<link rel="canonical" href="https://vvmdetails.com/gift-cards">
+<meta name="theme-color" content="#e9b3b3">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="VVM Details">
+<meta property="og:title" content="Gift Cards | VVM Details">
+<meta property="og:description" content="Give the shine. VVM Details gift cards from $50, paid securely by card and sent by email. Good on any mobile detail in Calvert County and the DMV.">
+<meta property="og:url" content="https://vvmdetails.com/gift-cards">
+<meta property="og:image" content="https://vvmdetails.com/assets/og-image.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Montserrat:ital,wght@1,700;1,800;1,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://vvmdetails.com/"},{"@type":"ListItem","position":2,"name":"Gift Cards","item":"https://vvmdetails.com/gift-cards"}]}</script>
+<script>window.va=window.va||function(){(window.vaq=window.vaq||[]).push(arguments)}</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body class="mem-page">
+<header class="legal-top">
+  <a href="/" class="brand"><img src="/assets/logo.jpg" alt="VVM Details fox logo"><span>VVM Details</span></a>
+  <a href="/" class="legal-back">&larr; Back to site</a>
+</header>
+<main class="mem gift">
+  <div class="mem-bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+  <section class="mem-hero">
+    <p class="mem-eyebrow">Give the shine</p>
+    <h1 class="mem-title">Gift Cards</h1>
+  </section>
+  <div id="giftDone" class="gift-done" hidden aria-live="polite"></div>
+  <form id="giftForm" class="gift-form" novalidate>
+    <div class="mem-ticket" aria-hidden="true">
+      <div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div>
+      <p class="mem-ticket-deal" id="giftShow">$100</p>
+      <div class="mem-ticket-foot"><span>Any <b>service</b></span><span>Sent by <b>email</b></span></div>
+    </div>
+    <fieldset class="gift-amounts"><legend>Pick an amount</legend>
+      <label><input type="radio" name="amount" value="5000"><span>$50</span></label>
+      <label><input type="radio" name="amount" value="10000" checked><span>$100</span></label>
+      <label><input type="radio" name="amount" value="15000"><span>$150</span></label>
+      <label><input type="radio" name="amount" value="20000"><span>$200</span></label>
+    </fieldset>
+    <div class="gift-fields">
+      <label>Your name<input name="buyerName" autocomplete="name" required></label>
+      <label>Your email<input name="buyerEmail" type="email" autocomplete="email" required></label>
+      <label>Their name <small>optional</small><input name="toName" autocomplete="off"></label>
+      <label>Their email <small>blank = sent to you</small><input name="toEmail" type="email" autocomplete="off"></label>
+      <label class="gift-wide">Message <small>optional</small><textarea name="message" rows="2" maxlength="300"></textarea></label>
+      <input class="gift-hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    </div>
+    <p class="gift-err" id="giftErr" role="alert"></p>
+    <div class="mem-ctas"><button class="mem-btn" id="giftPay" type="submit">Pay with card</button></div>
+    <p class="mem-note">Secure checkout by Square. The code arrives by email. One-time use on any booking.</p>
+  </form>
+</main>
+<script>
+(function(){
+  var f=document.getElementById('giftForm'),show=document.getElementById('giftShow'),err=document.getElementById('giftErr'),done=document.getElementById('giftDone'),pay=document.getElementById('giftPay');
+  var money=function(c){return '$'+(c/100)};
+  f.addEventListener('change',function(){var a=f.querySelector('input[name=amount]:checked');if(a)show.textContent=money(+a.value)});
+  f.addEventListener('submit',function(e){
+    e.preventDefault();err.textContent='';var d=new FormData(f),b={};d.forEach(function(v,k){b[k]=v});b.amount=+b.amount;
+    if(!b.buyerName||b.buyerName.trim().length<2){err.textContent='Please enter your name.';return}
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.buyerEmail||'')){err.textContent='Please enter your email.';return}
+    pay.disabled=true;pay.textContent='Opening checkout...';
+    fetch('/api/gift-card',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Please try again.');return j})})
+      .then(function(j){location.href=j.url}).catch(function(x){err.textContent=x.message;pay.disabled=false;pay.textContent='Pay with card'});
+  });
+  var gift=new URLSearchParams(location.search).get('gift');if(!gift)return;
+  f.hidden=true;done.hidden=false;done.innerHTML='<p class="gift-wait">Checking your payment...</p>';
+  var tries=0;(function look(){
+    fetch('/api/gift-card?gift='+encodeURIComponent(gift)).then(function(r){return r.json()}).then(function(j){
+      if(j.paid){var who=j.to_email?(j.to_name||j.to_email):'you';done.innerHTML='<p class="gift-yay">YAY!</p><div class="mem-ticket"><div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div><p class="mem-ticket-deal">'+money(j.amount_cents)+'</p><div class="mem-ticket-foot"><span>Code <b class="gift-code"></b></span><span>One-time <b>use</b></span></div></div><p class="mem-sub">We emailed it to <b class="gift-who"></b>.</p>';done.querySelector('.gift-code').textContent=j.code;done.querySelector('.gift-who').textContent=who;return}
+      if(++tries<6){setTimeout(look,2500);return}
+      done.innerHTML='<p class="mem-sub">We have not seen your payment yet. If you paid, your code will be emailed shortly. Questions? Text <a href="sms:+12406019451">(240) 601-9451</a>.</p>';
+    }).catch(function(){done.innerHTML='<p class="mem-sub">Could not check right now. If you paid, your code will be emailed. Text <a href="sms:+12406019451">(240) 601-9451</a> with questions.</p>'});
+  })();
+})();
+</script>
+<footer class="footer legal-foot">
+  <div class="foot-inner">
+    <p class="foot-brand">VVM Details</p>
+    <p class="foot-area">Local to Calvert County, MD &middot; Serving DC, MD &amp; VA</p>
+    <div class="foot-contact">
+      <a class="foot-pill" href="tel:+12406019451">Call or text (240) 601-9451</a>
+      <a class="foot-pill" href="mailto:vvm.detailing@gmail.com">vvm.detailing@gmail.com</a>
+    </div>
+    <nav class="foot-areas" aria-label="Areas we serve"><span>Mobile detailing in</span> <a href="/mobile-detailing-chesapeake-beach-md">Chesapeake Beach</a><a href="/mobile-detailing-north-beach-md">North Beach</a><a href="/mobile-detailing-prince-frederick-md">Prince Frederick</a><a href="/mobile-detailing-huntingtown-md">Huntingtown</a><a href="/mobile-detailing-dunkirk-md">Dunkirk</a><a href="/mobile-detailing-owings-md">Owings</a></nav>
+    <nav class="foot-links" aria-label="Footer"><a href="/">Home</a><a href="/#services">Services</a><a href="/#book">Book Now</a><a href="/membership">Membership</a><a href="/gift-cards">Gift Cards</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy Policy</a></nav>
+    <p class="foot-copy">&copy; <span id="yr"></span> VVM Details. All rights reserved.</p>
+  </div>
+</footer>
+<script>document.getElementById('yr').textContent=new Date().getFullYear()</script>
+</body>
+</html>

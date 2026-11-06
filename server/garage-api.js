@@ -711,6 +711,7 @@ exports.remindersCronGet = async req => {
     // Day-before booking reminders go first, so a problem with the Garage reminder queue cannot stop them.
     const bookingReminders = await customerMail.sendBookingReminders(admin).catch(() => ({ error: 'reminders failed' }));
     const reviewRequests = await customerMail.sendReviewRequests(admin).catch(() => ({ error: 'review requests failed' }));
+    const giftCards = await require('./gift-cards').checkPending(admin).catch(() => ({ error: 'gift card check failed' }));
     const {data:pending,error:queueError} = await admin.rpc('garage_pending_reminders',{p_limit:100});
     if(queueError) {
       // Provider messages can include malformed credential/header values. Never log their text.
@@ -724,7 +725,7 @@ exports.remindersCronGet = async req => {
       const result=await exports.reminderPost(new Request('https://garage.internal/api/garage/reminder',{method:'POST',headers:{'content-type':'application/json','x-garage-webhook-key':process.env.GARAGE_REMINDER_SECRET||''},body:JSON.stringify(item)}));
       results.push({type:item.message_type,status:result.status,body:await result.json()});
     }
-    return json({processed:results.length,results,bookingReminders,reviewRequests});
+    return json({processed:results.length,results,bookingReminders,reviewRequests,giftCards});
   } catch(e){return responseError(e)}
 };
 

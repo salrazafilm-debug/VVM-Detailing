@@ -107,6 +107,50 @@ function BookingCard({ b, busy, onAction }) {
   </li>;
 }
 
+// ---- Homepage tab: the "Our Work" photos. Play around freely; nothing changes on the site until CONFIRM. ----
+function AdminHomepage({ active }) {
+  const [saved,setSaved]=useState(null),[items,setItems]=useState([]),[busy,setBusy]=useState(false),[msg,setMsg]=useState(''),[err,setErr]=useState(''),[setup,setSetup]=useState(false);
+  const fileRef=useRef(null);
+  async function load(){setErr('');try{const d=await garageRequest('/api/site/gallery/admin',{cache:'no-store'});setSaved(d.items);setItems(d.items);setSetup(!!d.setup_needed)}catch(e){setErr(e.message)}}
+  useEffect(()=>{if(active&&!saved)load()},[active]);
+  const dirty=saved&&JSON.stringify(saved)!==JSON.stringify(items);
+  const move=(i,d)=>setItems(l=>{const j=i+d;if(j<0||j>=l.length)return l;const n=[...l];[n[i],n[j]]=[n[j],n[i]];return n});
+  const remove=i=>setItems(l=>l.filter((_,k)=>k!==i));
+  const setAlt=(i,alt)=>setItems(l=>l.map((p,k)=>k===i?{...p,alt}:p));
+  async function add(files){
+    setErr('');setMsg('');setBusy(true);let added=0;
+    try{for(const f of [...files]){setMsg(`Shrinking and uploading ${added+1} of ${files.length}…`);const blob=await prepareGaragePhoto(f),form=new FormData();form.append('file',blob,'photo.webp');const r=await garageRequest('/api/site/gallery/upload',{method:'POST',body:form});setItems(l=>[{...r.photo,alt:r.photo.alt||'',isNew:true},...l]);added++}
+      setMsg(`${added} photo${added===1?'':'s'} added at the top. Nothing is live yet: tap CONFIRM CHANGES when you are happy.`)}
+    catch(e){setErr(e.message)}finally{setBusy(false);if(fileRef.current)fileRef.current.value=''}
+  }
+  async function confirm(){
+    setErr('');setBusy(true);
+    try{const clean=items.map(({isNew,...p})=>p);const d=await garageRequest('/api/site/gallery/admin',{method:'POST',body:JSON.stringify({action:'save_gallery',items:clean})});setSaved(d.items);setItems(d.items);setMsg(d.message)}
+    catch(e){setErr(e.message)}finally{setBusy(false)}
+  }
+  return <div className="admin-homepage">
+    <div className="admin-section-head"><div><p className="g-eyebrow">YOUR WEBSITE</p><h2>Homepage photos.</h2></div></div>
+    <p className="g-inline-help">These are the "Our Work" photos on your homepage, in order. Move, remove or add photos. New photos are shrunk to the right size automatically. <b>Nothing changes on the site until you tap CONFIRM CHANGES.</b></p>
+    {setup&&<p className="g-alert">Run the homepage photos update in Supabase first (it is in the SQL update), then refresh.</p>}
+    {err&&<p className="g-alert" role="alert">{err}</p>}{msg&&<p className="g-notice" role="status">{msg}</p>}
+    <div className="ahp-bar">
+      <label className={`g-button ahp-add${busy?' is-busy':''}`}>+ ADD PHOTOS<input ref={fileRef} type="file" accept="image/*,.heic,.heif" multiple hidden disabled={busy} onChange={e=>e.target.files?.length&&add(e.target.files)}/></label>
+      <span className="ahp-count">{items.length} photos{dirty?' · unsaved changes':''}</span>
+    </div>
+    {!saved&&!err&&<p className="g-muted">Loading photos…</p>}
+    <ol className="ahp-grid">{items.map((p,i)=><li key={p.src} className={p.isNew?'is-new':''}>
+      <div className="ahp-img"><img src={p.src} alt="" loading="lazy"/><b>{i+1}</b>{p.isNew&&<em>NEW</em>}</div>
+      <input className="ahp-alt" value={p.alt} placeholder="Describe the photo (for Google)" maxLength={140} onChange={e=>setAlt(i,e.target.value)} aria-label={`Description for photo ${i+1}`}/>
+      <div className="ahp-ctl"><button type="button" disabled={busy||i===0} onClick={()=>move(i,-1)} aria-label={`Move photo ${i+1} earlier`}>◀</button><button type="button" disabled={busy||i===items.length-1} onClick={()=>move(i,1)} aria-label={`Move photo ${i+1} later`}>▶</button><button type="button" className="ahp-del" disabled={busy||items.length<2} onClick={()=>remove(i)} aria-label={`Remove photo ${i+1}`}>Remove</button></div>
+    </li>)}</ol>
+    <div className={`ahp-confirm${dirty?' is-dirty':''}`}>
+      <span>{dirty?'You have changes that are not live yet.':'Everything here is live on your homepage.'}</span>
+      <button type="button" className="abk-ghost" disabled={busy||!dirty} onClick={()=>{setItems(saved);setMsg('Changes undone.')}}>Undo all</button>
+      <button type="button" className="g-button" disabled={busy||!dirty} onClick={confirm}>CONFIRM CHANGES</button>
+    </div>
+  </div>;
+}
+
 function AdminBookings({ bookings, busy, onAction }) {
   const t = today();
   const needs = bookings.filter(b=>b.status==='requested');
@@ -433,9 +477,10 @@ export default function GarageAdmin() {
   return <main className="garage-shell admin-shell">
     <header className="garage-top"><a className="garage-brand" href="/"><img src="/assets/logo.jpg" alt=""/> VVM DETAILS <span className="admin-pill">ADMIN</span></a><div className="garage-account"><a href="/garage">CUSTOMER VIEW</a><button className="g-text-button" disabled={busy} onClick={signOut}>SIGN OUT</button></div></header>
     <div className="garage-heading"><div><p className="g-eyebrow">A LITTLE CARE. ALL IN ORDER.</p><h1>The Garage.</h1><p className="g-muted">Client. Vehicle. Photos. You’re in control.</p></div><span className="admin-count">{loading?'Loading clients…':`${customers.length} client${customers.length===1?'':'s'}`}</span></div>
-    <nav className="admin-tabs" aria-label="Admin sections">{[['bookings','Bookings',bookings.filter(b=>b.status==='requested').length],['clients','Clients',0],['rewards','Rewards',0],['directory','Directory',0]].map(([id,label,n])=><button key={id} type="button" className={section===id?'is-active':''} aria-pressed={section===id} onClick={()=>setSection(id)}>{label}{n>0&&<b>{n}</b>}</button>)}</nav>
+    <nav className="admin-tabs" aria-label="Admin sections">{[['bookings','Bookings',bookings.filter(b=>b.status==='requested').length],['clients','Clients',0],['rewards','Rewards',0],['directory','Directory',0],['homepage','Homepage',0]].map(([id,label,n])=><button key={id} type="button" className={section===id?'is-active':''} aria-pressed={section===id} onClick={()=>setSection(id)}>{label}{n>0&&<b>{n}</b>}</button>)}</nav>
     {section==='clients'&&<ol className="admin-steps" aria-label="Garage setup"><li className={client?'is-complete':'is-current'}><b>{client?'✓':'01'}</b> Client</li><li className={selectedVehicle?'is-complete':client?'is-current':''}><b>{selectedVehicle?'✓':'02'}</b> Vehicle</li><li className={selectedVehicle?'is-current':''}><b>03</b> Photos</li><li><b>04</b> Optional details</li></ol>}
     <div className="admin-feedback" aria-live="polite">{error&&<p className="g-alert" role="alert">{error}{/sign in/i.test(error)&&<> <a href="/admin">Sign in as admin</a></>} <button type="button" className="g-text-button" disabled={busy||loading} onClick={()=>{setError('');setLoading(true);load()}}>REFRESH</button></p>}{notice&&<p className="g-notice" role="status"><button type="button" className="g-text-button admin-dismiss" aria-label="Dismiss notification" onClick={()=>setNotice('')}>×</button>{notice}</p>}</div>
+    <div style={{display:section==='homepage'?undefined:'none'}}><AdminHomepage active={section==='homepage'}/></div>
     <div style={{display:section==='bookings'?undefined:'none'}}><AdminBookings bookings={bookings} busy={busy||loading} onAction={action}/></div>
     <fieldset className="admin-workspace" style={{display:section==='clients'?undefined:'none'}} disabled={busy||loading} aria-busy={busy||loading}>
       <section className="g-panel admin-step" aria-labelledby="client-step">

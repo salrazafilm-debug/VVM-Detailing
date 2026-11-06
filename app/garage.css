@@ -157,3 +157,25 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .discount-list li small{display:block;margin-top:3px;font:500 .85rem var(--gbody);opacity:.75}
 .discount-list .g-button{width:auto;min-height:42px;flex:none}
 .admin-bookings h2,.admin-rewards h2{margin:0;font:italic 900 clamp(1.5rem,3vw,1.95rem)/1.1 var(--gdisplay);letter-spacing:-.045em}
+
+/* Admin > Homepage photos */
+.admin-homepage{display:grid;gap:14px;margin-bottom:24px;padding-bottom:90px}
+.admin-homepage h2{margin:0;font:italic 900 clamp(1.5rem,3vw,1.95rem)/1.1 var(--gdisplay);letter-spacing:-.045em}
+.ahp-bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.ahp-add{cursor:pointer}.ahp-add.is-busy{opacity:.6;pointer-events:none}
+.ahp-count{font:700 .9rem var(--gbody);opacity:.75}
+.ahp-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.ahp-grid li{display:grid;gap:8px;padding:8px;border-radius:16px;background:#fff;border:1px solid rgba(26,18,20,.1);box-shadow:0 4px 14px rgba(26,18,20,.07)}
+.ahp-grid li.is-new{border:2px solid #f0b429}
+.ahp-img{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#eee}
+.ahp-img img{width:100%;height:100%;object-fit:cover}
+.ahp-img b{position:absolute;top:6px;left:6px;min-width:26px;height:26px;display:grid;place-items:center;border-radius:999px;background:rgba(26,18,20,.85);color:#fff;font:800 .78rem var(--gbody)}
+.ahp-img em{position:absolute;top:6px;right:6px;padding:4px 8px;border-radius:999px;background:#f0d63c;color:#1a1214;font:800 .66rem var(--gbody);font-style:normal;letter-spacing:.08em}
+.ahp-alt{width:100%;min-height:38px;padding:6px 10px;border:1px solid rgba(26,18,20,.2);border-radius:10px;font:500 .82rem var(--gbody)}
+.ahp-ctl{display:grid;grid-template-columns:44px 44px 1fr;gap:6px}
+.ahp-ctl button{min-height:40px;border:2px solid var(--gink);border-radius:10px;background:#fff;color:var(--gink);font:800 .8rem var(--gbody);cursor:pointer}
+.ahp-ctl button:disabled{opacity:.35;cursor:default}
+.ahp-ctl .ahp-del{border-color:#c0392b;color:#c0392b}
+.ahp-confirm{position:sticky;bottom:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:18px;background:#fff;border:1px solid rgba(26,18,20,.12);box-shadow:0 12px 30px rgba(26,18,20,.18)}
+.ahp-confirm span{flex:1;min-width:180px;font:700 .9rem var(--gbody)}
+.ahp-confirm.is-dirty{border:2px solid #f0b429;background:#fffbea}

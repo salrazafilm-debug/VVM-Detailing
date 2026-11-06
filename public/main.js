@@ -776,8 +776,13 @@ function loadMedia(root = document) {
 })();
 
 // Our Work: balanced columns. Photos keep their own shapes; only the last photo in a taller column is trimmed so every column ends on the same line.
-(function () {
+(async function () {
   const g = document.querySelector('.gallery'); if (!g) return;
+  // Photos the owner confirmed in admin (Homepage tab). Without them, the photos written in index.html stay.
+  try {
+    const r = await fetch('/api/site/gallery', { cache: 'no-cache' }); const d = r.ok ? await r.json() : null;
+    if (d && Array.isArray(d.items) && d.items.length) g.innerHTML = d.items.map(p => `<figure class="reveal in"><img src="${esc(p.src)}" alt="${esc(p.alt)}" width="${+p.width}" height="${+p.height}" loading="lazy" decoding="async"></figure>`).join('');
+  } catch { /* keep the built-in photos */ }
   const figs = [...g.querySelectorAll('figure')]; let key = '';
   // Show 40% of the photos first; "Show more" reveals the rest
   const FIRST = Math.ceil(figs.length * 0.4); let expanded = false;

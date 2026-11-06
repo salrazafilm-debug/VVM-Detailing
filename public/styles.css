@@ -1821,3 +1821,45 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .mem-strip-sub b{color:#fff;font-weight:800}
 @media(max-width:600px){.mem-strip-card{display:grid;grid-template-columns:1fr;row-gap:6px}.mem-strip-btn{margin-top:8px}}
 @media(max-width:480px){.mem-ticket-foot{flex-direction:column;align-items:center;gap:4px}}
+
+/* Homepage membership ticket (same ticket as /membership) */
+.mem-home{padding:clamp(28px,5vw,56px) clamp(16px,4vw,24px) 0}
+.mem-ticket-home{margin-top:0;max-width:600px}
+.mem-ticket-label{margin-top:clamp(8px,1.6vw,12px);font:italic 900 clamp(1.5rem,5vw,2.3rem)/1 var(--display);text-transform:uppercase;letter-spacing:-.02em;color:#1a1214}
+.mem-ticket-home .mem-ticket-deal{margin-top:4px}
+.mem-ticket-btns{display:flex;gap:10px;justify-content:center;margin-top:clamp(14px,2.4vw,20px)}
+.mem-tbtn{flex:1;max-width:220px;padding:14px 18px;border-radius:999px;border:2px solid #1a1214;color:#1a1214;font:800 .86rem var(--display);letter-spacing:.14em;text-transform:uppercase;text-align:center;transition:transform .3s var(--ease)}
+.mem-tbtn.dark{background:#1a1214;color:#fff}
+.mem-tbtn:hover{transform:translateY(-2px)}
+
+/* Gift cards page */
+.gift-form{max-width:640px;margin:0 auto}
+.gift-amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:clamp(24px,4vw,36px) 0 0;border:0;padding:0}
+.gift-amounts legend{width:100%;margin-bottom:10px;font:800 .8rem var(--display);letter-spacing:.24em;text-transform:uppercase;color:#f0d63c}
+.gift-amounts label{position:relative;cursor:pointer}
+.gift-amounts input{position:absolute;opacity:0;inset:0}
+.gift-amounts span{display:block;padding:14px 0;border-radius:16px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);font:italic 900 1.3rem var(--display);color:#fff;transition:.2s}
+.gift-amounts input:checked+span{background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00;border-color:transparent;box-shadow:0 0 22px rgba(247,200,60,.45)}
+.gift-amounts input:focus-visible+span{outline:3px solid #4f8ff0;outline-offset:2px}
+.gift-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;text-align:left}
+.gift-fields label{display:grid;gap:6px;font:700 .85rem var(--body);color:rgba(255,255,255,.9)}
+.gift-fields small{font-weight:600;color:rgba(255,255,255,.55)}
+.gift-fields input,.gift-fields textarea{width:100%;padding:13px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font:600 1rem var(--body)}
+.gift-fields input:focus,.gift-fields textarea:focus{outline:2px solid #f0d63c;outline-offset:1px}
+.gift-wide{grid-column:1/-1}
+.gift-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.gift-err{min-height:1.4em;margin-top:12px;color:#ffb4a6;font-weight:700}
+.gift .mem-btn{border:0;cursor:pointer}
+.gift .mem-btn:disabled{opacity:.6;cursor:wait}
+.gift-done{max-width:600px;margin:clamp(26px,5vw,44px) auto 0}
+.gift-yay{font:italic 900 clamp(3rem,12vw,6rem)/1 var(--display);color:#f7c948;text-shadow:0 0 30px rgba(247,200,60,.5);margin-bottom:10px}
+.gift-wait{color:rgba(255,255,255,.8);font-weight:700}
+.gift-done .mem-sub{margin-top:18px}.gift-done a{color:#f0d63c;text-decoration:underline}
+.gift-code{font-family:ui-monospace,Menlo,monospace;letter-spacing:.1em}
+@media(max-width:600px){.gift-amounts{grid-template-columns:repeat(2,1fr)}.gift-fields{grid-template-columns:1fr}}
+/* Homepage ticket: the notches sit exactly on the dashed line (pink circles, since this ticket is on the pink page) */
+.mem-ticket-home{-webkit-mask:none;mask:none;--tpad:clamp(24px,5vw,40px);padding-left:var(--tpad);padding-right:var(--tpad)}
+.mem-ticket-home .mem-ticket-foot{position:relative}
+.mem-ticket-home .mem-ticket-foot:before,.mem-ticket-home .mem-ticket-foot:after{content:"";position:absolute;top:-1px;width:32px;height:32px;margin-top:-16px;border-radius:50%;background:var(--pink)}
+.mem-ticket-home .mem-ticket-foot:before{left:calc(-1 * var(--tpad) - 16px)}
+.mem-ticket-home .mem-ticket-foot:after{right:calc(-1 * var(--tpad) - 16px)}
