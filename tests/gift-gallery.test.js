@@ -34,7 +34,7 @@ function fakeDb(T) {
   const T = {}; const db = fakeDb(T); const calls = [];
   let order = { total_money: { amount: 10000 }, state: 'OPEN', tenders: [], net_amount_due_money: { amount: 10000 } };
   const sq = async (path, o) => { calls.push([path, o && o.body]); if (path.includes('payment-links')) return { payment_link: { id: 'pl1', url: 'https://square.link/u/abc', order_id: 'ord1' } }; return { order }; };
-  await assert.rejects(() => gifts.create({ amount: 999, buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' }), /amount/);
+  await assert.rejects(() => gifts.create({ amount: 2000, buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' }), /amount/);
   await assert.rejects(() => gifts.create({ amount: 10000, buyerName: 'Ann', buyerEmail: 'nope' }, { db, sq, location: async () => 'L1' }), /email/);
   const r = await gifts.create({ amount: 10000, buyerName: 'Ann Lee', buyerEmail: 'Ann@X.com', toName: 'Bo', toEmail: 'bo@x.com', message: 'Happy birthday' }, { db, sq, location: async () => 'L1' });
   assert.equal(r.url, 'https://square.link/u/abc');
@@ -54,5 +54,15 @@ function fakeDb(T) {
   assert.deepEqual([T.discount_codes.length, T.discount_codes[0].amount_cents, T.discount_codes[0].uses_limit], [1, 10000, 1]);
   const again = await gifts.status(`${g.id}.${g.token}`, { db, sq }); assert.equal(again.code, s.code); assert.equal(T.discount_codes.length, 1);
   assert.equal((await gifts.checkPending(db, sq)).checked, 0, 'paid cards are not checked again');
+  // custom amounts round to whole dollars; Full Factory Reset gifts are priced by size from the website price list
+  const opts = gifts.options(); assert.deepEqual(opts.reset.map(o => o.size), ['coupe', 'sedan', 'suv', 'truck', 'minivan']);
+  assert.deepEqual(opts.reset.map(o => o.cents), [26500, 29500, 32000, 34500, 41000]);
+  await assert.rejects(() => gifts.create({ amount: 200000, buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' }), /\$1,000/);
+  await gifts.create({ amount: 7549, buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' });
+  assert.equal(T.gift_cards.at(-1).amount_cents, 7500);
+  await gifts.create({ reset: 'suv', amount: 1, buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' });
+  assert.deepEqual([T.gift_cards.at(-1).amount_cents, T.gift_cards.at(-1).label], [32000, 'Full Factory Reset (SUV)']);
+  assert.match(calls.at(-1)[1].quick_pay.name, /Full Factory Reset \(SUV\)/);
+  await assert.rejects(() => gifts.create({ reset: 'boat', buyerName: 'Ann', buyerEmail: 'a@x.com' }, { db, sq, location: async () => 'L1' }), /size/);
   console.log('gift card and homepage photo tests passed');
 })().catch(e => { console.error(e); process.exit(1); });

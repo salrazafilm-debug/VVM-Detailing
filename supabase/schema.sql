@@ -401,3 +401,4 @@ create table if not exists public.gift_cards (
 );
 create index if not exists gift_cards_pending_idx on public.gift_cards(status, created_at);
 alter table public.gift_cards enable row level security;
+alter table public.gift_cards add column if not exists label text;

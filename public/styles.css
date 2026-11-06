@@ -1863,3 +1863,65 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
 .mem-ticket-home .mem-ticket-foot:before,.mem-ticket-home .mem-ticket-foot:after{content:"";position:absolute;top:-1px;width:32px;height:32px;margin-top:-16px;border-radius:50%;background:var(--pink)}
 .mem-ticket-home .mem-ticket-foot:before{left:calc(-1 * var(--tpad) - 16px)}
 .mem-ticket-home .mem-ticket-foot:after{right:calc(-1 * var(--tpad) - 16px)}
+
+/* ---- Ticket v3: clean and calm. No moving shimmer, no cut-out notches, more room around it ---- */
+.mem-ticket{-webkit-mask:none!important;mask:none!important;animation:none!important;filter:none;
+  background:linear-gradient(135deg,#fff1b0 0%,#f7cf55 45%,#eeb02e 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),inset 0 0 0 7px rgba(255,255,255,.14),0 18px 44px rgba(42,26,0,.28)}
+.mem-ticket-foot{border-top:2px dashed rgba(42,26,0,.28)}
+.mem-ticket-home .mem-ticket-foot:before,.mem-ticket-home .mem-ticket-foot:after{display:none}
+.mem-home{padding:clamp(40px,7vw,80px) clamp(20px,5vw,32px) clamp(10px,3vw,30px)}
+.mem-ticket-home{max-width:540px}
+.mem-ticket-home .mem-ticket-deal{font-size:clamp(3.4rem,13vw,6rem)}
+.mem .mem-ticket{max-width:520px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),inset 0 0 0 7px rgba(255,255,255,.14),0 0 60px rgba(247,200,60,.25),0 22px 50px rgba(0,0,0,.4)}
+@media(max-width:600px){.mem-ticket{margin-left:4px;margin-right:4px}.mem-ticket-top{font-size:.62rem;letter-spacing:.16em}}
+
+/* ---- Homepage gift section ---- */
+.gift-home{padding:clamp(40px,7vw,80px) clamp(20px,5vw,32px) 0}
+.gh-card{display:grid;grid-template-columns:1fr 1.05fr;gap:clamp(18px,4vw,48px);align-items:center;max-width:1000px;margin:0 auto;padding:clamp(22px,4.5vw,48px);border-radius:30px;background:#fff;box-shadow:0 20px 50px rgba(120,40,50,.18)}
+.gh-copy .eyebrow{color:#7a3b44}
+.gh-copy h2{font:italic 900 clamp(1.9rem,4.6vw,3rem)/1.02 var(--display);letter-spacing:-.035em;text-wrap:balance}
+.gh-copy p:not(.eyebrow){margin-top:12px;font-size:1.05rem;color:#4a3b3e}
+.gh-pick{display:grid;gap:14px}
+.gh-total{display:flex;align-items:baseline;justify-content:center;gap:10px;flex-wrap:wrap}
+.gh-total span{font:italic 900 clamp(2.4rem,7vw,3.4rem)/1 var(--display);letter-spacing:-.04em}
+.gh-total small{font:700 .9rem var(--body);color:#7a6468}
+.gh-go{width:100%;border:0;cursor:pointer;background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00;box-shadow:0 10px 30px rgba(247,200,60,.45)}
+@media(max-width:760px){.gh-card{grid-template-columns:1fr;text-align:center}}
+
+/* ---- Gift picker (shared) ---- */
+.gp-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border-radius:999px;background:#f3e7e8}
+.gp-mode button{min-height:44px;border:0;border-radius:999px;background:transparent;font:800 .82rem var(--display);letter-spacing:.08em;text-transform:uppercase;color:#1a1214;cursor:pointer}
+.gp-mode button[aria-pressed=true]{background:#1a1214;color:#fff}
+.gp-amount{display:grid;gap:10px}
+.gp-stepper{display:grid;grid-template-columns:52px 1fr 52px;gap:8px;align-items:center}
+.gp-step{height:52px;border-radius:16px;border:2px solid #1a1214;background:#fff;font:800 1.5rem/1 var(--body);color:#1a1214;cursor:pointer}
+.gp-field{display:flex;align-items:center;justify-content:center;height:52px;border-radius:16px;border:2px solid #e6d6d8;background:#fff}
+.gp-field span{font:italic 900 1.5rem var(--display)}
+.gp-num{width:5ch;border:0;background:transparent;font:italic 900 1.6rem var(--display);text-align:center;color:#1a1214;-moz-appearance:textfield}
+.gp-num::-webkit-inner-spin-button,.gp-num::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.gp-num:focus{outline:none}.gp-field:focus-within{border-color:#4f8ff0}
+.gp-quicks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.gp-quick{min-height:40px;border-radius:12px;border:1px solid #e6d6d8;background:#fbf4f4;font:800 .9rem var(--body);color:#1a1214;cursor:pointer}
+.gp-sizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}
+.gp-sizes[hidden]{display:none}
+.gp-sizes button{display:grid;gap:2px;padding:12px 6px;border-radius:14px;border:2px solid #e6d6d8;background:#fff;color:#1a1214;cursor:pointer}
+.gp-sizes b{font:800 .9rem var(--body)}.gp-sizes span{font:italic 900 1.1rem var(--display)}
+.gp-sizes button[aria-pressed=true]{border-color:#f0b429;background:#fff7d6;box-shadow:0 0 0 3px rgba(240,180,41,.25)}
+.gp-note{grid-column:1/-1;font-size:.9rem;color:#7a6468}
+/* on the dark gift page */
+.gift-pick{display:grid;gap:12px;margin-top:clamp(22px,4vw,32px)}
+.mem .gp-mode{background:rgba(255,255,255,.1)}
+.mem .gp-mode button{color:#fff}.mem .gp-mode button[aria-pressed=true]{background:linear-gradient(135deg,#ffe27a,#f0b429);color:#2a1a00}
+.mem .gp-step,.mem .gp-field,.mem .gp-quick,.mem .gp-sizes button{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.28);color:#fff}
+.mem .gp-num,.mem .gp-field span{color:#fff}
+.mem .gp-sizes button[aria-pressed=true]{background:rgba(247,200,60,.18);border-color:#f7c948}
+.gift-label{margin:-6px 0 14px;font:800 .95rem var(--body)}
+
+/* ---- Hero "Mobile Car Wash & Detailing" line: bigger, glows, easy to read ---- */
+.hero-inner .eyebrow{font-size:clamp(1.05rem,2.6vw,1.45rem);font-weight:800;opacity:1;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.55),0 0 22px rgba(247,200,60,.45)}
+.gp-amount[hidden]{display:none}
+.gp-sizes{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:600px){.gp-sizes{grid-template-columns:1fr;gap:6px}.gp-sizes button{grid-auto-flow:column;justify-content:space-between;align-items:center;padding:12px 16px}}
+/* phone footer grid: a lone last link spans the row instead of sitting by itself */
+@media(max-width:600px){.foot-links a:last-child:nth-child(odd){grid-column:1/-1}}

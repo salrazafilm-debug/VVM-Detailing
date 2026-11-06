@@ -7,6 +7,8 @@ export async function POST(req) {
   catch (e) { console.error('gift card create failed:', e.message); return reply(e); }
 }
 export async function GET(req) {
-  try { return Response.json(await gifts.status(new URL(req.url).searchParams.get('gift')), { headers: { 'Cache-Control': 'no-store' } }); }
+  const gift = new URL(req.url).searchParams.get('gift');
+  if (!gift) return Response.json(gifts.options(), { headers: { 'Cache-Control': 'public, s-maxage=300' } });
+  try { return Response.json(await gifts.status(gift), { headers: { 'Cache-Control': 'no-store' } }); }
   catch (e) { return reply(e); }
 }

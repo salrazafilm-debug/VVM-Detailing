@@ -28,6 +28,8 @@ create table if not exists public.gift_cards (
   created_at timestamptz not null default now(),
   paid_at timestamptz
 );
+-- What the gift is for, e.g. "Full Factory Reset (SUV)" (empty for an amount).
+alter table public.gift_cards add column if not exists label text;
 create index if not exists gift_cards_pending_idx on public.gift_cards(status, created_at);
 alter table public.gift_cards enable row level security;
 notify pgrst, 'reload schema';

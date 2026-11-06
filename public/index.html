@@ -26,7 +26,6 @@
 <meta property="og:image:alt" content="VVM Mobile Detailing fox logo. Mobile car wash and detailing in Calvert County, MD.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://vvmdetails.com/assets/og-image.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Do I pay a deposit?","acceptedAnswer":{"@type":"Answer","text":"No. You pay after your detail."}},{"@type":"Question","name":"What do I do before you arrive?","acceptedAnswer":{"@type":"Answer","text":"Empty your vehicle and park where we can open every door."}},{"@type":"Question","name":"How much is travel?","acceptedAnswer":{"@type":"Answer","text":"FREE up to 30 minutes. Calvert County family area: FREE travel + $25 off."}},{"@type":"Question","name":"Can I drop off instead?","acceptedAnswer":{"@type":"Answer","text":"Yes, in Chesapeake Beach. No travel fee."}},{"@type":"Question","name":"More than one vehicle?","acceptedAnswer":{"@type":"Answer","text":"Book 2 online. For 3 or more, text us."}}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"AutoWash","name":"VVM Mobile Detailing - Calvert County","url":"https://vvmdetails.com/","image":"https://vvmdetails.com/assets/og-image.png","logo":"https://vvmdetails.com/assets/logo.jpg","telephone":"+1-240-601-9451","email":"vvm.detailing@gmail.com","description":"Mobile car wash and detailing at your door in Calvert County, MD. Based in Chesapeake Beach, with free travel up to 30 minutes. Also serving DC, MD and VA.","address":{"@type":"PostalAddress","addressLocality":"Chesapeake Beach","addressRegion":"MD","addressCountry":"US"},"areaServed":[{"@type":"AdministrativeArea","name":"Calvert County, MD"},{"@type":"Place","name":"Chesapeake Beach, MD"},{"@type":"Place","name":"North Beach, MD"},{"@type":"Place","name":"Owings, MD"},{"@type":"Place","name":"Dunkirk, MD"},{"@type":"Place","name":"Huntingtown, MD"},{"@type":"Place","name":"Prince Frederick, MD"},{"@type":"Place","name":"Sunderland, MD"},{"@type":"Place","name":"Tracys Landing, MD"},{"@type":"Place","name":"Port Republic, MD"},{"@type":"Place","name":"Lusby, MD"},{"@type":"Place","name":"Broomes Island, MD"},{"@type":"Place","name":"Washington, DC"},{"@type":"Place","name":"Virginia"},{"@type":"State","name":"Maryland"}],"sameAs":["https://www.instagram.com/vvm.details","https://maps.google.com/?cid=16030460175094998343"],"makesOffer":[{"@type":"Offer","itemOffered":{"@type":"Service","name":"The Full Factory Reset"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Interior Reset"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Exterior Reset"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Headlight Restoration"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Engine Bay Detail"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Boat Detailing"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Paint Enhancement + 5 Year Ceramic Coating"}}],"alternateName":"VVM Details","hasMap":"https://maps.google.com/?cid=16030460175094998343"}</script>
 
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -51,7 +50,7 @@
     <a href="#reviews">Reviews</a>
     <a href="#how">How It Works</a>
     <a href="/membership">Membership</a>
-    <a href="/client-login">Client Login</a>
+    <a href="/client-login">My Garage</a>
     <a href="#book" class="cta-sm">Book Now</a>
   </nav>
   <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
@@ -393,18 +392,25 @@
   </section>
 
   <!-- LOCAL AREA MAP -->
-  <!-- FAQ -->
-  <section class="section faq-sec" id="faq" aria-labelledby="faq-h">
-    <div class="head reveal">
-      <p class="eyebrow">Good to know</p>
-      <h2 id="faq-h">Quick Answers</h2>
-    </div>
-    <div class="faq reveal">
-        <details><summary>Do I pay a deposit?</summary><p>No. You pay after your detail.</p></details>
-        <details><summary>What do I do before you arrive?</summary><p>Empty your vehicle and park where we can open every door.</p></details>
-        <details><summary>How much is travel?</summary><p>FREE up to 30 minutes. Calvert County family area: FREE travel + $25 off.</p></details>
-        <details><summary>Can I drop off instead?</summary><p>Yes, in Chesapeake Beach. No travel fee.</p></details>
-        <details><summary>More than one vehicle?</summary><p>Book 2 online. For 3 or more, text us.</p></details>
+  <!-- GIFT CARDS -->
+  <section class="gift-home" id="gift" aria-labelledby="gift-h">
+    <div class="gh-card reveal">
+      <div class="gh-copy">
+        <p class="eyebrow">Gift cards</p>
+        <h2 id="gift-h">Gift a detail to a loved one!</h2>
+        <p>Pick <b>any amount</b> or a <b>Full Factory Reset</b>. Sent by email.</p>
+      </div>
+      <form class="gh-pick" action="/gift-cards" method="get" data-gpick data-show="#ghShow">
+<div class="gp-mode" role="group" aria-label="Gift type"><button type="button" data-mode="amount" aria-pressed="true">Any amount</button><button type="button" data-mode="reset" aria-pressed="false">Full Factory Reset</button></div>
+<div class="gp-amount">
+  <div class="gp-stepper"><button type="button" class="gp-step" data-step="-25" aria-label="25 dollars less">−</button><label class="gp-field"><span>$</span><input class="gp-num" type="number" inputmode="numeric" min="25" max="1000" step="5" value="100" aria-label="Gift amount in dollars"></label><button type="button" class="gp-step" data-step="25" aria-label="25 dollars more">+</button></div>
+  <div class="gp-quicks"><button type="button" class="gp-quick" data-v="50">$50</button><button type="button" class="gp-quick" data-v="100">$100</button><button type="button" class="gp-quick" data-v="150">$150</button><button type="button" class="gp-quick" data-v="250">$250</button></div>
+</div>
+<div class="gp-sizes" hidden></div>
+<input type="hidden" name="amount" value="10000"><input type="hidden" name="reset" value="">
+        <div class="gh-total"><span id="ghShow">$100</span><small data-gpick-sub>Any service</small></div>
+        <button class="cta gh-go" type="submit">Gift it</button>
+      </form>
     </div>
   </section>
 
@@ -463,7 +469,7 @@
     </div>
     <nav class="foot-areas" aria-label="Areas we serve"><span>Mobile detailing in</span> <a href="/mobile-detailing-calvert-county-md">Calvert County</a><a href="/mobile-detailing-chesapeake-beach-md">Chesapeake Beach</a><a href="/mobile-detailing-north-beach-md">North Beach</a><a href="/mobile-detailing-prince-frederick-md">Prince Frederick</a><a href="/mobile-detailing-huntingtown-md">Huntingtown</a><a href="/mobile-detailing-dunkirk-md">Dunkirk</a><a href="/mobile-detailing-owings-md">Owings</a></nav>
     <nav class="foot-links" aria-label="Footer">
-      <a href="#services">Services</a><a href="#work">Our Work</a><a href="#reviews">Reviews</a><a href="#how">How It Works</a><a href="/membership">Membership</a><a href="/gift-cards">Gift Cards</a><a href="#faq">FAQ</a><a href="#book">Book Now</a>
+      <a href="#services">Services</a><a href="#work">Our Work</a><a href="#reviews">Reviews</a><a href="#how">How It Works</a><a href="/membership">Membership</a><a href="#gift">Gift Cards</a><a href="#book">Book Now</a>
     </nav>
     <p class="foot-copy">&copy; <span id="yr"></span> VVM Details. All rights reserved. &middot; <a href="terms.html">Terms</a> &middot; <a href="privacy.html">Privacy Policy</a></p>
   </div>
@@ -479,5 +485,6 @@
 
 <a href="#book" class="float-cta">Book Now</a>
 <script src="main.js"></script>
+<script src="/gift-picker.js" defer></script>
 </body>
 </html>

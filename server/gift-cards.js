@@ -8,7 +8,14 @@ const { client } = require('./coupon-db');
 const { sendCustomerEmail } = require('./customer-mail');
 const { sendBookingEmail } = require('./mail');
 
-const AMOUNTS = [5000, 10000, 15000, 20000];
+const MIN_CENTS = 2500, MAX_CENTS = 100000;      // custom amounts: $25 to $1,000, whole dollars
+// A Full Factory Reset gift, priced from the website's own price list (catalog-static.js) by vehicle size.
+const SIZES = [['coupe', 'Coupe', /^coupe/i], ['sedan', 'Sedan', /^sedan/i], ['suv', 'SUV', /^suv/i], ['truck', 'Truck', /^truck/i], ['minivan', 'Minivan', /^mini-?\s?van/i]];
+function resetOptions() {
+  const rows = Object.values(require('./catalog-static').STATIC_CATALOG).filter(v => v.item === 'Full Factory Reset');
+  return SIZES.map(([size, label, re]) => { const v = rows.find(r => re.test(r.label)); return v ? { size, label, cents: v.priceCents } : null; }).filter(Boolean);
+}
+const options = () => ({ minCents: MIN_CENTS, maxCents: MAX_CENTS, reset: resetOptions() });
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vvmdetails.com').replace(/\/$/, '');
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const clean = (s, max) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
@@ -28,19 +35,26 @@ function orderPaid(order, amountCents) {
 
 async function create(b, deps = {}) {
   const db = deps.db || client(), square = deps.sq || sq, location = deps.location || getLocationId;
-  const amount = Number(b.amount);
-  if (!AMOUNTS.includes(amount)) throw httpError(400, 'Pick a gift card amount.');
+  let amount, label = null;
+  if (b.reset) {
+    const opt = resetOptions().find(o => o.size === b.reset);
+    if (!opt) throw httpError(400, 'Pick a vehicle size.');
+    amount = opt.cents; label = `Full Factory Reset (${opt.label})`;
+  } else {
+    amount = Math.round(Number(b.amount) / 100) * 100;
+    if (!(amount >= MIN_CENTS && amount <= MAX_CENTS)) throw httpError(400, 'Pick an amount from $25 to $1,000.');
+  }
   const buyer_name = clean(b.buyerName, 80), buyer_email = clean(b.buyerEmail, 120).toLowerCase();
   const to_name = clean(b.toName, 80), to_email = clean(b.toEmail, 120).toLowerCase(), message = clean(b.message, 300);
   if (buyer_name.length < 2) throw httpError(400, 'Please enter your name.');
   if (!EMAIL.test(buyer_email)) throw httpError(400, 'Please enter your email.');
   if (to_email && !EMAIL.test(to_email)) throw httpError(400, 'Please check their email.');
   const token = crypto.randomBytes(18).toString('base64url');
-  const { data: row, error } = await db.from('gift_cards').insert({ token, amount_cents: amount, buyer_name, buyer_email, to_name: to_name || null, to_email: to_email || null, message: message || null, status: 'pending' }).select('id').single();
+  const { data: row, error } = await db.from('gift_cards').insert({ token, amount_cents: amount, label, buyer_name, buyer_email, to_name: to_name || null, to_email: to_email || null, message: message || null, status: 'pending' }).select('id').single();
   if (error || !row) throw httpError(503, 'Gift cards are not set up yet. Please text us to buy one.');
   const link = await square('/v2/online-checkout/payment-links', { method: 'POST', body: {
     idempotency_key: row.id,
-    quick_pay: { name: `VVM Details gift card ${dollars(amount)}`, price_money: { amount, currency: 'USD' }, location_id: await location() },
+    quick_pay: { name: `VVM Details gift card: ${label || dollars(amount)}`, price_money: { amount, currency: 'USD' }, location_id: await location() },
     checkout_options: { redirect_url: `${SITE}/gift-cards?gift=${row.id}.${token}`, ask_for_shipping_address: false },
     pre_populated_data: { buyer_email },
   } });
@@ -69,6 +83,7 @@ function giftHtml(g, code) {
   <tr><td align="center" style="padding:8px 28px 18px">
     <div style="display:inline-block;padding:22px 34px;border-radius:20px;background:linear-gradient(110deg,#ffe27a,#f7c948,#f0b429);color:#1a1214">
       <div style="font-family:'Montserrat',Helvetica,Arial,sans-serif;font-style:italic;font-weight:900;font-size:44px;line-height:1">${dollars(g.amount_cents)}</div>
+      ${g.label ? `<div style="margin-top:6px;font-size:14px;font-weight:800">${esc(g.label)}</div>` : ''}
       <div style="margin-top:10px;font-size:12px;font-weight:800;letter-spacing:.2em">YOUR CODE</div>
       <div style="margin-top:4px;font-family:monospace;font-size:24px;font-weight:800;letter-spacing:.12em">${esc(code)}</div>
     </div>
@@ -89,19 +104,19 @@ async function finalize(db, g) {
   const { error } = await db.from('discount_codes').insert({ code, amount_cents: g.amount_cents, uses_limit: 1, active: true });
   if (error) console.error('gift code save failed:', error.message);
   const to = g.to_email || g.buyer_email;
-  const text = [`${g.to_name ? `${g.buyer_name} sent you` : 'Here is'} a VVM Details gift card: ${dollars(g.amount_cents)}.`, g.message ? `"${g.message}"` : '', `Your code: ${code}`, 'Book at vvmdetails.com and type the code in the coupon box. One-time use.', '', 'VVM Details'].filter(Boolean).join('\n');
+  const text = [`${g.to_name ? `${g.buyer_name} sent you` : 'Here is'} a VVM Details gift card: ${dollars(g.amount_cents)}${g.label ? ` (${g.label})` : ''}.`, g.message ? `"${g.message}"` : '', `Your code: ${code}`, 'Book at vvmdetails.com and type the code in the coupon box. One-time use.', '', 'VVM Details'].filter(Boolean).join('\n');
   await sendCustomerEmail({ to, name: g.to_name || g.buyer_name, subject: `Your ${dollars(g.amount_cents)} VVM Details gift card`, text, html: giftHtml(g, code) }).catch(() => {});
   if (g.to_email && g.to_email !== g.buyer_email) await sendCustomerEmail({ to: g.buyer_email, name: g.buyer_name, subject: `Your gift card was sent to ${g.to_name || g.to_email}`, text: `Thank you! Your ${dollars(g.amount_cents)} gift card was emailed to ${g.to_name || ''} (${g.to_email}).\nCode: ${code}\n\nVVM Details`, html: giftHtml(g, code) }).catch(() => {});
-  await sendBookingEmail({ subject: `Gift card sold: ${dollars(g.amount_cents)} from ${g.buyer_name}`, replyTo: g.buyer_email, lines: [`Amount: ${dollars(g.amount_cents)} (paid by card through Square)`, `From: ${g.buyer_name} (${g.buyer_email})`, `To: ${g.to_name || 'themself'}${g.to_email ? ` (${g.to_email})` : ''}`, `Code: ${code} (one-time use, also in Admin > Rewards)`, g.message ? `Message: ${g.message}` : 'Message: none'] }).catch(() => {});
+  await sendBookingEmail({ subject: `Gift card sold: ${dollars(g.amount_cents)} from ${g.buyer_name}`, replyTo: g.buyer_email, lines: [`Amount: ${dollars(g.amount_cents)}${g.label ? ` - ${g.label}` : ''} (paid by card through Square)`, `From: ${g.buyer_name} (${g.buyer_email})`, `To: ${g.to_name || 'themself'}${g.to_email ? ` (${g.to_email})` : ''}`, `Code: ${code} (one-time use, also in Admin > Rewards)`, g.message ? `Message: ${g.message}` : 'Message: none'] }).catch(() => {});
   return code;
 }
 
 async function check(db, g, square = sq) {
-  if (g.status === 'paid') return { paid: true, code: g.code, amount_cents: g.amount_cents };
+  if (g.status === 'paid') return { paid: true, code: g.code, amount_cents: g.amount_cents, label: g.label || null };
   if (!g.square_order_id) return { paid: false };
   const { order } = await square(`/v2/orders/${encodeURIComponent(g.square_order_id)}`);
   if (!orderPaid(order, g.amount_cents)) return { paid: false };
-  return { paid: true, code: await finalize(db, g), amount_cents: g.amount_cents };
+  return { paid: true, code: await finalize(db, g), amount_cents: g.amount_cents, label: g.label || null };
 }
 
 // Buyer's return page: "gift" is "<id>.<token>" from the redirect link.
@@ -125,4 +140,4 @@ async function checkPending(db, square = sq) {
   return { checked: (data || []).length, paid };
 }
 
-module.exports = { AMOUNTS, create, status, check, checkPending, finalize, orderPaid, newCode, giftHtml };
+module.exports = { options, resetOptions, MIN_CENTS, MAX_CENTS, create, status, check, checkPending, finalize, orderPaid, newCode, giftHtml };

@@ -345,15 +345,18 @@ gift = r"""<main class="mem gift">
   <form id="giftForm" class="gift-form" novalidate>
     <div class="mem-ticket" aria-hidden="true">
       <div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div>
-      <p class="mem-ticket-deal" id="giftShow">$100</p>
-      <div class="mem-ticket-foot"><span>Any <b>service</b></span><span>Sent by <b>email</b></span></div>
+      <p class="mem-ticket-deal" data-gpick-show>$100</p>
+      <div class="mem-ticket-foot"><span data-gpick-sub>Any service</span><span>Sent by <b>email</b></span></div>
     </div>
-    <fieldset class="gift-amounts"><legend>Pick an amount</legend>
-      <label><input type="radio" name="amount" value="5000"><span>$50</span></label>
-      <label><input type="radio" name="amount" value="10000" checked><span>$100</span></label>
-      <label><input type="radio" name="amount" value="15000"><span>$150</span></label>
-      <label><input type="radio" name="amount" value="20000"><span>$200</span></label>
-    </fieldset>
+    <div class="gift-pick" data-gpick>
+<div class="gp-mode" role="group" aria-label="Gift type"><button type="button" data-mode="amount" aria-pressed="true">Any amount</button><button type="button" data-mode="reset" aria-pressed="false">Full Factory Reset</button></div>
+<div class="gp-amount">
+  <div class="gp-stepper"><button type="button" class="gp-step" data-step="-25" aria-label="25 dollars less">−</button><label class="gp-field"><span>$</span><input class="gp-num" type="number" inputmode="numeric" min="25" max="1000" step="5" value="100" aria-label="Gift amount in dollars"></label><button type="button" class="gp-step" data-step="25" aria-label="25 dollars more">+</button></div>
+  <div class="gp-quicks"><button type="button" class="gp-quick" data-v="50">$50</button><button type="button" class="gp-quick" data-v="100">$100</button><button type="button" class="gp-quick" data-v="150">$150</button><button type="button" class="gp-quick" data-v="250">$250</button></div>
+</div>
+<div class="gp-sizes" hidden></div>
+<input type="hidden" name="amount" value="10000"><input type="hidden" name="reset" value="">
+    </div>
     <div class="gift-fields">
       <label>Your name<input name="buyerName" autocomplete="name" required></label>
       <label>Your email<input name="buyerEmail" type="email" autocomplete="email" required></label>
@@ -367,13 +370,14 @@ gift = r"""<main class="mem gift">
     <p class="mem-note">Secure checkout by Square. The code arrives by email. One-time use on any booking.</p>
   </form>
 </main>
+<script src="/gift-picker.js" defer></script>
 <script>
 (function(){
-  var f=document.getElementById('giftForm'),show=document.getElementById('giftShow'),err=document.getElementById('giftErr'),done=document.getElementById('giftDone'),pay=document.getElementById('giftPay');
+  var f=document.getElementById('giftForm'),err=document.getElementById('giftErr'),done=document.getElementById('giftDone'),pay=document.getElementById('giftPay');
   var money=function(c){return '$'+(c/100)};
-  f.addEventListener('change',function(){var a=f.querySelector('input[name=amount]:checked');if(a)show.textContent=money(+a.value)});
   f.addEventListener('submit',function(e){
-    e.preventDefault();err.textContent='';var d=new FormData(f),b={};d.forEach(function(v,k){b[k]=v});b.amount=+b.amount;
+    e.preventDefault();err.textContent='';var d=new FormData(f),b={};d.forEach(function(v,k){b[k]=v});b.amount=+b.amount||0;
+    if(!b.reset&&!(b.amount>=2500&&b.amount<=100000)){err.textContent='Pick an amount from $25 to $1,000, or a Full Factory Reset size.';return}
     if(!b.buyerName||b.buyerName.trim().length<2){err.textContent='Please enter your name.';return}
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.buyerEmail||'')){err.textContent='Please enter your email.';return}
     pay.disabled=true;pay.textContent='Opening checkout...';
@@ -384,7 +388,7 @@ gift = r"""<main class="mem gift">
   f.hidden=true;done.hidden=false;done.innerHTML='<p class="gift-wait">Checking your payment...</p>';
   var tries=0;(function look(){
     fetch('/api/gift-card?gift='+encodeURIComponent(gift)).then(function(r){return r.json()}).then(function(j){
-      if(j.paid){var who=j.to_email?(j.to_name||j.to_email):'you';done.innerHTML='<p class="gift-yay">YAY!</p><div class="mem-ticket"><div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div><p class="mem-ticket-deal">'+money(j.amount_cents)+'</p><div class="mem-ticket-foot"><span>Code <b class="gift-code"></b></span><span>One-time <b>use</b></span></div></div><p class="mem-sub">We emailed it to <b class="gift-who"></b>.</p>';done.querySelector('.gift-code').textContent=j.code;done.querySelector('.gift-who').textContent=who;return}
+      if(j.paid){var who=j.to_email?(j.to_name||j.to_email):'you';done.innerHTML='<p class="gift-yay">YAY!</p><div class="mem-ticket"><div class="mem-ticket-top"><span>VVM Details</span><span>Gift card</span></div><p class="mem-ticket-deal">'+money(j.amount_cents)+'</p>'+(j.label?'<p class="gift-label">'+j.label+'</p>':'')+'<div class="mem-ticket-foot"><span>Code <b class="gift-code"></b></span><span>One-time <b>use</b></span></div></div><p class="mem-sub">We emailed it to <b class="gift-who"></b>.</p>';done.querySelector('.gift-code').textContent=j.code;done.querySelector('.gift-who').textContent=who;return}
       if(++tries<6){setTimeout(look,2500);return}
       done.innerHTML='<p class="mem-sub">We have not seen your payment yet. If you paid, your code will be emailed shortly. Questions? Text <a href="sms:+12406019451">(240) 601-9451</a>.</p>';
     }).catch(function(){done.innerHTML='<p class="mem-sub">Could not check right now. If you paid, your code will be emailed. Text <a href="sms:+12406019451">(240) 601-9451</a> with questions.</p>'});
@@ -393,7 +397,7 @@ gift = r"""<main class="mem gift">
 </script>
 """
 page = head('Gift Cards | VVM Details',
-            'Give the shine. VVM Details gift cards from $50, paid securely by card and sent by email. Good on any mobile detail in Calvert County and the DMV.',
+            'Give the shine. VVM Details gift cards for any amount or a Full Factory Reset, paid securely by card and sent by email. Good on any mobile detail in Calvert County and the DMV.',
             'gift-cards', [crumbs([('Home', BASE + '/'), ('Gift Cards', tag('gift-cards'))])]).replace('<body class="legal-page seo-page">', '<body class="mem-page">') + top() + gift + foot()
 write('gift-cards', page, '0.6')
 
