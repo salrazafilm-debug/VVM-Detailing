@@ -307,35 +307,28 @@ for s in SERVICES:
     write(s['slug'], page)
 
 # ---------- membership ----------
-mem_faq = [
-    ('What is the Maintenance Membership?', 'After a Full Factory Reset, which includes an exterior ceramic sealant, your membership starts automatically in your Garage. It gives you a coupon for $100+ off your next Full Factory Reset.'),
-    ('How much do I save?', 'You save $100 or more on your next Full Factory Reset. That is 50% off, so the bigger your vehicle, the more you save.'),
-    ('When does the coupon expire?', 'Use it any time in your first 2 months. After the 2nd month it expires.'),
-    ('How do I use it?', 'Sign in to your Garage, open the Bookings tab and book. Your membership price is already applied.'),
-    ('Do I have to sign up for anything?', 'No. There is nothing to sign up for and nothing to pay. It starts by itself after your Full Factory Reset.'),
-]
-body = f'''<main class="legal-wrap seo-main">
-  <header class="legal-head">
-    <p class="eyebrow">Clients only</p>
-    <h1 class="legal-title">Maintenance Membership</h1>
-    <p class="legal-lede">Keep that just-detailed look. Get a <b>Full Factory Reset</b> and your next visit comes with <b>$100+ OFF</b>.</p>
-    <div class="seo-ctas"><a href="/client-login" class="hero-book">Enter my Garage</a><a href="/#book" class="seo-alt">Book my day</a></div>
-  </header>
-  <ul class="seo-badges"><li><b>$100+ OFF</b>your next Full Factory Reset</li><li><b>2 MONTHS</b>to use your coupon</li><li><b>$0</b>nothing to sign up for</li></ul>
-  <div class="legal-card">
-'''
-body += section('How it works', '''<ol class="seo-steps">
-<li><b>Get a Full Factory Reset.</b> It includes an exterior ceramic sealant.</li>
-<li><b>Your membership starts by itself.</b> You see it in your Garage.</li>
-<li><b>Your coupon is waiting.</b> $100+ off your next Full Factory Reset.</li>
-<li><b>Use it in your first 2 months.</b> After the 2nd month it expires.</li>
-</ol>''')
-body += section('Using your coupon', '<p>Sign in to your Garage, open the <b>Bookings</b> tab and book your next visit. Your membership price is applied for you.</p>')
-body += faq_html(mem_faq)
-body += cta_block('Ready for your next detail?')
+# Its own short, immersive page in the Book Now look (dark sky, holographic title). Keep it short.
+mem = f"""<main class="mem">
+  <div class="mem-bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+  <section class="mem-hero">
+    <p class="mem-eyebrow">Clients only</p>
+    <h1 class="mem-title">Membership</h1>
+    <span class="book-line" aria-hidden="true"></span>
+    <p class="mem-deal"><b>$100+ OFF</b></p>
+    <p class="mem-sub">your next <b>Full Factory Reset</b></p>
+  </section>
+  <ol class="mem-steps">
+    <li><span>1</span><h2>Get a Full Factory Reset</h2><p>Exterior ceramic sealant included.</p></li>
+    <li><span>2</span><h2>It's in your Garage</h2><p>Starts by itself. No sign-up.</p></li>
+    <li><span>3</span><h2>Use it within 2 months</h2><p>After the 2nd month it expires.</p></li>
+  </ol>
+  <div class="mem-ctas"><a href="/#book" class="mem-btn">Book my day</a><a href="/client-login" class="mem-btn ghost">Enter my Garage</a></div>
+  <p class="mem-note">Nothing to pay. No deposit. Pay after your detail.</p>
+</main>
+"""
 page = head('Maintenance Membership | VVM Details',
-            'Get a Full Factory Reset and your next visit comes with $100+ off. Your membership starts automatically in your Garage and the coupon is good for 2 months.',
-            'membership', [faq_ld(mem_faq), crumbs([('Home', BASE + '/'), ('Maintenance Membership', tag('membership'))])]) + top() + body + foot()
+            'Get a Full Factory Reset and your next one is $100+ off. Starts by itself in your Garage. Use it within 2 months.',
+            'membership', [crumbs([('Home', BASE + '/'), ('Maintenance Membership', tag('membership'))])]).replace('<body class="legal-page seo-page">', '<body class="mem-page">') + top() + mem + foot()
 write('membership', page, '0.7')
 
 # ---------- sitemap and slugs ----------

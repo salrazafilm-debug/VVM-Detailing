@@ -897,9 +897,3 @@ async function applyCoupon(code, msg, chosenId) {
   setTimeout(check, 200);
 })();
 
-
-// Before & after sliders: the range input moves the divider
-document.querySelectorAll('[data-ba]').forEach(el => {
-  const r = el.querySelector('input'), set = () => el.style.setProperty('--pos', r.value + '%');
-  r.addEventListener('input', set); set();
-});
