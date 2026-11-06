@@ -11,7 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",
     "heic-to": "1.6.6",
-    "next": "16.3.5",
+    "next": "16.4.5",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sharp": "0.35.5"
