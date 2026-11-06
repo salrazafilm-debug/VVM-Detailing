@@ -160,7 +160,7 @@ def foot():
       <a class="foot-pill" href="mailto:{EMAIL}">{EMAIL}</a>
     </div>
     <nav class="foot-areas" aria-label="Areas we serve"><span>Mobile detailing in</span> {TOWN_LINKS}</nav>
-    <nav class="foot-links" aria-label="Footer"><a href="/">Home</a><a href="/#services">Services</a><a href="/#book">Book Now</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy Policy</a></nav>
+    <nav class="foot-links" aria-label="Footer"><a href="/">Home</a><a href="/#services">Services</a><a href="/#book">Book Now</a><a href="/membership">Membership</a><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy Policy</a></nav>
     <p class="foot-copy">&copy; <span id="yr"></span> VVM Details. All rights reserved.</p>
   </div>
 </footer>
@@ -305,6 +305,38 @@ for s in SERVICES:
                 [service_ld(s['short'], s['desc'], ['Calvert County, MD']), faq_ld(faq),
                  crumbs([('Home', BASE + '/'), ('Calvert County', tag(HUB['slug'])), (s['short'], tag(s['slug']))])]) + top() + body + foot()
     write(s['slug'], page)
+
+# ---------- membership ----------
+mem_faq = [
+    ('What is the Maintenance Membership?', 'After a Full Factory Reset, which includes an exterior ceramic sealant, your membership starts automatically in your Garage. It gives you a coupon for $100+ off your next Full Factory Reset.'),
+    ('How much do I save?', 'You save $100 or more on your next Full Factory Reset. That is 50% off, so the bigger your vehicle, the more you save.'),
+    ('When does the coupon expire?', 'Use it any time in your first 2 months. After the 2nd month it expires.'),
+    ('How do I use it?', 'Sign in to your Garage, open the Bookings tab and book. Your membership price is already applied.'),
+    ('Do I have to sign up for anything?', 'No. There is nothing to sign up for and nothing to pay. It starts by itself after your Full Factory Reset.'),
+]
+body = f'''<main class="legal-wrap seo-main">
+  <header class="legal-head">
+    <p class="eyebrow">Clients only</p>
+    <h1 class="legal-title">Maintenance Membership</h1>
+    <p class="legal-lede">Keep that just-detailed look. Get a <b>Full Factory Reset</b> and your next visit comes with <b>$100+ OFF</b>.</p>
+    <div class="seo-ctas"><a href="/client-login" class="hero-book">Enter my Garage</a><a href="/#book" class="seo-alt">Book my day</a></div>
+  </header>
+  <ul class="seo-badges"><li><b>$100+ OFF</b>your next Full Factory Reset</li><li><b>2 MONTHS</b>to use your coupon</li><li><b>$0</b>nothing to sign up for</li></ul>
+  <div class="legal-card">
+'''
+body += section('How it works', '''<ol class="seo-steps">
+<li><b>Get a Full Factory Reset.</b> It includes an exterior ceramic sealant.</li>
+<li><b>Your membership starts by itself.</b> You see it in your Garage.</li>
+<li><b>Your coupon is waiting.</b> $100+ off your next Full Factory Reset.</li>
+<li><b>Use it in your first 2 months.</b> After the 2nd month it expires.</li>
+</ol>''')
+body += section('Using your coupon', '<p>Sign in to your Garage, open the <b>Bookings</b> tab and book your next visit. Your membership price is applied for you.</p>')
+body += faq_html(mem_faq)
+body += cta_block('Ready for your next detail?')
+page = head('Maintenance Membership | VVM Details',
+            'Get a Full Factory Reset and your next visit comes with $100+ off. Your membership starts automatically in your Garage and the coupon is good for 2 months.',
+            'membership', [faq_ld(mem_faq), crumbs([('Home', BASE + '/'), ('Maintenance Membership', tag('membership'))])]) + top() + body + foot()
+write('membership', page, '0.7')
 
 # ---------- sitemap and slugs ----------
 urls = [(BASE + '/', '1.0'), (BASE + '/privacy.html', '0.3'), (BASE + '/terms.html', '0.3')] + [(tag(slug), pr) for slug, pr in pages]

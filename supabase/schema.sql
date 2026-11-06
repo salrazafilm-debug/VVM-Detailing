@@ -368,3 +368,4 @@ alter table public.garage_profiles add column if not exists garage_enabled boole
 alter table public.garage_profiles add column if not exists garage_invited_at timestamptz;
 alter table public.booking_requests add column if not exists address text;
 alter table public.booking_requests add column if not exists garage_user_id uuid;
+alter table public.booking_requests add column if not exists review_sent_at timestamptz;

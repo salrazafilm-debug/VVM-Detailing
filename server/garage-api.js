@@ -470,6 +470,16 @@ exports.adminPost = async req => {
       if (status === 'cancelled' && row.referral_id) await ctx.admin.from('referrals').update({ status: 'dismissed' }).eq('id', row.referral_id).eq('status', 'pending');
       return json({ ok: true, message: `Booking ${status}.${note}` });
     }
+    if (action === 'booking_review') {
+      // Send the "How did we do?" email now (the daily cron also sends it the day after a completed detail).
+      const id = clean(b.booking_id, 80);
+      const { data: row } = await ctx.admin.from('booking_requests').select('*').eq('id', id).maybeSingle();
+      if (!row) throw Object.assign(new Error('Choose a booking.'), { status: 400 });
+      const r = await customerMail.sendReviewRequest(row).catch(() => ({ sent: false, reason: 'email error' }));
+      if (!r.sent) return json({ ok: true, message: `No review email sent: ${r.reason}.` });
+      await ctx.admin.from('booking_requests').update({ review_sent_at: new Date().toISOString() }).eq('id', id);
+      return json({ ok: true, message: 'Review request emailed to the customer.' });
+    }
     if (action === 'booking_complete') {
       const id = clean(b.booking_id, 80);
       if (!id) throw Object.assign(new Error('Choose a booking.'), { status: 400 });
@@ -530,7 +540,7 @@ async function adminBookingList(admin) {
     const nameOf = id => (owners || []).find(o => o.user_id === id)?.display_name || '';
     return (rows || []).map(r => {
       const ref = (refs || []).find(x => x.id === r.referral_id);
-      return { id: r.id, created_at: r.created_at, name: r.name, email: r.email, phone: r.phone, zip: r.zip, drop_off: r.drop_off, travel_fee_cents: r.travel_fee_cents, discount_label: r.discount_label, discount_cents: r.discount_cents, total_cents: r.total_cents, vehicles: r.vehicles, services: r.services, booking_date: r.booking_date, booking_time: r.booking_time, coupon: r.coupon, gift: r.gift, marketing_opt_in: r.marketing_opt_in, status: r.status, reminder_sent_at: r.reminder_sent_at, address: r.address || null, garage_user_id: r.garage_user_id || null, referral: ref ? { code: ref.code, status: ref.status, from: nameOf(ref.referrer_user_id) } : null };
+      return { id: r.id, created_at: r.created_at, name: r.name, email: r.email, phone: r.phone, zip: r.zip, drop_off: r.drop_off, travel_fee_cents: r.travel_fee_cents, discount_label: r.discount_label, discount_cents: r.discount_cents, total_cents: r.total_cents, vehicles: r.vehicles, services: r.services, booking_date: r.booking_date, booking_time: r.booking_time, coupon: r.coupon, gift: r.gift, marketing_opt_in: r.marketing_opt_in, status: r.status, reminder_sent_at: r.reminder_sent_at, address: r.address || null, review_sent_at: r.review_sent_at || null, garage_user_id: r.garage_user_id || null, referral: ref ? { code: ref.code, status: ref.status, from: nameOf(ref.referrer_user_id) } : null };
     });
   } catch { return []; }
 }
@@ -700,6 +710,7 @@ exports.remindersCronGet = async req => {
     const admin = createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
     // Day-before booking reminders go first, so a problem with the Garage reminder queue cannot stop them.
     const bookingReminders = await customerMail.sendBookingReminders(admin).catch(() => ({ error: 'reminders failed' }));
+    const reviewRequests = await customerMail.sendReviewRequests(admin).catch(() => ({ error: 'review requests failed' }));
     const {data:pending,error:queueError} = await admin.rpc('garage_pending_reminders',{p_limit:100});
     if(queueError) {
       // Provider messages can include malformed credential/header values. Never log their text.
@@ -713,7 +724,7 @@ exports.remindersCronGet = async req => {
       const result=await exports.reminderPost(new Request('https://garage.internal/api/garage/reminder',{method:'POST',headers:{'content-type':'application/json','x-garage-webhook-key':process.env.GARAGE_REMINDER_SECRET||''},body:JSON.stringify(item)}));
       results.push({type:item.message_type,status:result.status,body:await result.json()});
     }
-    return json({processed:results.length,results,bookingReminders});
+    return json({processed:results.length,results,bookingReminders,reviewRequests});
   } catch(e){return responseError(e)}
 };
 

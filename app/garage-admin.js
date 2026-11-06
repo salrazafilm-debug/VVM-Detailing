@@ -102,6 +102,7 @@ function BookingCard({ b, busy, onAction }) {
       {b.status==='requested'&&<><button type="button" className="g-button" disabled={busy} onClick={()=>set('confirmed')}>CONFIRM</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button></>}
       {b.status==='confirmed'&&<><button type="button" className="g-button" disabled={busy} onClick={done}>MARK COMPLETED</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button></>}
       {b.status==='cancelled'&&<button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('requested')}>Reopen</button>}
+      {b.status==='completed'&&(b.review_sent_at?<span className="abk-tag">REVIEW REQUESTED ✓</span>:<button type="button" className="abk-ghost" disabled={busy} onClick={()=>onAction({action:'booking_review',booking_id:b.id})}>Ask for a review</button>)}
     </div>
   </li>;
 }

@@ -79,6 +79,55 @@ function bookingHtml(b, intro, heading) {
 </table></td></tr></table></body></html>`;
 }
 
+const REVIEW_URL = 'https://g.page/r/CUdllaKYonfeEBM/review';
+
+// "How did we do?" email with the Google review link. Same look as the other customer emails.
+function reviewHtml(b) {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#e9b3b3;font-family:Manrope,Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e9b3b3;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden">
+  <tr><td align="center" style="background:#1a1214;padding:28px 24px">
+    <img src="${SITE}/assets/logo.jpg" width="96" alt="VVM Details" style="display:block;margin:0 auto 14px;border-radius:12px;width:96px;height:auto;border:0">
+    <div style="font-family:'Montserrat',Helvetica,Arial,sans-serif;font-style:italic;font-weight:900;font-size:26px;letter-spacing:.02em;color:#ffffff">HOW DID WE DO?</div>
+    <div style="height:4px;width:120px;margin:14px auto 0;background:linear-gradient(90deg,#4f8ff0,#f0d63c,#e4572e);border-radius:4px"></div>
+  </td></tr>
+  <tr><td style="padding:28px 28px 8px">
+    <p style="margin:0 0 6px;font-size:17px;color:#1a1214;font-weight:700">Hi ${esc(firstName(b.name))},</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1a1214">Thank you for trusting us with your ${esc(b.vehicles || 'vehicle')}. We love what we do, and a quick Google review helps a small local business like ours more than you know.</p>
+    <p style="margin:0 0 6px;font-size:15px;line-height:1.6;color:#1a1214">It takes about 30 seconds.</p>
+  </td></tr>
+  <tr><td align="center" style="padding:18px 28px 10px">
+    <a href="${REVIEW_URL}" style="display:inline-block;background:#f0d63c;color:#1a1214;text-decoration:none;font-weight:800;font-size:15px;letter-spacing:.06em;padding:16px 30px;border-radius:999px">LEAVE A GOOGLE REVIEW</a>
+    <p style="margin:16px 0 0;font-size:14px;color:#7a6468;line-height:1.5">Something not perfect? Just reply to this email or text (240) 601-9451 and we will make it right.</p>
+  </td></tr>
+  <tr><td align="center" style="padding:18px 28px 26px;border-top:1px solid #f1e4e4">
+    <p style="margin:0;font-family:'Montserrat',Helvetica,Arial,sans-serif;font-style:italic;font-weight:900;font-size:16px;color:#1a1214">Thank you!</p>
+    <p style="margin:6px 0 0;font-size:12px;color:#7a6468">VVM Details &middot; Mobile car detailing &middot; Chesapeake Beach, MD</p>
+    <p style="margin:6px 0 0;font-size:12px"><a href="${SITE}" style="color:#4f8ff0;text-decoration:none">vvmdetails.com</a> &middot; <a href="https://www.instagram.com/vvm.details" style="color:#4f8ff0;text-decoration:none">@vvm.details</a></p>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+}
+
+const sendReviewRequest = b => sendCustomerEmail({ to: b.email, name: b.name, subject: 'How did we do? Leave VVM Details a quick review', html: reviewHtml(b),
+  text: [`Hi ${firstName(b.name)},`, '', `Thank you for trusting us with your ${b.vehicles || 'vehicle'}. A quick Google review helps a small local business like ours more than you know. It takes about 30 seconds:`, '', REVIEW_URL, '', 'Something not perfect? Reply to this email or text (240) 601-9451 and we will make it right.', '', 'Thank you!', 'VVM Details'].join('\n') });
+
+const yesterdayEastern = () => { const [y, m, d] = easternToday().split('-').map(Number); return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10); };
+
+// Run once a day by the cron. Completed details from yesterday get one review request.
+async function sendReviewRequests(db) {
+  const day = yesterdayEastern();
+  const { data: rows, error } = await db.from('booking_requests').select('*').eq('booking_date', day).eq('status', 'completed').is('review_sent_at', null).limit(50);
+  if (error) return { error: 'Could not read bookings.' };
+  let sent = 0; const skipped = [];
+  for (const b of rows || []) {
+    const r = await sendReviewRequest(b);
+    if (r.sent) { sent++; await db.from('booking_requests').update({ review_sent_at: new Date().toISOString() }).eq('id', b.id); }
+    else skipped.push(r.reason);
+  }
+  return { day, due: (rows || []).length, sent, ...(skipped.length ? { skipped: [...new Set(skipped)] } : {}) };
+}
+
 const sendConfirmation = b => sendCustomerEmail({ to: b.email, name: b.name, subject: 'Your VVM Details booking is confirmed', text: bookingBody(b, 'Good news: your booking is confirmed.'), html: bookingHtml(b, 'Good news: your booking is confirmed. We cannot wait to make your car shine.', 'BOOKING CONFIRMED') });
 
 // Run once a day by the cron. Confirmed bookings happening tomorrow get one reminder.
@@ -95,4 +144,4 @@ async function sendBookingReminders(db) {
   return { day, due: (rows || []).length, sent, ...(skipped.length ? { skipped: [...new Set(skipped)] } : {}) };
 }
 
-module.exports = { sendCustomerEmail, sendConfirmation, sendBookingReminders, bookingHtml, fmtTime, fmtDate, tomorrowEastern };
+module.exports = { sendCustomerEmail, sendConfirmation, sendBookingReminders, sendReviewRequest, sendReviewRequests, bookingHtml, reviewHtml, REVIEW_URL, fmtTime, fmtDate, tomorrowEastern };

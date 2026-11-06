@@ -1737,3 +1737,25 @@ button.cta{border:2px solid transparent;cursor:pointer;line-height:1.2}
   #pe-front:not(.info-open) .cta.ghost{display:none}
   #pe-front:not(.info-open) .card-foot{display:none}
 }
+
+
+/* Before & after sliders */
+.ba-sub{margin:10px 0 0;font-weight:700}
+.ba-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(14px,2.4vw,28px);max-width:980px;margin:0 auto;padding:0 clamp(16px,4vw,24px)}
+.ba-card{margin:0}
+.ba-compare{position:relative;aspect-ratio:4/5;border-radius:18px;overflow:hidden;background:#1a1214;box-shadow:0 10px 30px rgba(26,18,20,.22);--pos:50%;touch-action:pan-y;user-select:none}
+.ba-compare img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.ba-compare .ba-before{clip-path:inset(0 calc(100% - var(--pos)) 0 0)}
+.ba-line{position:absolute;top:0;bottom:0;left:var(--pos);width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 0 1px rgba(26,18,20,.25);pointer-events:none}
+.ba-line b{position:absolute;top:50%;left:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(26,18,20,.35)}
+.ba-line b:before,.ba-line b:after{content:"";position:absolute;top:50%;width:8px;height:8px;margin-top:-4px;border:solid #1a1214;border-width:0 0 3px 3px}
+.ba-line b:before{left:11px;transform:rotate(45deg)}
+.ba-line b:after{right:11px;transform:rotate(-135deg)}
+.ba-tag{position:absolute;top:12px;padding:6px 11px;border-radius:999px;background:rgba(26,18,20,.82);color:#fff;font:800 .68rem/1 var(--display);letter-spacing:.12em;text-transform:uppercase;pointer-events:none}
+.ba-tag-b{left:12px}.ba-tag-a{right:12px;background:#f0d63c;color:#1a1214}
+.ba-compare input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize;touch-action:pan-y}
+.ba-compare:has(input:focus-visible){outline:3px solid #4f8ff0;outline-offset:3px}
+.ba-card figcaption{margin-top:10px;text-align:center;font:800 .95rem/1.3 var(--body)}
+@media(max-width:600px){.ba-grid{grid-template-columns:1fr;max-width:420px}}
+
+.faq-sec .faq{max-width:760px;margin:0 auto;padding:0 clamp(16px,4vw,24px)}
