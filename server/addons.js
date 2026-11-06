@@ -6,6 +6,7 @@ const ADDONS = [
   { id: 'water-stain', name: 'Water stain removal (for exterior paint & glass)', priceCents: 8000, group: 'interior' },
   { id: 'pet-hair', name: 'Pet hair removal', priceCents: 6000, group: 'interior' },
   { id: 'odor', name: 'Odor removal', priceCents: 6000, group: 'interior' },
+  { id: '3rd-row', name: '3rd Row', priceCents: 3000, group: 'interior', onlySizes: ['suv'] },
   { id: 'leather', name: 'Deep leather clean', note: 'For cars 10 years old and up', priceCents: 6000, group: 'interior' },
   { id: 'paint', name: 'Paint enhancement', note: 'Machine polish for extra gloss', priceCents: 25000, sizePrices: { coupe: 25000, sedan: 25000, suv: 27500, truck: 27500 }, group: 'paint' },
   { id: 'leather-coat', name: 'Leather seat ceramic coating', note: '4 to 6 months. Repels stains and dye transfer', priceCents: 4500, group: 'protection' },
@@ -32,6 +33,7 @@ function sizeOf(services) {
 function priceFor(addon, services) {
   if (!eligible(services)) return null;
   if (addon.group === 'paint' && !services.some(s => s.kind === 'full')) return null;
+  if (addon.onlySizes && !addon.onlySizes.includes(sizeOf(services))) return null;
   if (addon.sizePrices) return addon.sizePrices[sizeOf(services)] ?? null;
   return addon.priceCents;
 }

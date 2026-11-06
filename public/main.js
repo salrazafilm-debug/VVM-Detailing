@@ -97,6 +97,7 @@ const addonSize = i => {
 const addonPrice = (a, i) => {
   if (!addonsOk(i)) return null;
   if (a.group === 'paint' && !carItems(i).some(x => x.kind === 'full')) return null;
+  if (a.onlySizes && !a.onlySizes.includes(addonSize(i))) return null;
   return a.sizePrices ? (a.sizePrices[addonSize(i)] ?? null) : a.priceCents;
 };
 const carAddons = i => S.addonList.filter(a => (S.addons[i] || []).includes(a.id) && addonPrice(a, i) != null).map(a => ({ ...a, priceCents: addonPrice(a, i) }));
