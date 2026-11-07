@@ -42,8 +42,8 @@ function bookingHtml(b, intro, heading) {
   const row = (label, value) => `<tr><td style="padding:10px 0;border-bottom:1px solid #f1e4e4;color:#7a6468;font-size:13px;width:110px;vertical-align:top">${esc(label)}</td><td style="padding:10px 0;border-bottom:1px solid #f1e4e4;color:#1a1214;font-size:15px;font-weight:600">${esc(value)}</td></tr>`;
   const bullet = t => `<tr><td style="padding:6px 0;color:#1a1214;font-size:15px;line-height:1.5"><span style="color:#4f8ff0;font-weight:800">&#10003;</span>&nbsp; ${esc(t)}</td></tr>`;
   const ready = b.drop_off
-    ? ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage.', 'Bring it at your booked time to the drop-off location.']
-    : ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage.', 'Leave room to work: park where we can open the doors and work all the way around.', 'Water and power: let us know if you have access. We will confirm anything else when we reach out.'];
+    ? ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage. We are not responsible for items left in the vehicle.', 'Bring it at your booked time to the drop-off location.']
+    : ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage. We are not responsible for items left in the vehicle.', 'Leave room to work: park where we can open the doors and work all the way around.', 'Water and power: let us know if you have access. We will confirm anything else when we reach out.'];
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#e9b3b3;font-family:Manrope,Helvetica,Arial,sans-serif">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e9b3b3;padding:24px 12px"><tr><td align="center">
