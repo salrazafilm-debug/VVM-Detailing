@@ -28,7 +28,7 @@ function bookingBody(b, intro) {
     `Services: ${b.services || 'on file'}`,
     ...(b.drop_off ? ['', `Drop-off location: ${HOME.street}, ${HOME.city}, ${HOME.state} ${HOME.zip}`] : []),
     '', 'WHAT TO HAVE READY',
-    '- Empty your vehicle: please remove all personal belongings and any items from your vehicle so we can complete the detail.',
+    '- Empty your vehicle: please remove all personal belongings and any items from your vehicle so we can complete the detail. Anything that has to stay must be mentioned before your detail. We are not responsible for items left in the vehicle (see our Terms).',
     ...(b.drop_off ? ['- Bring it at your booked time to the drop-off location above.'] : ['- Leave room to work: park where we can open the doors and work all the way around it.', '- Water and power: let us know if you have access. We will confirm anything else when we reach out.']),
     '', 'Need to change anything? Text (240) 601-9451 or just reply to this email.', '', 'See you soon!', 'VVM Details',
   ].join('\n');
@@ -42,8 +42,8 @@ function bookingHtml(b, intro, heading) {
   const row = (label, value) => `<tr><td style="padding:10px 0;border-bottom:1px solid #f1e4e4;color:#7a6468;font-size:13px;width:110px;vertical-align:top">${esc(label)}</td><td style="padding:10px 0;border-bottom:1px solid #f1e4e4;color:#1a1214;font-size:15px;font-weight:600">${esc(value)}</td></tr>`;
   const bullet = t => `<tr><td style="padding:6px 0;color:#1a1214;font-size:15px;line-height:1.5"><span style="color:#4f8ff0;font-weight:800">&#10003;</span>&nbsp; ${esc(t)}</td></tr>`;
   const ready = b.drop_off
-    ? ['Empty your vehicle: remove personal belongings and loose items.', 'Bring it at your booked time to the drop-off location.']
-    : ['Empty your vehicle: remove personal belongings and loose items.', 'Leave room to work: park where we can open the doors and work all the way around.', 'Water and power: let us know if you have access. We will confirm anything else when we reach out.'];
+    ? ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage.', 'Bring it at your booked time to the drop-off location.']
+    : ['Empty your vehicle: remove all personal belongings. Anything that has to stay, tell us before your detail to avoid any loss or damage.', 'Leave room to work: park where we can open the doors and work all the way around.', 'Water and power: let us know if you have access. We will confirm anything else when we reach out.'];
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#e9b3b3;font-family:Manrope,Helvetica,Arial,sans-serif">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#e9b3b3;padding:24px 12px"><tr><td align="center">

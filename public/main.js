@@ -193,8 +193,8 @@ function fv(k) {
 // What to have ready: shown on the booking-complete screen (the emails say the same)
 function readyCard() {
   const items = S.where.mode === 'drop'
-    ? ['<b>Empty your vehicle.</b> Please remove all personal belongings and any items from your vehicle so we can complete the detail.', '<b>Bring it at your booked time</b> to the drop-off address we showed you.']
-    : ['<b>Empty your vehicle.</b> Please remove all personal belongings and any items from your vehicle so we can complete the detail.', '<b>Leave room to work.</b> Park where we can open the doors and work all the way around it.', '<b>Water and power.</b> Let us know if you have access. We will confirm anything else when we reach out.'];
+    ? ['<b>Empty your vehicle.</b> Please remove all personal belongings. Anything that has to stay must be mentioned in your notes before booking, to avoid any loss or damage.', '<b>Bring it at your booked time</b> to the drop-off address we showed you.']
+    : ['<b>Empty your vehicle.</b> Please remove all personal belongings. Anything that has to stay must be mentioned in your notes before booking, to avoid any loss or damage.', '<b>Leave room to work.</b> Park where we can open the doors and work all the way around it.', '<b>Water and power.</b> Let us know if you have access. We will confirm anything else when we reach out.'];
   return `<div class="ready"><p class="ready-k">WHAT TO HAVE READY</p><ul>${items.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
 }
 function whereMsg() {
