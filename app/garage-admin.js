@@ -182,9 +182,32 @@ function CustomReferralCode({ customers, busy, onSave }) {
   </form>;
 }
 
-function ReferralLeaders({ leaders, customers, busy, onSaveCode }) {
+// Referral partners: people who are not clients. Name + custom code; every 5th friend who completes earns a free detail.
+function PartnerReferrals({ partners, busy, onAdd, onRedeem }) {
+  const [name,setName]=useState(''),[code,setCode]=useState('');
+  return <section className="ref-partners">
+    <form className="ref-custom" onSubmit={e=>{e.preventDefault();if(name.trim()&&code.trim())onAdd(name.trim(),code.trim().toUpperCase()).then(()=>{setName('');setCode('')})}}>
+      <p className="g-eyebrow">ADD A REFERRAL PERSON</p>
+      <p className="g-inline-help">For someone who is not a client. Type their name and a code, like MARIA27. Their friends get $20 off. Every 5th friend who completes earns a free detail.</p>
+      <div className="ref-row">
+        <label>Name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Maria Lopez" autoComplete="off"/></label>
+        <label>Code<input value={code} maxLength={12} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. MARIA27" autoComplete="off"/></label>
+        <button type="submit" className="g-button" disabled={busy||!name.trim()||!code.trim()}>ADD</button>
+      </div>
+    </form>
+    {partners.length?<ul className="ref-tracks">{partners.map(p=><li key={p.id} className={`ref-track${p.earned?' is-earned':''}`}>
+      <div className="ref-track-head"><b>{p.name}</b><span>{p.code}</span></div>
+      <div className="ref-track-bar" role="progressbar" aria-valuemin={0} aria-valuemax={p.goal} aria-valuenow={p.progress} aria-label={`${p.name} referrals`}>{Array.from({length:p.goal},(_,i)=><i key={i} className={i<p.progress?'on':''}/>)}</div>
+      <div className="ref-track-foot"><strong>{p.progress}/{p.goal}</strong><small>{p.completed} completed{p.pending?` · ${p.pending} booked`:''}</small>
+        {p.earned>0?<><em>FREE DETAIL EARNED{p.earned>1?` ×${p.earned}`:''}</em><button type="button" className="g-button" disabled={busy} onClick={()=>onRedeem(p.id)}>USED</button></>:null}</div>
+    </li>)}</ul>:<p className="g-inline-help">No referral people yet.</p>}
+  </section>;
+}
+
+function ReferralLeaders({ leaders, customers, busy, onSaveCode, partners, onAddPartner, onRedeemPartner }) {
   return <details className="g-panel admin-disclosure" open><summary><span>Referrals<small>Who is sending friends. A referral counts when you mark the booking completed.</small></span><b aria-hidden="true">+</b></summary>
     <CustomReferralCode customers={customers} busy={busy} onSave={onSaveCode}/>
+    <PartnerReferrals partners={partners||[]} busy={busy} onAdd={onAddPartner} onRedeem={onRedeemPartner}/>
     {leaders.length?<ul className="discount-list">{leaders.map(l=><li key={l.code||l.name}><div><b>{l.name}</b> <span>{l.code}</span><small>{l.completed} completed · {l.pending} waiting{l.earned?` · ${l.earned} free detail${l.earned>1?'s':''} earned`:''}</small></div></li>)}</ul>:<p className="g-inline-help">No referrals yet. Every Garage client has a code on their Rewards tab.</p>}
   </details>;
 }
@@ -397,7 +420,7 @@ function ClientPreview({ clientId, vehicleId, sig, vehicle, busy, onSaveSizing }
 }
 
 export default function GarageAdmin() {
-  const [customers,setCustomers]=useState([]),[discountCodes,setDiscountCodes]=useState([]),[bookings,setBookings]=useState([]),[leaders,setLeaders]=useState([]),[section,setSection]=useState('bookings'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
+  const [partners,setPartners]=useState([]),[customers,setCustomers]=useState([]),[discountCodes,setDiscountCodes]=useState([]),[bookings,setBookings]=useState([]),[leaders,setLeaders]=useState([]),[section,setSection]=useState('bookings'),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
   const [email,setEmail]=useState(''),[name,setName]=useState(''),[password,setPassword]=useState(''),[newPassword,setNewPassword]=useState(''),[showPassword,setShowPassword]=useState(false),[showNewPassword,setShowNewPassword]=useState(false);
   const [customer,setCustomer]=useState(''),[year,setYear]=useState(''),[make,setMake]=useState(''),[model,setModel]=useState(''),[color,setColor]=useState('');
   const [vehicle,setVehicle]=useState(''),[serviceDate,setServiceDate]=useState(today()),[title,setTitle]=useState('Full Factory Reset'),[description,setDescription]=useState('');
@@ -426,7 +449,7 @@ export default function GarageAdmin() {
   function selectClient(id){if(actionLock.current)return;setCustomer(id);setVehicle(preferredGarageVehicleId(customers.find(c=>c.user_id===id)?.garage_vehicles));setCreatingClient(false);setCreatingVehicle(false);setNotice('');setError('');setYear('');setMake('');setModel('');setColor('');clearVehicleDrafts()}
   function selectVehicle(id){if(actionLock.current)return;setVehicle(id);setCreatingVehicle(false);setNotice('');setError('');clearVehicleDrafts()}
   async function load(){
-    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);setDiscountCodes(d.discount_codes||[]);setBookings(d.bookings||[]);setLeaders(d.referral_leaders||[]);if(d.warning)setError(d.warning)}
+    try{const d=await garageRequest('/api/garage/admin',{cache:'no-store'});setCustomers(previous=>mergeAdminSnapshot(previous,d));setVehiclesLoaded(d.read_status?.vehicles!==false);setDiscountCodes(d.discount_codes||[]);setBookings(d.bookings||[]);setLeaders(d.referral_leaders||[]);setPartners(d.referral_partners||[]);if(d.warning)setError(d.warning)}
     catch(e){setError(e.message)}finally{setLoading(false)}
   }
   async function action(body,success){
@@ -531,7 +554,7 @@ export default function GarageAdmin() {
         </div>}
       </section>
     </fieldset>
-    <div className="admin-rewards" style={{display:section==='rewards'?undefined:'none'}}><div className="admin-section-head"><div><p className="g-eyebrow">GROW THE BUSINESS</p><h2>Codes &amp; rewards.</h2></div></div><DiscountCodes codes={discountCodes} busy={busy} onAction={action}/><ReferralLeaders leaders={leaders} customers={customers} busy={busy} onSaveCode={(customer_id,name)=>action({action:'set_referral_code',customer_id,name},'Referral code made.')}/><EmailList bookings={bookings}/></div>
+    <div className="admin-rewards" style={{display:section==='rewards'?undefined:'none'}}><div className="admin-section-head"><div><p className="g-eyebrow">GROW THE BUSINESS</p><h2>Codes &amp; rewards.</h2></div></div><DiscountCodes codes={discountCodes} busy={busy} onAction={action}/><ReferralLeaders leaders={leaders} customers={customers} busy={busy} partners={partners} onSaveCode={(customer_id,name)=>action({action:'set_referral_code',customer_id,name},'Referral code made.')} onAddPartner={(name,code)=>action({action:'partner_create',name,code},'Referral person added.')} onRedeemPartner={id=>action({action:'partner_redeem',partner_id:id},'Free detail marked used.')}/><EmailList bookings={bookings}/></div>
     <details open style={{display:section==='directory'?undefined:'none'}} className="g-panel admin-disclosure admin-directory"><summary><span>Client directory & history<small>Browse every client, vehicle and photo by date</small></span><b aria-hidden="true">+</b></summary>{loading?<p className="g-muted">Loading clients…</p>:<ClientDashboard customers={sortedCustomers} busy={busy} vehiclesLoaded={vehiclesLoaded} onAddPhoto={dashboardPhoto}/>}</details>
     <footer className="g-footer"><span>A little love. Every detail.</span><a href="/">Back to VVM Details →</a></footer>
   </main>;

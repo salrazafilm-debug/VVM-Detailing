@@ -1,6 +1,7 @@
 // Referral codes, referral tracking and the 5th-referral reward. Every function takes a Supabase client that
 // uses the SECRET key (server side only), so codes and other clients' details never reach the browser.
 const { addMonths } = require('./garage-dates');
+const partners = require('./referral-partners');
 
 const GOAL = 5;                       // the 5th completed referral earns a free Full Factory Reset
 const SITE = () => (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vvmdetails.com').replace(/\/$/, '');
@@ -42,7 +43,9 @@ async function findReferrer(db, code) {
   if (!key) return null;
   const { data, error } = await db.from('garage_profiles').select('user_id,display_name,email').eq('referral_code', key).maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? { userId: data.user_id, name: data.display_name || '', email: data.email || '', code: key } : null;
+  if (data) return { userId: data.user_id, name: data.display_name || '', email: data.email || '', code: key };
+  // Not a client: a referral partner (name and custom code added in admin).
+  return partners.findPartner(db, key);
 }
 
 // Progress for the Rewards tab.
@@ -63,12 +66,13 @@ async function checkReferral(db, code, refereeEmail) {
   if (email) {
     if (referrer.email && referrer.email.toLowerCase() === email) throw Object.assign(new Error('You cannot use your own referral code.'), { status: 400 });
     const { data: used } = await db.from('referrals').select('id').ilike('referee_email', email).neq('status', 'dismissed').limit(1);
-    if (used && used.length) throw Object.assign(new Error('Referral codes are for new clients only.'), { status: 400 });
+    if ((used && used.length) || await partners.emailUsed(db, email)) throw Object.assign(new Error('Referral codes are for new clients only.'), { status: 400 });
   }
   return referrer;
 }
 
 async function recordReferral(db, { referrer, name, email, bookingId }) {
+  if (referrer.partnerId) return partners.recordReferral(db, { partnerId: referrer.partnerId, name, email, bookingId });
   const { data, error } = await db.from('referrals').insert({ referrer_user_id: referrer.userId, code: referrer.code, referee_name: name || null, referee_email: String(email).trim().toLowerCase(), booking_id: bookingId || null }).select('id').single();
   if (error) throw new Error(error.message);
   return data.id;
@@ -80,7 +84,8 @@ async function completeBooking(db, bookingId) {
   if (error || !booking) throw Object.assign(new Error('Booking not found.'), { status: 404 });
   const wasCompleted = booking.status === 'completed';
   await db.from('booking_requests').update({ status: 'completed' }).eq('id', bookingId);
-  const result = { referral: null, rewardGift: false, warning: null };
+  const result = { referral: null, rewardGift: false, warning: null, partner: null };
+  if (!wasCompleted) result.partner = await partners.completeForBooking(db, bookingId).catch(() => null);
   if (!booking.referral_id || wasCompleted) return result;
   const { data: ref } = await db.from('referrals').select('*').eq('id', booking.referral_id).maybeSingle();
   if (!ref || ref.status !== 'pending') return result;

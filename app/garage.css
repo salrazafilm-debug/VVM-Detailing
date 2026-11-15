@@ -187,3 +187,20 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .ref-row select,.ref-row input{min-height:44px;padding:8px 12px;border:1px solid rgba(26,18,20,.25);border-radius:12px;font:600 .95rem var(--gbody);text-transform:none}
 .ref-row input{text-transform:uppercase;letter-spacing:.06em}
 @media(max-width:600px){.ref-row{grid-template-columns:1fr}}
+
+/* Referral people tracker (admin) */
+.ref-partners{display:grid;gap:12px;margin-top:14px}
+.ref-tracks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.ref-track{padding:14px 16px;border-radius:18px;background:#fff;border:1px solid rgba(26,18,20,.1);box-shadow:0 4px 14px rgba(26,18,20,.06)}
+.ref-track.is-earned{border:2px solid #f0b429;background:#fffbea}
+.ref-track-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ref-track-head b{font:800 1rem var(--gbody)}
+.ref-track-head span{font:700 .85rem var(--gbody);letter-spacing:.08em;color:#7a3b44}
+.ref-track-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:12px 0 8px}
+.ref-track-bar i{height:12px;border-radius:999px;background:#eadde0}
+.ref-track-bar i.on{background:linear-gradient(90deg,#f0b429,#ffe27a)}
+.ref-track-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.ref-track-foot strong{font:italic 900 1.1rem var(--gdisplay)}
+.ref-track-foot small{opacity:.7;font:600 .85rem var(--gbody)}
+.ref-track-foot em{font:800 .8rem var(--gbody);font-style:normal;color:#8a5a00;letter-spacing:.06em}
+.ref-track-foot button{margin-left:auto;min-height:38px;padding:0 14px}

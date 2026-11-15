@@ -139,7 +139,8 @@ exports.adminGet = async req => {
     const discountCodes=await adminDiscountList(ctx.admin);
     const bookingList=await adminBookingList(ctx.admin);
     const referralSummary=await adminReferralSummary(ctx.admin);
-    return Response.json({customers:data,discount_codes:discountCodes,bookings:bookingList,referral_leaders:referralSummary,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
+    const partnerList=await require('./referral-partners').list(ctx.admin).catch(()=>[]);
+    return Response.json({customers:data,discount_codes:discountCodes,bookings:bookingList,referral_leaders:referralSummary,referral_partners:partnerList,read_status:{vehicles:!vehicleError,services:!vehicleError&&!services.error,photos:!vehicleError&&!photos.error},showroom:{background_removal_available:!!process.env.REMOVE_BG_API_KEY},warning:warnings.join(' ')||null},{headers:{'Cache-Control':'no-store'}});
   } catch (e) { return responseError(e); }
 };
 
@@ -185,6 +186,16 @@ exports.adminPost = async req => {
       const r = await autoGarage.setEnabled(ctx.admin, customer_id, b.enabled === true);
       if (!r.ok) throw Object.assign(new Error(r.message), { status: r.status || 503 });
       return json({ ok: true, message: r.message });
+    }
+    if (action === 'partner_create') {
+      const partner = await require('./referral-partners').create(ctx.admin, { name: b.name, code: b.code });
+      return json({ ok: true, partner, message: `${partner.name} is set up with code ${partner.code}. Their friends get $20 off.` });
+    }
+    if (action === 'partner_redeem') {
+      const id = clean(b.partner_id, 80);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) throw Object.assign(new Error('Choose a referral partner.'), { status: 400 });
+      await require('./referral-partners').redeem(ctx.admin, id);
+      return json({ ok: true, message: 'Free detail marked as used.' });
     }
     if (action === 'set_referral_code') {
       // Custom referral code for a client (their own Rewards tab shows it). Letters and numbers only, 4 to 12 characters.
@@ -520,6 +531,11 @@ exports.adminPost = async req => {
       if (result.referral) parts.push(`Referral counted: ${result.referral.completed} completed.`);
       if (result.rewardGift) parts.push('That client reached 5 and a free Full Factory Reset gift was sent to them.');
       if (result.warning) parts.push(result.warning);
+      if (result.partner) {
+        const pr = result.partner;
+        parts.push(`${pr.name}'s referral counted: ${pr.progress}/${pr.goal}.`);
+        if (pr.earned > 0) parts.push(`${pr.name} has earned a FREE detail. Book it, then tap Used in Rewards.`);
+      }
       const g = await autoGarage.recordCompleted(ctx.admin, id).catch(() => ({ note: 'Garage: could not record the service. Add it under Clients.' }));
       if (g.note) parts.push(g.note);
       return json({ ok: true, message: parts.join(' ') });
