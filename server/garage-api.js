@@ -190,11 +190,10 @@ exports.adminPost = async req => {
       // Custom referral code for a client (their own Rewards tab shows it). Letters and numbers only, 4 to 12 characters.
       const customer_id = clean(b.customer_id, 80);
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
-      // Typed name -> code. Tries the first name, then first name + last initial, then first name + 2, 3, ...
+      // Name + 2 random digits (e.g. ELISA47), never used before. Tries new numbers until one is free.
       const words = clean(b.name, 80).toUpperCase().replace(/[^A-Z ]/g, ' ').trim().split(/\s+/).filter(Boolean);
       if (!words.length) throw Object.assign(new Error('Type the person\'s name.'), { status: 400 });
-      const first = words[0].slice(0, 10), initial = words.length > 1 ? words[words.length - 1][0] : '';
-      const tries = [first + initial, first, ...Array.from({ length: 8 }, (_, i) => first.slice(0, 10) + (i + 2))].filter(c => c.length >= 4 && c.length <= 12);
+      const first = words[0].slice(0, 10);
       const takenBy = async code => {
         const [{ data: d1 }, { data: d2 }, { data: d3 }, { data: d4 }] = await Promise.all([
           ctx.admin.from('discount_codes').select('code').eq('code', code).maybeSingle(),
@@ -205,8 +204,8 @@ exports.adminPost = async req => {
         return !!(d1 || d2 || d3 || d4);
       };
       let code = null;
-      for (const c of tries) { if (!(await takenBy(c))) { code = c; break; } }
-      if (!code) throw Object.assign(new Error('Could not make a free code from that name. Try a different spelling.'), { status: 409 });
+      for (let t = 0; t < 40 && !code; t++) { const c = referrals.makeCode(first); if (!(await takenBy(c))) code = c; }
+      if (!code) throw Object.assign(new Error('Could not make a free code. Try again.'), { status: 409 });
       // Must not clash with any code the site already accepts, or another client's code.
       const [{ data: d1 }, { data: d2 }, { data: d3 }, { data: d4 }] = await Promise.all([
         ctx.admin.from('discount_codes').select('code').eq('code', code).maybeSingle(),

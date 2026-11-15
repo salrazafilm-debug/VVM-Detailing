@@ -36,7 +36,7 @@ function fakeDb(tables) {
 
   // Each client gets one code, made once, easy to read (no 0/O/1/I)
   const code = await referrals.ensureReferralCode(db, 'u1', 'Kim Lee');
-  assert.match(code, /^KIM[A-HJ-NP-Z2-9]{4}$/);
+  assert.match(code, /^KIM[2-9]{2}$/);
   assert.equal(await referrals.ensureReferralCode(db, 'u1', 'Kim Lee'), code, 'the same code every time');
   assert.equal((await referrals.findReferrer(db, ` ${code.toLowerCase()} `)).userId, 'u1', 'codes are found loosely');
   assert.equal(await referrals.findReferrer(db, 'NOPE'), null);

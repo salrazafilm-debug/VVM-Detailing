@@ -8,12 +8,13 @@ const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_Yo
 const normalizeCode = s => String(s || '').replace(/\s+/g, '').toUpperCase();
 const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'a friend';
 
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O/1/I so codes are easy to read out loud
+const DIGITS = '23456789';   // no 0 or 1, so codes read clearly out loud
+// Name + 2 random digits, e.g. ELISA47. Each try is checked against every code the site uses, so a code is never reused.
 function makeCode(displayName) {
-  const letters = String(displayName || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'VVM';
+  const name = String(displayName || '').trim().split(/\s+/)[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'VVM';
   let tail = '';
-  for (let i = 0; i < 4; i++) tail += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  return letters + tail;
+  for (let i = 0; i < 2; i++) tail += DIGITS[Math.floor(Math.random() * DIGITS.length)];
+  return name + tail;
 }
 
 // The client's referral code. Created the first time it is needed.
@@ -21,7 +22,7 @@ async function ensureReferralCode(db, userId, displayName) {
   const { data: row, error } = await db.from('garage_profiles').select('referral_code').eq('user_id', userId).maybeSingle();
   if (error) throw new Error(error.message);
   if (row?.referral_code) return row.referral_code;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
     const code = makeCode(displayName);
     // Codes must not clash with any other kind of code the site accepts.
     const [{ data: a }, { data: b }, { data: c }] = await Promise.all([
@@ -99,4 +100,4 @@ async function completeBooking(db, bookingId) {
   return result;
 }
 
-module.exports = { GOAL, SITE, normalizeCode, firstName, ensureReferralCode, findReferrer, rewardsFor, checkReferral, recordReferral, completeBooking };
+module.exports = { makeCode, GOAL, SITE, normalizeCode, firstName, ensureReferralCode, findReferrer, rewardsFor, checkReferral, recordReferral, completeBooking };
