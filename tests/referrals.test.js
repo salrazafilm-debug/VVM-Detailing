@@ -106,5 +106,7 @@ function fakeDb(tables) {
   r = await customerMail.sendBookingReminders(db3);
   assert.equal(r.sent, 0, 'one reminder only');
   global.fetch = realFetch; delete process.env.BREVO_API_KEY;
+  // custom codes: letters and numbers only, 4-12 long; the normalizer uppercases and drops spaces
+  assert.equal(referrals.normalizeCode(' john smith '), 'JOHNSMITH');
   console.log('Referral, reward and reminder rules passed.');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -186,6 +186,24 @@ exports.adminPost = async req => {
       if (!r.ok) throw Object.assign(new Error(r.message), { status: r.status || 503 });
       return json({ ok: true, message: r.message });
     }
+    if (action === 'set_referral_code') {
+      // Custom referral code for a client (their own Rewards tab shows it). Letters and numbers only, 4 to 12 characters.
+      const customer_id = clean(b.customer_id, 80);
+      const code = referrals.normalizeCode(clean(b.code, 40));
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer_id)) throw Object.assign(new Error('Choose a client.'), { status: 400 });
+      if (!/^[A-Z0-9]{4,12}$/.test(code)) throw Object.assign(new Error('Use 4 to 12 letters or numbers, with no spaces or symbols.'), { status: 400 });
+      // Must not clash with any code the site already accepts, or another client's code.
+      const [{ data: d1 }, { data: d2 }, { data: d3 }, { data: d4 }] = await Promise.all([
+        ctx.admin.from('discount_codes').select('code').eq('code', code).maybeSingle(),
+        ctx.admin.from('coupons').select('code').eq('code', code).maybeSingle(),
+        ctx.admin.from('garage_offers').select('id').eq('coupon_code', code).maybeSingle(),
+        ctx.admin.from('garage_profiles').select('user_id').eq('referral_code', code).neq('user_id', customer_id).maybeSingle(),
+      ]);
+      if (d1 || d2 || d3 || d4) throw Object.assign(new Error(`The code ${code} is already in use. Try another.`), { status: 409 });
+      const { data: row, error } = await ctx.admin.from('garage_profiles').update({ referral_code: code }).eq('user_id', customer_id).select('user_id').maybeSingle();
+      if (error || !row) throw Object.assign(new Error('Could not save the code. Check the client and try again.'), { status: 503 });
+      return json({ ok: true, code, message: `Referral code ${code} is set. Their Rewards tab shows it now.` });
+    }
     if (action === 'set_password') {
       const customer_id = clean(b.customer_id, 80), password = String(b.password || '');
       if (!customer_id || password.length < 8) throw Object.assign(new Error('Use a password with at least 8 characters.'), { status: 400 });

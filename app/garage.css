@@ -179,3 +179,11 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .ahp-confirm{position:sticky;bottom:12px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-radius:18px;background:#fff;border:1px solid rgba(26,18,20,.12);box-shadow:0 12px 30px rgba(26,18,20,.18)}
 .ahp-confirm span{flex:1;min-width:180px;font:700 .9rem var(--gbody)}
 .ahp-confirm.is-dirty{border:2px solid #f0b429;background:#fffbea}
+
+.ref-custom{display:grid;gap:10px;margin:14px 0 4px;padding:16px;border-radius:18px;background:#fff7d6;border:1px solid rgba(26,18,20,.12)}
+.ref-custom .g-eyebrow{margin:0}
+.ref-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.ref-row label{display:grid;gap:6px;font:700 .85rem var(--gbody)}
+.ref-row select,.ref-row input{min-height:44px;padding:8px 12px;border:1px solid rgba(26,18,20,.25);border-radius:12px;font:600 .95rem var(--gbody);text-transform:none}
+.ref-row input{text-transform:uppercase;letter-spacing:.06em}
+@media(max-width:600px){.ref-row{grid-template-columns:1fr}}
