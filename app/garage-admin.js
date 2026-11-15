@@ -170,18 +170,15 @@ function AdminBookings({ bookings, busy, onAction }) {
 
 // ---- Codes and rewards: discount codes, who is referring friends, and the email list ----
 function CustomReferralCode({ customers, busy, onSave }) {
-  const [customer,setCustomer]=useState(''),[code,setCode]=useState('');
-  const clean=code.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const ok=customer&&/^[A-Z0-9]{4,12}$/.test(clean);
-  return <form className="ref-custom" onSubmit={e=>{e.preventDefault();if(ok)onSave(customer,clean).then(()=>setCode(''))}}>
+  const [customer,setCustomer]=useState(''),[name,setName]=useState('');
+  return <form className="ref-custom" onSubmit={e=>{e.preventDefault();if(customer&&name.trim())onSave(customer,name.trim()).then(()=>setName(''))}}>
     <p className="g-eyebrow">MAKE A CODE</p>
-    <p className="g-inline-help">Give a client their own memorable code, like JOHNSMITH or VVMFRIEND. 4 to 12 letters or numbers. It replaces their old code, and their Rewards tab shows it.</p>
+    <p className="g-inline-help">Pick the client and type their name. The site makes a code from it, like ELISAV, and their Rewards tab shows it. It replaces their old code.</p>
     <div className="ref-row">
       <label>Client<select value={customer} onChange={e=>setCustomer(e.target.value)}><option value="">Choose a client</option>{customers.map(c=><option key={c.user_id} value={c.user_id}>{c.display_name||c.email}</option>)}</select></label>
-      <label>New code<input value={code} maxLength={12} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="e.g. JOHNSMITH" autoComplete="off"/></label>
-      <button type="submit" className="g-button" disabled={busy||!ok}>SAVE CODE</button>
+      <label>Their name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Elisa VanDevander" autoComplete="off"/></label>
+      <button type="submit" className="g-button" disabled={busy||!customer||!name.trim()}>MAKE CODE</button>
     </div>
-    {code&&!ok&&<p className="g-inline-help">Letters and numbers only, 4 to 12 characters.</p>}
   </form>;
 }
 
@@ -534,7 +531,7 @@ export default function GarageAdmin() {
         </div>}
       </section>
     </fieldset>
-    <div className="admin-rewards" style={{display:section==='rewards'?undefined:'none'}}><div className="admin-section-head"><div><p className="g-eyebrow">GROW THE BUSINESS</p><h2>Codes &amp; rewards.</h2></div></div><DiscountCodes codes={discountCodes} busy={busy} onAction={action}/><ReferralLeaders leaders={leaders} customers={customers} busy={busy} onSaveCode={(customer_id,code)=>action({action:'set_referral_code',customer_id,code},'Referral code saved.')}/><EmailList bookings={bookings}/></div>
+    <div className="admin-rewards" style={{display:section==='rewards'?undefined:'none'}}><div className="admin-section-head"><div><p className="g-eyebrow">GROW THE BUSINESS</p><h2>Codes &amp; rewards.</h2></div></div><DiscountCodes codes={discountCodes} busy={busy} onAction={action}/><ReferralLeaders leaders={leaders} customers={customers} busy={busy} onSaveCode={(customer_id,name)=>action({action:'set_referral_code',customer_id,name},'Referral code made.')}/><EmailList bookings={bookings}/></div>
     <details open style={{display:section==='directory'?undefined:'none'}} className="g-panel admin-disclosure admin-directory"><summary><span>Client directory & history<small>Browse every client, vehicle and photo by date</small></span><b aria-hidden="true">+</b></summary>{loading?<p className="g-muted">Loading clients…</p>:<ClientDashboard customers={sortedCustomers} busy={busy} vehiclesLoaded={vehiclesLoaded} onAddPhoto={dashboardPhoto}/>}</details>
     <footer className="g-footer"><span>A little love. Every detail.</span><a href="/">Back to VVM Details →</a></footer>
   </main>;
