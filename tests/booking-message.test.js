@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const { confirmMessage, longDate, ORDINAL } = require('../server/booking-message');
+assert.equal(ORDINAL(1), '1st'); assert.equal(ORDINAL(2), '2nd'); assert.equal(ORDINAL(3), '3rd'); assert.equal(ORDINAL(11), '11th'); assert.equal(ORDINAL(12), '12th'); assert.equal(ORDINAL(20), '20th'); assert.equal(ORDINAL(22), '22nd');
+assert.equal(longDate('2026-11-20'), 'November 20th');
+const b = { name: 'Julissa Ruiz', vehicles: '2022 Honda Civic', booking_date: '2026-11-20' };
+const m = confirmMessage(b);
+assert.match(m, /^Hi Julissa! How are you\? This is Bruce with VVM Details/);
+assert.match(m, /for your 2022 Honda Civic on November 20th!/);
+assert.doesNotMatch(m, /Also|extra/);
+const two = confirmMessage({ ...b, vehicles: '2022 Honda Civic | 2019 Ford F-150' });
+assert.match(two, /for your 2022 Honda Civic and 2019 Ford F-150 on/);
+const c = confirmMessage(b, { extra: 'Please leave the garage door open.' });
+assert.match(c, /Messaging to confirm our appt\.\n[^\n]*\n\nPlease leave the garage door open\./);
+console.log('booking message tests passed');

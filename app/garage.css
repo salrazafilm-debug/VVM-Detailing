@@ -204,3 +204,9 @@ body:has(.garage-shell){margin:0;background:var(--gpink);color:var(--gink);font-
 .ref-track-foot small{opacity:.7;font:600 .85rem var(--gbody)}
 .ref-track-foot em{font:800 .8rem var(--gbody);font-style:normal;color:#8a5a00;letter-spacing:.06em}
 .ref-track-foot button{margin-left:auto;min-height:38px;padding:0 14px}
+
+.abk-msg{grid-column:1/-1;display:grid;gap:10px;margin-top:10px;padding:14px;border-radius:16px;background:#fffbea;border:1px solid rgba(240,180,41,.45)}
+.abk-msg-q{font:700 .95rem var(--gbody)}
+.abk-msg-choices{display:flex;flex-wrap:wrap;gap:8px}
+.abk-msg label{display:grid;gap:6px;font:700 .85rem var(--gbody)}
+.abk-msg textarea{width:100%;padding:10px 12px;border:1px solid rgba(26,18,20,.25);border-radius:12px;font:500 .95rem/1.45 var(--gbody);background:#fff;white-space:pre-wrap}
