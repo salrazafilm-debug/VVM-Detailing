@@ -86,30 +86,18 @@ const dollarsOf = c => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
 const bookingDay = d => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'});
 const bookingTime = t => { const [h,m]=String(t).split(':').map(Number); return `${((h+11)%12)+1}:${String(m||0).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
 
-// Copy-paste message to the client. Default is the standard confirmation; "Yes" lets you add a change first.
+// The client message: the standard confirmation text, with a copy button.
 function ClientMessage({ b }) {
-  const [step,setStep]=useState('ask'),[extra,setExtra]=useState(''),[copied,setCopied]=useState(false);
-  const text=confirmMessage(b,{extra:step==='change'?extra:''});
+  const [copied,setCopied]=useState(false);
+  const text=confirmMessage(b);
   async function copy(){
     try{await navigator.clipboard.writeText(text);setCopied(true);setTimeout(()=>setCopied(false),2200)}
     catch{document.getElementById(`msg-${b.id}`)?.select()}
   }
-  if(step==='ask') return <div className="abk-msg">
-    <p className="abk-msg-q"><b>Do you want to make changes?</b></p>
-    <div className="abk-msg-choices">
-      <button type="button" className="g-button" onClick={()=>setStep('send')}>NO, USE THE STANDARD MESSAGE</button>
-      <button type="button" className="abk-ghost" onClick={()=>setStep('change')}>YES, CHANGE IT</button>
-    </div>
-  </div>;
   return <div className="abk-msg">
-    {step==='change'&&<label className="abk-msg-change">What would you like changed or added?
-      <textarea rows={2} value={extra} onChange={e=>setExtra(e.target.value)} placeholder="e.g. Please leave the side gate open." autoFocus/></label>}
     <label className="abk-msg-text">Message to copy
       <textarea id={`msg-${b.id}`} rows={9} readOnly value={text} onFocus={e=>e.target.select()}/></label>
-    <div className="abk-msg-choices">
-      <button type="button" className="g-button" onClick={copy}>{copied?'COPIED ✓':'COPY MESSAGE'}</button>
-      {step==='change'?<button type="button" className="abk-ghost" onClick={()=>setStep('send')}>Done changing</button>:<button type="button" className="abk-ghost" onClick={()=>setStep('ask')}>Back</button>}
-    </div>
+    <div className="abk-msg-choices"><button type="button" className="g-button" onClick={copy}>{copied?'COPIED ✓':'COPY MESSAGE'}</button></div>
   </div>;
 }
 
@@ -128,7 +116,7 @@ function BookingCard({ b, busy, onAction }) {
       <p className="abk-contact">{b.phone?<a href={`tel:${String(b.phone).replace(/\D/g,'')}`}>{b.phone}</a>:'No phone'} · <a href={`mailto:${b.email}`}>{b.email}</a></p>
     </div>
     <div className="abk-actions">
-      {b.status==='requested'&&<><button type="button" className="g-button" disabled={busy} onClick={()=>set('confirmed')}>CONFIRM</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button><button type="button" className="abk-ghost" aria-expanded={showMsg} onClick={()=>setShowMsg(v=>!v)}>{showMsg?'Hide message':'Message client'}</button></>}
+      {b.status==='requested'&&<><button type="button" className="g-button" disabled={busy} onClick={()=>set('confirmed')}>CONFIRM</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button><button type="button" className="abk-ghost" aria-expanded={showMsg} onClick={()=>setShowMsg(v=>!v)}>{showMsg?'Hide message':'Show message'}</button></>}
       {b.status==='confirmed'&&<><button type="button" className="g-button" disabled={busy} onClick={done}>MARK COMPLETED</button><button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('cancelled')}>Cancel</button></>}
       {b.status==='cancelled'&&<button type="button" className="abk-ghost" disabled={busy} onClick={()=>set('requested')}>Reopen</button>}
       {b.status==='completed'&&(b.review_sent_at?<span className="abk-tag">REVIEW REQUESTED ✓</span>:<button type="button" className="abk-ghost" disabled={busy} onClick={()=>onAction({action:'booking_review',booking_id:b.id})}>Ask for a review</button>)}
