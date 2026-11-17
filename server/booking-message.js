@@ -24,7 +24,8 @@ function confirmMessage(booking, { sender = 'Bruce', extra = '' } = {}) {
     `Hi ${firstName(booking.name)}! How are you? This is ${sender} with VVM Details`,
     '',
     'Messaging to confirm our appt.',
-    `for your ${carText(booking.vehicles)} on ${longDate(booking.booking_date)}!`,
+    `for your ${carText(booking.vehicles)} on`,
+    `${longDate(booking.booking_date)}!`,
   ];
   const note = String(extra || '').trim();
   if (note) lines.push('', note);
