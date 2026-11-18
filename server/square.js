@@ -40,7 +40,20 @@ async function getLocationId() {
   return locationCache;
 }
 
-// Bookings that start between two local dates (end exclusive), as per-day blocks
+// Adds a busy span [startMs, endMs) to the days it touches, split at local midnight (a block can cover several days).
+function addSpan(days, startMs, endMs, item) {
+  let cur = startMs;
+  while (cur < endMs) {
+    const local = utcToLocal(new Date(cur));
+    const dayEnd = Math.min(endMs, cur + (1440 - local.minutes) * 60000);
+    const startMin = local.minutes, endMin = startMin + Math.round((dayEnd - cur) / 60000);
+    (days[local.date] = days[local.date] || []).push({ ...item, start: startMin, end: endMin });
+    cur = dayEnd;
+  }
+}
+
+// Busy time from Square, per local day. Counts bookings AND blocked time (Square "block time" has no service):
+// a blocked entry blocks exactly the span Square gives it, so a blocked day shows as unavailable.
 async function blocksByDay(fromDate, toDate, catalog) {
   const loc = await getLocationId();
   const min = localToUtc(fromDate, 0).toISOString();
@@ -55,13 +68,14 @@ async function blocksByDay(fromDate, toDate, catalog) {
       if (!['PENDING', 'ACCEPTED'].includes(b.status)) continue;
       const segs = b.appointment_segments || [];
       const first = catalog[(segs[0] || {}).service_variation_id];
-      const minutes = segs.reduce((n, s) => n + (s.duration_minutes || 0) + (s.intermission_minutes || 0), 0);
-      const local = utcToLocal(new Date(b.start_at));
-      (days[local.date] = days[local.date] || []).push({
-        start: local.minutes,
-        end: local.minutes + minutes + (b.transition_time_minutes || (first ? first.transitionMin : 0)),
-        kind: first ? first.kind : 'other',
-      });
+      const startMs = new Date(b.start_at).getTime();
+      const segMinutes = segs.reduce((n, s) => n + (s.duration_minutes || 0) + (s.intermission_minutes || 0), 0);
+      // Use the length Square gives: its end time when present (blocked time), else the service lengths.
+      const endMs = b.end_at ? new Date(b.end_at).getTime() : startMs + segMinutes * 60000;
+      const transition = b.transition_time_minutes || (first ? first.transitionMin : 0);
+      const kind = first ? first.kind : 'other';
+      if (!(endMs > startMs)) continue;
+      addSpan(days, startMs, endMs + transition * 60000, { kind });
     }
     cursor = res.cursor;
   } while (cursor);
